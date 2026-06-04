@@ -18,6 +18,18 @@ struct ExportData: Codable {
     var exportedAt: Date = Date()
     var settings: SettingsDTO
     var months: [MonthDTO]
+    /// Optional for backward/forward compatibility with older exports.
+    var rules: [RuleDTO]? = []
+}
+
+struct RuleDTO: Codable {
+    var id: UUID
+    var desc: String
+    var amount: Double
+    var category: String
+    var dayOfMonth: Int
+    var isActive: Bool
+    var startKey: String
 }
 
 struct SettingsDTO: Codable {
@@ -50,7 +62,9 @@ struct TransactionDTO: Codable {
 
 enum LedgerArchive {
 
-    static func makeExport(settings: AppSettings?, months: [MonthRecord]) -> ExportData {
+    static func makeExport(settings: AppSettings?,
+                           months: [MonthRecord],
+                           rules: [RecurringRule] = []) -> ExportData {
         let settingsDTO = SettingsDTO(
             defaultIncome: settings?.defaultIncome ?? 0,
             needsPct: settings?.defaultNeedsPct ?? 50,
@@ -74,7 +88,12 @@ enum LedgerArchive {
                                               category: $0.categoryRaw, date: $0.date) }
                 )
             }
-        return ExportData(settings: settingsDTO, months: monthDTOs)
+        let ruleDTOs = rules.map { rule in
+            RuleDTO(id: rule.id, desc: rule.desc, amount: rule.amount,
+                    category: rule.categoryRaw, dayOfMonth: rule.dayOfMonth,
+                    isActive: rule.isActive, startKey: rule.startKey)
+        }
+        return ExportData(settings: settingsDTO, months: monthDTOs, rules: ruleDTOs)
     }
 
     // MARK: JSON

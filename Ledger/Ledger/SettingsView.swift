@@ -21,6 +21,7 @@ struct SettingsView: View {
 
     @Query private var allSettings: [AppSettings]
     @Query(sort: \MonthRecord.key) private var months: [MonthRecord]
+    @Query(sort: \RecurringRule.createdAt) private var rules: [RecurringRule]
 
     @State private var incomeDraft = ""
     @State private var needsDraft = "50"
@@ -62,6 +63,7 @@ struct SettingsView: View {
                         }
                         defaultIncomeCard
                         allocationCard
+                        recurringCard
                         dataCard
                         aboutCard
                     }
@@ -225,6 +227,22 @@ struct SettingsView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
+    // MARK: Recurring
+
+    private var recurringCard: some View {
+        Card {
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel("Recurring")
+                NavigationLink {
+                    RecurringView()
+                } label: {
+                    rowLabel("Recurring Transactions", system: "arrow.triangle.2.circlepath")
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
     // MARK: Data (export / import)
 
     private var dataCard: some View {
@@ -361,7 +379,7 @@ struct SettingsView: View {
     }
 
     private func archive() -> ExportData {
-        LedgerArchive.makeExport(settings: allSettings.first, months: months)
+        LedgerArchive.makeExport(settings: allSettings.first, months: months, rules: rules)
     }
 
     private func jsonData() -> Data {

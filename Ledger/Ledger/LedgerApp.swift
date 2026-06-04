@@ -20,7 +20,8 @@ struct LedgerApp: App {
         let schema = Schema([
             MonthRecord.self,
             Transaction.self,
-            AppSettings.self
+            AppSettings.self,
+            RecurringRule.self
         ])
         let configuration = ModelConfiguration(
             schema: schema,

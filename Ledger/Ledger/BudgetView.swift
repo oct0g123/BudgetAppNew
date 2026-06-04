@@ -240,7 +240,7 @@ struct BudgetView: View {
                 VStack(spacing: 0) {
                     ForEach(txns) { txn in
                         TransactionRow(txn: txn)
-                            .swipeActions(edge: .trailing) {
+                            .contextMenu {
                                 if !month.isClosed {
                                     Button(role: .destructive) {
                                         LedgerService.delete(txn, in: context)

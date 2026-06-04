@@ -54,7 +54,57 @@ enum LedgerService {
                                  income: settings.defaultIncome,
                                  split: settings.defaultSplit)
         context.insert(record)
+        applyRecurringRules(to: record, in: context)
         return record
+    }
+
+    // MARK: Recurring rules
+
+    static func allRecurringRules(in context: ModelContext) -> [RecurringRule] {
+        let descriptor = FetchDescriptor<RecurringRule>(
+            sortBy: [SortDescriptor(\.createdAt)]
+        )
+        return (try? context.fetch(descriptor)) ?? []
+    }
+
+    /// Materialize every active rule that has reached `startKey` into the month,
+    /// skipping any rule already represented there. Closed months are left
+    /// untouched.
+    static func applyRecurringRules(to month: MonthRecord, in context: ModelContext) {
+        guard !month.isClosed else { return }
+        let existingRuleIDs = Set(month.txns.compactMap { $0.recurringRuleID })
+        for rule in allRecurringRules(in: context) where rule.isActive {
+            guard rule.startKey <= month.key else { continue }
+            guard !existingRuleIDs.contains(rule.id) else { continue }
+            let txn = Transaction(desc: rule.desc,
+                                  amount: rule.amount,
+                                  category: rule.category,
+                                  date: dateForDay(rule.dayOfMonth, inMonthKey: month.key),
+                                  recurringRuleID: rule.id)
+            txn.month = month
+            context.insert(txn)
+        }
+    }
+
+    /// Apply a rule to every existing open month it covers (used right after a
+    /// rule is created or re-activated).
+    static func applyRule(_ rule: RecurringRule, in context: ModelContext) {
+        for month in allMonths(in: context) where !month.isClosed && rule.startKey <= month.key {
+            applyRecurringRules(to: month, in: context)
+        }
+    }
+
+    private static func dateForDay(_ day: Int, inMonthKey key: String) -> Date {
+        guard let (year, month) = MonthKey.components(key) else { return Date() }
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone.current
+        var comps = DateComponents()
+        comps.year = year
+        comps.month = month
+        let range = cal.range(of: .day, in: .month, for: cal.date(from: comps) ?? Date())
+        let maxDay = range?.count ?? 28
+        comps.day = min(max(day, 1), maxDay)
+        return cal.date(from: comps) ?? Date()
     }
 
     // MARK: Transactions
@@ -125,6 +175,19 @@ enum LedgerService {
                 txn.month = record
                 context.insert(txn)
             }
+        }
+
+        // Recurring rules (match by id to avoid duplicates).
+        let existingRuleIDs = Set(allRecurringRules(in: context).map(\.id))
+        for ruleDTO in (archive.rules ?? []) where !existingRuleIDs.contains(ruleDTO.id) {
+            let rule = RecurringRule(id: ruleDTO.id,
+                                     desc: ruleDTO.desc,
+                                     amount: ruleDTO.amount,
+                                     category: BudgetCategory(rawValue: ruleDTO.category) ?? .needs,
+                                     dayOfMonth: ruleDTO.dayOfMonth,
+                                     isActive: ruleDTO.isActive,
+                                     startKey: ruleDTO.startKey)
+            context.insert(rule)
         }
     }
 

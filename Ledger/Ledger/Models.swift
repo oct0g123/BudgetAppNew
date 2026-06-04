@@ -43,6 +43,10 @@ final class Transaction {
     var categoryRaw: String = BudgetCategory.needs.rawValue
     var date: Date = Date()
 
+    /// Set when this transaction was generated from a recurring rule, so the
+    /// same rule isn't applied to the same month twice.
+    var recurringRuleID: UUID?
+
     /// Owning month. Optional for CloudKit.
     var month: MonthRecord?
 
@@ -50,12 +54,14 @@ final class Transaction {
          desc: String,
          amount: Double,
          category: BudgetCategory,
-         date: Date = Date()) {
+         date: Date = Date(),
+         recurringRuleID: UUID? = nil) {
         self.id = id
         self.desc = desc
         self.amount = amount
         self.categoryRaw = category.rawValue
         self.date = date
+        self.recurringRuleID = recurringRuleID
     }
 
     var category: BudgetCategory {
@@ -126,6 +132,47 @@ final class MonthRecord {
     var savingsRate: Double {
         guard income > 0 else { return 0 }
         return spent(for: .savings) / income
+    }
+}
+
+// MARK: - RecurringRule
+
+/// A monthly recurring transaction template (rent, subscriptions, paychecks
+/// logged as negative spend, etc.). When a month is opened, active rules whose
+/// `startKey` has been reached are materialized into real `Transaction`s for
+/// that month — once each, tracked via `Transaction.recurringRuleID`.
+@Model
+final class RecurringRule {
+    var id: UUID = UUID()
+    var desc: String = ""
+    var amount: Double = 0
+    var categoryRaw: String = BudgetCategory.needs.rawValue
+    /// Day of month to date the generated transaction (clamped to the month).
+    var dayOfMonth: Int = 1
+    var isActive: Bool = true
+    /// First month the rule applies, e.g. "2026-06".
+    var startKey: String = ""
+    var createdAt: Date = Date()
+
+    init(id: UUID = UUID(),
+         desc: String,
+         amount: Double,
+         category: BudgetCategory,
+         dayOfMonth: Int = 1,
+         isActive: Bool = true,
+         startKey: String) {
+        self.id = id
+        self.desc = desc
+        self.amount = amount
+        self.categoryRaw = category.rawValue
+        self.dayOfMonth = dayOfMonth
+        self.isActive = isActive
+        self.startKey = startKey
+    }
+
+    var category: BudgetCategory {
+        get { BudgetCategory(rawValue: categoryRaw) ?? .needs }
+        set { categoryRaw = newValue.rawValue }
     }
 }
 

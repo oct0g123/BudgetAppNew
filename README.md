@@ -9,21 +9,26 @@ through your own iCloud account — no backend, no account to create.
 > single `.html` file, etc.) were intentionally dropped in favor of a real
 > multiplatform app with iCloud sync.
 
-## Features (barebones v1)
+## Features
 
 - **Monthly income → auto-split** into Needs / Savings / Wants buckets.
 - **Adjustable allocation model** — pick 50/30/20, 50/20/30, or fully custom
   percentages (must sum to 100%). The split is stored **per month**, so closing
   or editing the default never rewrites history.
 - **Transactions** with description, amount, category, and date; live progress
-  bars show spent vs. budget and remaining per bucket.
+  bars show spent vs. budget and remaining per bucket. Long-press a row to delete.
+- **Recurring transactions** — monthly templates (rent, subscriptions,
+  paychecks) that auto-populate each new month on a chosen day. Toggle active,
+  edit, or delete; closed months are never altered retroactively.
+- **Insights** — Swift Charts dashboards: savings-rate trajectory, spend by
+  category over time, and budget-vs-actual for the current month.
 - **Filter** transactions by category.
 - **Month navigation** (prev/next); the viewed month persists across launches.
 - **Close month** to archive it read-only and roll into a fresh next month.
 - **History** view summarizing income, spend, split, and savings rate per month.
 - **Settings** with a default income that carries forward to new months.
-- **Backup & exchange**: export to JSON or CSV, import from JSON or CSV (via
-  file picker or paste), and copy JSON to the clipboard.
+- **Backup & exchange**: export to JSON (full, incl. recurring rules) or CSV,
+  import from JSON or CSV (file picker or paste), and copy JSON to the clipboard.
 - **iCloud sync** via SwiftData + CloudKit, with a "Saved" indicator.
 
 ## Month keys
@@ -53,7 +58,8 @@ Ledger/
 
 ## Before you build
 
-1. Open `Ledger.xcodeproj` in Xcode 15.3+ (needs iOS 17 / macOS 14 / visionOS 1).
+1. Open `Ledger.xcodeproj` in Xcode 16+ (targets iOS 18 / iPadOS 18 / macOS 15 /
+   visionOS 2).
 2. Select the **Ledger** target → **Signing & Capabilities**:
    - Set your **Team**.
    - Change the **Bundle Identifier** from `com.example.Ledger` to your own.
@@ -76,5 +82,6 @@ the real fonts, add the `.ttf` files to the target, list them under
 
 ## Roadmap
 
-Dashboards & richer reporting are planned next (charts of spend over time,
-category trends, savings-rate trajectory). The `History` tab is the first step.
+The `Insights` tab is a first cut at reporting. Next candidates: budget rollover
+of unspent buckets, Home/Lock Screen widgets, spending alerts, tags/sub-
+categories, and richer charts (category trends, drill-down).

@@ -12,6 +12,9 @@ struct RootView: View {
             BudgetView()
                 .tabItem { Label("Budget", systemImage: "chart.pie") }
 
+            InsightsView()
+                .tabItem { Label("Insights", systemImage: "chart.bar.xaxis") }
+
             HistoryView()
                 .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
 
@@ -24,7 +27,7 @@ struct RootView: View {
 
 #Preview {
     RootView()
-        .modelContainer(for: [MonthRecord.self, Transaction.self, AppSettings.self],
+        .modelContainer(for: [MonthRecord.self, Transaction.self, AppSettings.self, RecurringRule.self],
                         inMemory: true)
         .preferredColorScheme(.dark)
 }
