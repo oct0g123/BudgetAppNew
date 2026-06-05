@@ -426,7 +426,9 @@ struct SettingsView: View {
         // JSON if it looks like a JSON object/array; otherwise treat as CSV.
         if trimmed.hasPrefix("{") || trimmed.hasPrefix("[") {
             do {
-                let archive = try LedgerArchive.decodeJSON(Data(trimmed.utf8))
+                // Auto-detects this app's format or the original web app's backup.
+                let archive = try LedgerArchive.decodeAny(Data(trimmed.utf8),
+                                                          defaultSplit: settings.defaultSplit)
                 LedgerService.importArchive(archive, in: context)
                 let txns = archive.months.reduce(0) { $0 + $1.transactions.count }
                 flash("Imported \(archive.months.count) month(s), \(txns) transaction(s)")

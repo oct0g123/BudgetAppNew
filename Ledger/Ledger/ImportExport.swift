@@ -10,6 +10,7 @@ import Foundation
 import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
+import CryptoKit
 
 // MARK: - DTOs
 
@@ -149,6 +150,42 @@ struct TransactionDTO: Codable {
     }
 }
 
+// MARK: - Legacy web-app format
+//
+// The original single-file web app exported:
+//   { "exportedAt": "...", "version": 1,
+//     "data": { "currentMonthKey": "2026-06",
+//               "months": { "2026-05": { "income": 7000,
+//                                        "closed": true,
+//                                        "transactions": [
+//                                          { "id": 177..., "desc": "Rent",
+//                                            "amount": 1966, "cat": "needs",
+//                                            "ts": 1778282456380 } ] } } } }
+// Note: months is a *dictionary*, `cat`/`ts` field names, `ts` is unix millis,
+// numeric ids, no per-month split or settings.
+
+struct LegacyArchive: Decodable {
+    struct Payload: Decodable {
+        var currentMonthKey: String?
+        var months: [String: LegacyMonth]
+    }
+    var data: Payload
+}
+
+struct LegacyMonth: Decodable {
+    var income: Double?
+    var closed: Bool?
+    var transactions: [LegacyTxn]?
+}
+
+struct LegacyTxn: Decodable {
+    var id: Double?
+    var desc: String?
+    var amount: Double?
+    var cat: String?
+    var ts: Double?
+}
+
 // MARK: - Mapping
 
 enum LedgerArchive {
@@ -238,6 +275,80 @@ enum LedgerArchive {
         // Numeric string as unix seconds.
         if let t = Double(trimmed) { return Date(timeIntervalSince1970: t) }
         return nil
+    }
+
+    // MARK: Auto-detecting decode (native or legacy web-app format)
+
+    /// Decode either this app's native export or the original web app's backup
+    /// format, returning a native ExportData either way. `defaultSplit` is used
+    /// for legacy months, which carry no allocation of their own.
+    static func decodeAny(_ data: Data, defaultSplit: BudgetSplit) throws -> ExportData {
+        // Legacy files nest everything under "data" with a months *dictionary*.
+        // Native files have no top-level "data", so this decode fails and we
+        // fall through.
+        if let legacy = try? JSONDecoder().decode(LegacyArchive.self, from: data),
+           !legacy.data.months.isEmpty {
+            return convertLegacy(legacy, defaultSplit: defaultSplit)
+        }
+        return try decodeJSON(data)
+    }
+
+    private static func convertLegacy(_ legacy: LegacyArchive,
+                                      defaultSplit: BudgetSplit) -> ExportData {
+        var monthDTOs: [MonthDTO] = []
+        for (key, m) in legacy.data.months {
+            let txns: [TransactionDTO] = (m.transactions ?? []).map { t in
+                let cat = BudgetCategory(rawValue: (t.cat ?? "needs").lowercased())?.rawValue
+                    ?? BudgetCategory.needs.rawValue
+                // `ts` is unix milliseconds in the web app.
+                let date = t.ts.map { Date(timeIntervalSince1970: $0 / 1000) } ?? firstOfMonth(key)
+                let seed = "legacy|\(key)|\(t.id ?? 0)|\(t.ts ?? 0)|\(t.desc ?? "")"
+                return TransactionDTO(id: deterministicUUID(seed),
+                                      desc: t.desc ?? "",
+                                      amount: t.amount ?? 0,
+                                      category: cat,
+                                      date: date)
+            }
+            monthDTOs.append(MonthDTO(key: key,
+                                      income: m.income ?? 0,
+                                      needsPct: defaultSplit.needs,
+                                      savingsPct: defaultSplit.savings,
+                                      wantsPct: defaultSplit.wants,
+                                      isClosed: m.closed ?? false,
+                                      createdAt: firstOfMonth(key),
+                                      transactions: txns))
+        }
+        monthDTOs.sort { $0.key < $1.key }
+
+        // The web app stored no default income; use the "current" month's income
+        // (or the most recent month) as a sensible carry-forward default.
+        let currentIncome = legacy.data.currentMonthKey
+            .flatMap { legacy.data.months[$0]?.income }
+        let defaultIncome = currentIncome ?? monthDTOs.last?.income ?? 0
+        let settings = SettingsDTO(defaultIncome: defaultIncome,
+                                   needsPct: defaultSplit.needs,
+                                   savingsPct: defaultSplit.savings,
+                                   wantsPct: defaultSplit.wants)
+        return ExportData(settings: settings, months: monthDTOs, rules: [])
+    }
+
+    private static func firstOfMonth(_ key: String) -> Date {
+        guard let (y, m) = MonthKey.components(key) else { return Date() }
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = .current
+        var c = DateComponents()
+        c.year = y; c.month = m; c.day = 1
+        return cal.date(from: c) ?? Date()
+    }
+
+    /// Stable UUID derived from a seed string, so re-importing the same legacy
+    /// file doesn't create duplicate transactions.
+    private static func deterministicUUID(_ seed: String) -> UUID {
+        let digest = Insecure.MD5.hash(data: Data(seed.utf8))
+        let b = Array(digest) // exactly 16 bytes
+        let bytes: uuid_t = (b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
+                             b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15])
+        return UUID(uuid: bytes)
     }
 
     // MARK: CSV (transactions, flat)
