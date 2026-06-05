@@ -29,7 +29,10 @@ through your own iCloud account — no backend, no account to create.
 - **Settings** with a default income that carries forward to new months.
 - **Backup & exchange**: export to JSON (full, incl. recurring rules) or CSV,
   import from JSON or CSV (file picker or paste), and copy JSON to the clipboard.
-- **iCloud sync** via SwiftData + CloudKit, with a "Saved" indicator.
+- **iCloud sync** via SwiftData + CloudKit (opt-in — requires a paid developer
+  account; off by default so the app runs on a free Apple ID), with a "Saved"
+  indicator. Manual JSON/CSV export & import covers cross-device transfer
+  meanwhile.
 
 ## Month keys
 
@@ -61,15 +64,28 @@ Ledger/
 1. Open `Ledger.xcodeproj` in Xcode 16+ (targets iOS 18 / iPadOS 18 / macOS 15 /
    visionOS 2).
 2. Select the **Ledger** target → **Signing & Capabilities**:
-   - Set your **Team**.
-   - Change the **Bundle Identifier** from `com.example.Ledger` to your own.
-   - Update the **iCloud container** in `Ledger.entitlements` from
-     `iCloud.com.example.Ledger` to match (Xcode can create it for you under the
-     iCloud → CloudKit capability).
+   - Set your **Team** (a free personal Apple ID works).
+   - Change the **Bundle Identifier** from `com.example.Ledger` to something
+     unique (e.g. `com.yourname.Ledger`).
 3. Build & run on any of the four platforms.
 
-If you're not signed into iCloud (or run without the CloudKit entitlement), the
-app falls back to a local-only store so it still works for development.
+### Running on a free Apple ID (no paid developer account)
+
+iCloud / CloudKit needs a **paid** Apple Developer Program membership, so sync is
+**off by default** and the app uses a local store — it builds and runs on a free
+Apple ID as-is. Move data between devices with **Settings → Backup & Sync**
+(JSON/CSV export & import).
+
+### Enabling iCloud sync later (paid account)
+
+1. Set `enableCloudKitSync = true` in `LedgerApp.swift`.
+2. Target → **Signing & Capabilities** → **+ Capability** → **iCloud**, check
+   **CloudKit**, and create/select a container (e.g. `iCloud.com.yourname.Ledger`).
+3. Uncomment the iCloud keys in `Ledger.entitlements` and set the container id to
+   match.
+
+If CloudKit is ever requested but unavailable at runtime, the app automatically
+falls back to the local store so it still launches.
 
 ## Fonts
 

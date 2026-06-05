@@ -2,18 +2,31 @@
 //  LedgerApp.swift
 //  Ledger
 //
-//  App entry point. Sets up a SwiftData ModelContainer backed by CloudKit so
-//  data syncs across the user's devices automatically.
+//  App entry point and SwiftData ModelContainer setup.
+//
+//  iCloud sync (CloudKit) requires a PAID Apple Developer Program membership —
+//  a free Apple ID can't provision the iCloud capability, so the app is set up
+//  to run with a LOCAL store by default. When you have a paid account and want
+//  cross-device sync:
+//    1. Flip `enableCloudKitSync` below to `true`.
+//    2. In the target's Signing & Capabilities, add the iCloud capability with
+//       CloudKit and create/select a container (e.g. iCloud.com.you.Ledger).
+//    3. Restore the iCloud keys in Ledger.entitlements (see the commented
+//       block there).
+//  Until then, use Settings → Backup & Sync (JSON/CSV export & import) to move
+//  data between devices manually.
 //
 
 import SwiftUI
 import SwiftData
 
+/// Set to `true` only when building with a paid developer account that has the
+/// iCloud + CloudKit capability enabled.
+private let enableCloudKitSync = false
+
 @main
 struct LedgerApp: App {
 
-    /// Shared container. `.automatic` CloudKit database uses the iCloud
-    /// container named in Ledger.entitlements (default private database).
     let container: ModelContainer
 
     init() {
@@ -26,14 +39,14 @@ struct LedgerApp: App {
         let configuration = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: false,
-            cloudKitDatabase: .automatic
+            cloudKitDatabase: enableCloudKitSync ? .automatic : .none
         )
         do {
             container = try ModelContainer(for: schema, configurations: configuration)
         } catch {
-            // If the CloudKit-backed store can't be created (e.g. not signed in
-            // to iCloud, or entitlement missing in a dev build), fall back to a
-            // local-only store so the app still runs.
+            // If the configured store can't be created (e.g. CloudKit requested
+            // without a valid entitlement, or not signed in to iCloud), fall
+            // back to a plain local store so the app still runs.
             let localConfig = ModelConfiguration(schema: schema,
                                                  isStoredInMemoryOnly: false,
                                                  cloudKitDatabase: .none)

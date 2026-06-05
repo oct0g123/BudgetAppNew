@@ -431,7 +431,7 @@ struct TransactionRow: View {
 struct SavedIndicator: View {
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "checkmark.icloud")
+            Image(systemName: "checkmark.circle")
                 .font(.system(size: 12))
             Text("Saved")
                 .font(.mono(11))
