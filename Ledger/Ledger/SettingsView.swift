@@ -35,6 +35,7 @@ struct SettingsView: View {
     @State private var showingPasteSheet = false
     @State private var pasteText = ""
     @State private var banner: String?
+    @State private var bannerIsError = false
 
     private var settings: AppSettings {
         LedgerService.settings(in: context)
@@ -55,11 +56,13 @@ struct SettingsView: View {
                         if let banner {
                             Text(banner)
                                 .font(.mono(12))
-                                .foregroundStyle(Palette.savings)
+                                .foregroundStyle(bannerIsError ? Palette.needs : Palette.savings)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(12)
                                 .background(Palette.surface)
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
+                                .overlay(RoundedRectangle(cornerRadius: 10)
+                                    .stroke(bannerIsError ? Palette.needs.opacity(0.6) : .clear, lineWidth: 1))
                         }
                         defaultIncomeCard
                         allocationCard
@@ -397,33 +400,43 @@ struct SettingsView: View {
     }
 
     private func handleImport(_ result: Result<[URL], Error>) {
-        guard case let .success(urls) = result, let url = urls.first else { return }
-        let needsStop = url.startAccessingSecurityScopedResource()
-        defer { if needsStop { url.stopAccessingSecurityScopedResource() } }
-        guard let data = try? Data(contentsOf: url) else {
-            flash("Couldn't read file"); return
-        }
-        if url.pathExtension.lowercased() == "csv" {
-            importText(String(data: data, encoding: .utf8) ?? "")
-        } else if let archive = try? LedgerArchive.decodeJSON(data) {
-            LedgerService.importArchive(archive, in: context)
-            flash("Imported \(archive.months.count) month(s)")
-        } else {
-            importText(String(data: data, encoding: .utf8) ?? "")
+        switch result {
+        case .failure(let error):
+            flash("Import cancelled: \(error.localizedDescription)", isError: true)
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            let needsStop = url.startAccessingSecurityScopedResource()
+            defer { if needsStop { url.stopAccessingSecurityScopedResource() } }
+            do {
+                let data = try Data(contentsOf: url)
+                guard let text = String(data: data, encoding: .utf8) else {
+                    flash("File isn't UTF-8 text", isError: true); return
+                }
+                importText(text)
+            } catch {
+                flash("Couldn't read file: \(error.localizedDescription)", isError: true)
+            }
         }
     }
 
     private func importText(_ text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        if trimmed.hasPrefix("{"),
-           let archive = try? LedgerArchive.decodeJSON(Data(trimmed.utf8)) {
-            LedgerService.importArchive(archive, in: context)
-            flash("Imported \(archive.months.count) month(s)")
+        guard !trimmed.isEmpty else { flash("Nothing to import", isError: true); return }
+
+        // JSON if it looks like a JSON object/array; otherwise treat as CSV.
+        if trimmed.hasPrefix("{") || trimmed.hasPrefix("[") {
+            do {
+                let archive = try LedgerArchive.decodeJSON(Data(trimmed.utf8))
+                LedgerService.importArchive(archive, in: context)
+                let txns = archive.months.reduce(0) { $0 + $1.transactions.count }
+                flash("Imported \(archive.months.count) month(s), \(txns) transaction(s)")
+            } catch {
+                flash("JSON error — \(decodeMessage(error))", isError: true)
+            }
         } else {
             let buckets = LedgerArchive.decodeCSV(trimmed)
             if buckets.isEmpty {
-                flash("Couldn't parse data")
+                flash("Couldn't parse — expected JSON, or CSV with header: month,date,description,category,amount", isError: true)
             } else {
                 LedgerService.importCSVTransactions(buckets, in: context)
                 let count = buckets.values.reduce(0) { $0 + $1.count }
@@ -432,10 +445,36 @@ struct SettingsView: View {
         }
     }
 
-    private func flash(_ message: String) {
+    /// Turn a DecodingError into something human-readable.
+    private func decodeMessage(_ error: Error) -> String {
+        guard let decodingError = error as? DecodingError else {
+            return error.localizedDescription
+        }
+        switch decodingError {
+        case .keyNotFound(let key, _):
+            return "missing field \"\(key.stringValue)\""
+        case .typeMismatch(_, let ctx):
+            return "wrong type at \(path(ctx)) — \(ctx.debugDescription)"
+        case .valueNotFound(_, let ctx):
+            return "null at \(path(ctx))"
+        case .dataCorrupted(let ctx):
+            return ctx.debugDescription
+        @unknown default:
+            return decodingError.localizedDescription
+        }
+    }
+
+    private func path(_ ctx: DecodingError.Context) -> String {
+        let p = ctx.codingPath.map(\.stringValue).joined(separator: ".")
+        return p.isEmpty ? "top level" : p
+    }
+
+    private func flash(_ message: String, isError: Bool = false) {
         banner = message
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-            if banner == message { banner = nil }
+        bannerIsError = isError
+        let shown = message
+        DispatchQueue.main.asyncAfter(deadline: .now() + (isError ? 6 : 2.5)) {
+            if banner == shown { banner = nil }
         }
     }
 }

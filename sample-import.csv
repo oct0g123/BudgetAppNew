@@ -1,0 +1,5 @@
+month,date,description,category,amount
+2026-06,2026-06-01T00:00:00Z,Rent,needs,1800.00
+2026-06,2026-06-04T00:00:00Z,Groceries,needs,310.10
+2026-06,2026-06-02T00:00:00Z,Index fund,savings,1300.00
+2026-06,2026-06-03T00:00:00Z,Concert tickets,wants,120.00

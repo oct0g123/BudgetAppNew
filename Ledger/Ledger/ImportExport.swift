@@ -16,46 +16,137 @@ import UniformTypeIdentifiers
 struct ExportData: Codable {
     var version: Int = 1
     var exportedAt: Date = Date()
-    var settings: SettingsDTO
-    var months: [MonthDTO]
+    var settings: SettingsDTO = SettingsDTO(defaultIncome: 0, needsPct: 50, savingsPct: 20, wantsPct: 30)
+    var months: [MonthDTO] = []
     /// Optional for backward/forward compatibility with older exports.
     var rules: [RuleDTO]? = []
+
+    init(version: Int = 1, exportedAt: Date = Date(), settings: SettingsDTO,
+         months: [MonthDTO], rules: [RuleDTO]? = []) {
+        self.version = version; self.exportedAt = exportedAt
+        self.settings = settings; self.months = months; self.rules = rules
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        version = try c.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        exportedAt = try c.decodeIfPresent(Date.self, forKey: .exportedAt) ?? Date()
+        settings = try c.decodeIfPresent(SettingsDTO.self, forKey: .settings)
+            ?? SettingsDTO(defaultIncome: 0, needsPct: 50, savingsPct: 20, wantsPct: 30)
+        months = try c.decodeIfPresent([MonthDTO].self, forKey: .months) ?? []
+        rules = try c.decodeIfPresent([RuleDTO].self, forKey: .rules) ?? []
+    }
 }
 
 struct RuleDTO: Codable {
-    var id: UUID
-    var desc: String
-    var amount: Double
-    var category: String
-    var dayOfMonth: Int
-    var isActive: Bool
-    var startKey: String
+    var id: UUID = UUID()
+    var desc: String = ""
+    var amount: Double = 0
+    var category: String = "needs"
+    var dayOfMonth: Int = 1
+    var isActive: Bool = true
+    var startKey: String = ""
+
+    init(id: UUID, desc: String, amount: Double, category: String,
+         dayOfMonth: Int, isActive: Bool, startKey: String) {
+        self.id = id; self.desc = desc; self.amount = amount; self.category = category
+        self.dayOfMonth = dayOfMonth; self.isActive = isActive; self.startKey = startKey
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        desc = try c.decodeIfPresent(String.self, forKey: .desc) ?? ""
+        amount = try c.decodeIfPresent(Double.self, forKey: .amount) ?? 0
+        category = (try c.decodeIfPresent(String.self, forKey: .category) ?? "needs").lowercased()
+        dayOfMonth = try c.decodeIfPresent(Int.self, forKey: .dayOfMonth) ?? 1
+        isActive = try c.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
+        startKey = try c.decodeIfPresent(String.self, forKey: .startKey) ?? ""
+    }
 }
 
+// The DTOs decode forgivingly: missing fields fall back to sensible defaults so
+// hand-written or partial test files still import. Encoding always writes every
+// field.
+
 struct SettingsDTO: Codable {
-    var defaultIncome: Double
-    var needsPct: Double
-    var savingsPct: Double
-    var wantsPct: Double
+    var defaultIncome: Double = 0
+    var needsPct: Double = 50
+    var savingsPct: Double = 20
+    var wantsPct: Double = 30
+
+    init(defaultIncome: Double, needsPct: Double, savingsPct: Double, wantsPct: Double) {
+        self.defaultIncome = defaultIncome
+        self.needsPct = needsPct
+        self.savingsPct = savingsPct
+        self.wantsPct = wantsPct
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        defaultIncome = try c.decodeIfPresent(Double.self, forKey: .defaultIncome) ?? 0
+        needsPct = try c.decodeIfPresent(Double.self, forKey: .needsPct) ?? 50
+        savingsPct = try c.decodeIfPresent(Double.self, forKey: .savingsPct) ?? 20
+        wantsPct = try c.decodeIfPresent(Double.self, forKey: .wantsPct) ?? 30
+    }
 }
 
 struct MonthDTO: Codable {
-    var key: String
-    var income: Double
-    var needsPct: Double
-    var savingsPct: Double
-    var wantsPct: Double
-    var isClosed: Bool
-    var createdAt: Date
-    var transactions: [TransactionDTO]
+    var key: String = ""
+    var income: Double = 0
+    var needsPct: Double = 50
+    var savingsPct: Double = 20
+    var wantsPct: Double = 30
+    var isClosed: Bool = false
+    var createdAt: Date = Date()
+    var transactions: [TransactionDTO] = []
+
+    init(key: String, income: Double, needsPct: Double, savingsPct: Double,
+         wantsPct: Double, isClosed: Bool, createdAt: Date, transactions: [TransactionDTO]) {
+        self.key = key; self.income = income; self.needsPct = needsPct
+        self.savingsPct = savingsPct; self.wantsPct = wantsPct; self.isClosed = isClosed
+        self.createdAt = createdAt; self.transactions = transactions
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        key = try c.decodeIfPresent(String.self, forKey: .key) ?? ""
+        income = try c.decodeIfPresent(Double.self, forKey: .income) ?? 0
+        needsPct = try c.decodeIfPresent(Double.self, forKey: .needsPct) ?? 50
+        savingsPct = try c.decodeIfPresent(Double.self, forKey: .savingsPct) ?? 20
+        wantsPct = try c.decodeIfPresent(Double.self, forKey: .wantsPct) ?? 30
+        isClosed = try c.decodeIfPresent(Bool.self, forKey: .isClosed) ?? false
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        transactions = try c.decodeIfPresent([TransactionDTO].self, forKey: .transactions) ?? []
+    }
 }
 
 struct TransactionDTO: Codable {
-    var id: UUID
-    var desc: String
-    var amount: Double
-    var category: String
-    var date: Date
+    var id: UUID = UUID()
+    var desc: String = ""
+    var amount: Double = 0
+    var category: String = "needs"
+    var date: Date = Date()
+
+    init(id: UUID, desc: String, amount: Double, category: String, date: Date) {
+        self.id = id; self.desc = desc; self.amount = amount
+        self.category = category; self.date = date
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        // Accept either "desc" or "description".
+        desc = try c.decodeIfPresent(String.self, forKey: .desc)
+            ?? c.decodeIfPresent(String.self, forKey: .description) ?? ""
+        amount = try c.decodeIfPresent(Double.self, forKey: .amount) ?? 0
+        category = (try c.decodeIfPresent(String.self, forKey: .category) ?? "needs").lowercased()
+        date = try c.decodeIfPresent(Date.self, forKey: .date) ?? Date()
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, desc, description, amount, category, date
+    }
 }
 
 // MARK: - Mapping
@@ -107,8 +198,46 @@ enum LedgerArchive {
 
     static func decodeJSON(_ data: Data) throws -> ExportData {
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .custom { dec in
+            let container = try dec.singleValueContainer()
+            if let s = try? container.decode(String.self) {
+                if let d = flexibleDate(s) { return d }
+                throw DecodingError.dataCorruptedError(
+                    in: container, debugDescription: "Unrecognized date format: \"\(s)\"")
+            }
+            if let t = try? container.decode(Double.self) {
+                return Date(timeIntervalSince1970: t) // unix seconds
+            }
+            throw DecodingError.dataCorruptedError(
+                in: container, debugDescription: "Date must be a string or number")
+        }
         return try decoder.decode(ExportData.self, from: data)
+    }
+
+    /// Parse the common date encodings we might see in imported files.
+    static func flexibleDate(_ s: String) -> Date? {
+        let trimmed = s.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return Date() }
+
+        let isoFrac = ISO8601DateFormatter()
+        isoFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = isoFrac.date(from: trimmed) { return d }
+
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime]
+        if let d = iso.date(from: trimmed) { return d }
+
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.timeZone = TimeZone(identifier: "UTC")
+        for fmt in ["yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ss",
+                    "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd", "MM/dd/yyyy", "M/d/yyyy"] {
+            df.dateFormat = fmt
+            if let d = df.date(from: trimmed) { return d }
+        }
+        // Numeric string as unix seconds.
+        if let t = Double(trimmed) { return Date(timeIntervalSince1970: t) }
+        return nil
     }
 
     // MARK: CSV (transactions, flat)
@@ -135,15 +264,20 @@ enum LedgerArchive {
     /// already exist are created on import with the current default split.
     static func decodeCSV(_ text: String) -> [String: [TransactionDTO]] {
         var result: [String: [TransactionDTO]] = [:]
-        let iso = ISO8601DateFormatter()
         let lines = text.split(whereSeparator: \.isNewline)
         guard lines.count > 1 else { return result }
 
-        for line in lines.dropFirst() {
+        // Tolerate an optional header row (skip the first line if it looks like
+        // a header rather than data).
+        let firstCols = parseCSVLine(String(lines[0]))
+        let hasHeader = firstCols.contains { $0.lowercased() == "amount" || $0.lowercased() == "category" }
+        let dataLines = hasHeader ? lines.dropFirst() : lines[...]
+
+        for line in dataLines {
             let cols = parseCSVLine(String(line))
             guard cols.count >= 5 else { continue }
             let monthKey = cols[0]
-            let date = iso.date(from: cols[1]) ?? Date()
+            let date = flexibleDate(cols[1]) ?? Date()
             let desc = cols[2]
             let category = BudgetCategory(rawValue: cols[3].lowercased())?.rawValue
                 ?? BudgetCategory.needs.rawValue
