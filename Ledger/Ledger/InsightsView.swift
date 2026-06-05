@@ -71,7 +71,7 @@ struct InsightsView: View {
                     .cornerRadius(4)
                 }
                 .chartYAxis {
-                    AxisMarks(format: .percent)
+                    AxisMarks(format: FloatingPointFormatStyle<Double>.Percent())
                 }
                 .frame(height: 180)
             }
