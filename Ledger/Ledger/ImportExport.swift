@@ -145,6 +145,15 @@ struct TransactionDTO: Codable {
         date = try c.decodeIfPresent(Date.self, forKey: .date) ?? Date()
     }
 
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(desc, forKey: .desc)
+        try c.encode(amount, forKey: .amount)
+        try c.encode(category, forKey: .category)
+        try c.encode(date, forKey: .date)
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, desc, description, amount, category, date
     }
