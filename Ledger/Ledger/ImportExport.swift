@@ -448,10 +448,14 @@ enum LedgerArchive {
     }
 }
 
-// MARK: - FileDocuments
+// MARK: - FileDocument
 
-struct JSONDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [.json] }
+/// One document type for both JSON and CSV export. Using a single FileDocument
+/// (and a single `.fileExporter`) avoids the SwiftUI issue where stacking
+/// multiple file exporters on one view leaves some of them inert.
+struct ExportDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.json, .commaSeparatedText, .plainText] }
+    static var writableContentTypes: [UTType] { [.json, .commaSeparatedText, .plainText] }
     var data: Data
 
     init(data: Data) { self.data = data }
@@ -462,21 +466,5 @@ struct JSONDocument: FileDocument {
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         FileWrapper(regularFileWithContents: data)
-    }
-}
-
-struct CSVDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [.commaSeparatedText, .plainText] }
-    var text: String
-
-    init(text: String) { self.text = text }
-
-    init(configuration: ReadConfiguration) throws {
-        let data = configuration.file.regularFileContents ?? Data()
-        text = String(data: data, encoding: .utf8) ?? ""
-    }
-
-    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        FileWrapper(regularFileWithContents: Data(text.utf8))
     }
 }

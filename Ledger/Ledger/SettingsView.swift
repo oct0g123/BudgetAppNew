@@ -29,13 +29,15 @@ struct SettingsView: View {
     @State private var wantsDraft = "30"
 
     // Export / import state
-    @State private var showingJSONExporter = false
-    @State private var showingCSVExporter = false
+    @State private var showingExporter = false
+    @State private var exportKind: ExportKind = .json
     @State private var showingImporter = false
     @State private var showingPasteSheet = false
     @State private var pasteText = ""
     @State private var banner: String?
     @State private var bannerIsError = false
+
+    enum ExportKind { case json, csv }
 
     private var settings: AppSettings {
         LedgerService.settings(in: context)
@@ -80,14 +82,18 @@ struct SettingsView: View {
         }
         .tint(Palette.gold)
         .onAppear(perform: loadDrafts)
-        .fileExporter(isPresented: $showingJSONExporter,
-                      document: JSONDocument(data: jsonData()),
-                      contentType: .json,
-                      defaultFilename: "ledger-export") { _ in }
-        .fileExporter(isPresented: $showingCSVExporter,
-                      document: CSVDocument(text: csvText()),
-                      contentType: .commaSeparatedText,
-                      defaultFilename: "ledger-transactions") { _ in }
+        .fileExporter(isPresented: $showingExporter,
+                      document: ExportDocument(data: exportKind == .json ? jsonData()
+                                                                          : Data(csvText().utf8)),
+                      contentType: exportKind == .json ? .json : .commaSeparatedText,
+                      defaultFilename: exportKind == .json ? "ledger-export"
+                                                           : "ledger-transactions") { result in
+            if case .failure(let error) = result {
+                flash("Export failed: \(error.localizedDescription)", isError: true)
+            } else {
+                flash("Exported \(exportKind == .json ? "JSON" : "CSV")")
+            }
+        }
         .fileImporter(isPresented: $showingImporter,
                       allowedContentTypes: [.json, .commaSeparatedText, .plainText],
                       allowsMultipleSelection: false) { handleImport($0) }
@@ -256,11 +262,11 @@ struct SettingsView: View {
                     .font(.system(.caption))
                     .foregroundStyle(Palette.textMuted)
 
-                Button { showingJSONExporter = true } label: {
+                Button { exportKind = .json; showingExporter = true } label: {
                     rowLabel("Export JSON", system: "square.and.arrow.up")
                 }.buttonStyle(.plain)
 
-                Button { showingCSVExporter = true } label: {
+                Button { exportKind = .csv; showingExporter = true } label: {
                     rowLabel("Export CSV", system: "tablecells")
                 }.buttonStyle(.plain)
 
