@@ -2,8 +2,8 @@
 //  SettingsView.swift
 //  Ledger
 //
-//  Default income, the adjustable allocation model (presets or fully custom),
-//  and JSON/CSV export & import.
+//  Native Form-based settings, skinned with the design system: default income,
+//  the adjustable allocation model, recurring, and JSON/CSV export & import.
 //
 
 import SwiftUI
@@ -24,9 +24,9 @@ struct SettingsView: View {
     @Query(sort: \RecurringRule.createdAt) private var rules: [RecurringRule]
 
     @State private var incomeDraft = ""
-    @State private var needsDraft = "50"
-    @State private var savingsDraft = "20"
-    @State private var wantsDraft = "30"
+    @State private var needsPct = 50
+    @State private var savingsPct = 20
+    @State private var wantsPct = 30
 
     // Export / import state
     @State private var showingExporter = false
@@ -44,43 +44,27 @@ struct SettingsView: View {
     }
 
     private var draftSplit: BudgetSplit {
-        BudgetSplit(needs: Double(needsDraft) ?? 0,
-                    savings: Double(savingsDraft) ?? 0,
-                    wants: Double(wantsDraft) ?? 0)
+        BudgetSplit(needs: Double(needsPct), savings: Double(savingsPct), wants: Double(wantsPct))
     }
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Palette.background.ignoresSafeArea()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        if let banner {
-                            Text(banner)
-                                .font(.mono(12))
-                                .foregroundStyle(bannerIsError ? Palette.needs : Palette.savings)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(12)
-                                .background(Palette.surface)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                                .overlay(RoundedRectangle(cornerRadius: 10)
-                                    .stroke(bannerIsError ? Palette.needs.opacity(0.6) : .clear, lineWidth: 1))
-                        }
-                        defaultIncomeCard
-                        allocationCard
-                        recurringCard
-                        dataCard
-                        aboutCard
-                    }
-                    .padding(20)
-                }
+            Form {
+                incomeSection
+                allocationSection
+                recurringSection
+                dataSection
+                aboutSection
             }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .background(DS.background.ignoresSafeArea())
             .navigationTitle("Settings")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.large)
-            #endif
+            .toolbarTitleDisplayMode(.large)
+            .overlay(alignment: .bottom) { toast }
+            .animation(.spring(duration: 0.3), value: banner)
         }
-        .tint(Palette.gold)
+        .tint(DS.gold)
         .onAppear(perform: loadDrafts)
         .fileExporter(isPresented: $showingExporter,
                       document: ExportDocument(data: exportKind == .json ? jsonData()
@@ -102,279 +86,203 @@ struct SettingsView: View {
 
     // MARK: Default income
 
-    private var defaultIncomeCard: some View {
-        Card {
-            VStack(alignment: .leading, spacing: 10) {
-                SectionLabel("Default Income")
-                Text("Carried forward to each new month.")
-                    .font(.system(.caption))
-                    .foregroundStyle(Palette.textMuted)
-                HStack {
-                    TextField("0", text: $incomeDraft)
-                        #if os(iOS)
-                        .keyboardType(.decimalPad)
-                        #endif
-                        .font(.mono(22, weight: .medium))
-                        .foregroundStyle(Palette.text)
-                    Button("Save") {
-                        settings.defaultIncome = Double(incomeDraft) ?? 0
-                        flash("Default income saved")
+    private var incomeSection: some View {
+        Section {
+            LabeledContent {
+                TextField("0", text: $incomeDraft)
+                    #if os(iOS)
+                    .keyboardType(.decimalPad)
+                    #endif
+                    .multilineTextAlignment(.trailing)
+                    .font(Typography.mono(.body, weight: .medium))
+                    .foregroundStyle(DS.text)
+                    .onChange(of: incomeDraft) { _, newValue in
+                        settings.defaultIncome = Double(newValue) ?? 0
                     }
-                    .font(.system(.subheadline, weight: .semibold))
-                    .foregroundStyle(Palette.gold)
-                }
-                .padding(12)
-                .background(Palette.surfaceHigh)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+            } label: {
+                Text("Monthly default")
             }
+        } header: {
+            Text("Default Income")
+        } footer: {
+            Text("Carried forward to each new month.")
         }
+        .listRowBackground(DS.surface)
     }
 
     // MARK: Allocation model
 
-    private var allocationCard: some View {
-        Card {
-            VStack(alignment: .leading, spacing: 14) {
-                SectionLabel("Allocation Model")
-                Text("Set your default split for new months. Past months keep the split they were created with.")
-                    .font(.system(.caption))
-                    .foregroundStyle(Palette.textMuted)
+    private var allocationSection: some View {
+        Section {
+            HStack(spacing: Spacing.sm) {
+                Button("50 / 30 / 20") { setPreset(50, 30, 20) }
+                Button("50 / 20 / 30") { setPreset(50, 20, 30) }
+            }
+            .buttonStyle(.bordered)
+            .tint(DS.gold)
+            .frame(maxWidth: .infinity)
 
-                // Labels are in Needs / Savings / Wants order.
-                HStack(spacing: 8) {
-                    presetButton("50 / 30 / 20", split: BudgetSplit(needs: 50, savings: 30, wants: 20))
-                    presetButton("50 / 20 / 30", split: BudgetSplit(needs: 50, savings: 20, wants: 30))
-                }
+            splitStepper("Needs", value: $needsPct, color: DS.needs)
+            splitStepper("Savings", value: $savingsPct, color: DS.savings)
+            splitStepper("Wants", value: $wantsPct, color: DS.wants)
 
-                VStack(spacing: 10) {
-                    splitRow("Needs", text: $needsDraft, color: Palette.needs)
-                    splitRow("Savings", text: $savingsDraft, color: Palette.savings)
-                    splitRow("Wants", text: $wantsDraft, color: Palette.wants)
-                }
+            LabeledContent {
+                Text("\(Int(draftSplit.total))%")
+                    .font(Typography.mono(.body, weight: .semibold))
+                    .foregroundStyle(draftSplit.isValid ? DS.savings : DS.needs)
+            } label: {
+                Text(draftSplit.isValid ? "Total" : "Total — must equal 100%")
+                    .foregroundStyle(draftSplit.isValid ? DS.text : DS.needs)
+            }
 
-                HStack {
-                    let total = draftSplit.total
-                    Text("Total: \(Int(total))%")
-                        .font(.mono(13, weight: .medium))
-                        .foregroundStyle(draftSplit.isValid ? Palette.savings : Palette.needs)
-                    if !draftSplit.isValid {
-                        Text("must equal 100%")
-                            .font(.mono(11))
-                            .foregroundStyle(Palette.needs)
-                    }
-                    Spacer()
-                }
+            Button("Save as Default") {
+                settings.defaultSplit = draftSplit
+                flash("Default split saved")
+            }
+            .disabled(!draftSplit.isValid)
 
-                Button {
-                    settings.defaultSplit = draftSplit
-                    flash("Default split saved")
-                } label: {
-                    primaryLabel("Save as Default")
+            Button("Apply to \(MonthKey.displayName(viewedKey))") {
+                if let month = months.first(where: { $0.key == viewedKey }), !month.isClosed {
+                    month.needsPct = draftSplit.needs
+                    month.savingsPct = draftSplit.savings
+                    month.wantsPct = draftSplit.wants
+                    flash("Applied to \(MonthKey.displayName(viewedKey))")
+                } else {
+                    flash("Current month is closed or missing", isError: true)
                 }
-                .buttonStyle(.plain)
-                .disabled(!draftSplit.isValid)
-                .opacity(draftSplit.isValid ? 1 : 0.5)
+            }
+            .disabled(!draftSplit.isValid)
+        } header: {
+            Text("Allocation Model")
+        } footer: {
+            Text("Set your default split for new months. Past months keep the split they were created with.")
+        }
+        .listRowBackground(DS.surface)
+    }
 
-                Button {
-                    if let month = months.first(where: { $0.key == viewedKey }), !month.isClosed {
-                        let s = draftSplit
-                        month.needsPct = s.needs
-                        month.savingsPct = s.savings
-                        month.wantsPct = s.wants
-                        flash("Applied to \(MonthKey.displayName(viewedKey))")
-                    } else {
-                        flash("Current month is closed or missing")
-                    }
-                } label: {
-                    secondaryLabel("Apply to Current Month")
-                }
-                .buttonStyle(.plain)
-                .disabled(!draftSplit.isValid)
-                .opacity(draftSplit.isValid ? 1 : 0.5)
+    private func splitStepper(_ label: String, value: Binding<Int>, color: Color) -> some View {
+        Stepper(value: value, in: 0...100, step: 1) {
+            HStack(spacing: Spacing.sm) {
+                Circle().fill(color).frame(width: 9, height: 9)
+                Text(label).foregroundStyle(DS.text)
+                Spacer()
+                Text("\(value.wrappedValue)%")
+                    .font(Typography.mono(.body, weight: .medium))
+                    .foregroundStyle(DS.textMuted)
             }
         }
     }
 
-    private func presetButton(_ title: String, split: BudgetSplit) -> some View {
-        Button {
-            needsDraft = String(Int(split.needs))
-            savingsDraft = String(Int(split.savings))
-            wantsDraft = String(Int(split.wants))
-        } label: {
-            Text(title)
-                .font(.mono(12, weight: .medium))
-                .foregroundStyle(draftSplit == split ? Palette.background : Palette.text)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(draftSplit == split ? Palette.gold : Palette.surfaceHigh)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func splitRow(_ label: String, text: Binding<String>, color: Color) -> some View {
-        HStack {
-            Circle().fill(color).frame(width: 8, height: 8)
-            Text(label)
-                .font(.system(.body))
-                .foregroundStyle(Palette.text)
-            Spacer()
-            TextField("0", text: text)
-                #if os(iOS)
-                .keyboardType(.numberPad)
-                #endif
-                .multilineTextAlignment(.trailing)
-                .font(.mono(16, weight: .medium))
-                .foregroundStyle(Palette.text)
-                .frame(width: 56)
-            Text("%")
-                .font(.mono(14))
-                .foregroundStyle(Palette.textMuted)
-        }
-        .padding(12)
-        .background(Palette.surfaceHigh)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+    private func setPreset(_ n: Int, _ s: Int, _ w: Int) {
+        needsPct = n; savingsPct = s; wantsPct = w
     }
 
     // MARK: Recurring
 
-    private var recurringCard: some View {
-        Card {
-            VStack(alignment: .leading, spacing: 10) {
-                SectionLabel("Recurring")
-                NavigationLink {
-                    RecurringView()
-                } label: {
-                    rowLabel("Recurring Transactions", system: "arrow.triangle.2.circlepath")
-                }
-                .buttonStyle(.plain)
+    private var recurringSection: some View {
+        Section {
+            NavigationLink {
+                RecurringView()
+            } label: {
+                Label("Recurring Transactions", systemImage: "arrow.triangle.2.circlepath")
             }
+        } header: {
+            Text("Recurring")
         }
+        .listRowBackground(DS.surface)
     }
 
     // MARK: Data (export / import)
 
-    private var dataCard: some View {
-        Card {
-            VStack(alignment: .leading, spacing: 12) {
-                SectionLabel("Backup & Sync")
-                Text("Your data already syncs across devices via iCloud. Use these for manual backups or moving data in and out.")
-                    .font(.system(.caption))
-                    .foregroundStyle(Palette.textMuted)
-
-                Button { exportKind = .json; showingExporter = true } label: {
-                    rowLabel("Export JSON", system: "square.and.arrow.up")
-                }.buttonStyle(.plain)
-
-                Button { exportKind = .csv; showingExporter = true } label: {
-                    rowLabel("Export CSV", system: "tablecells")
-                }.buttonStyle(.plain)
-
-                Button { copyJSON() } label: {
-                    rowLabel("Copy JSON to Clipboard", system: "doc.on.doc")
-                }.buttonStyle(.plain)
-
-                Divider().background(Palette.hairline)
-
-                Button { showingImporter = true } label: {
-                    rowLabel("Import from File", system: "square.and.arrow.down")
-                }.buttonStyle(.plain)
-
-                Button { pasteText = ""; showingPasteSheet = true } label: {
-                    rowLabel("Paste JSON / CSV", system: "doc.on.clipboard")
-                }.buttonStyle(.plain)
+    private var dataSection: some View {
+        Section {
+            Button { exportKind = .json; showingExporter = true } label: {
+                Label("Export JSON", systemImage: "square.and.arrow.up")
             }
-        }
-    }
-
-    private var aboutCard: some View {
-        Card {
-            VStack(alignment: .leading, spacing: 6) {
-                SectionLabel("About")
-                Text("Ledger — a 50/30/20 budget tracker.")
-                    .font(.system(.subheadline))
-                    .foregroundStyle(Palette.text)
-                Text("Built for iPhone, iPad, Mac and Vision Pro. Data syncs privately through your iCloud account.")
-                    .font(.system(.caption))
-                    .foregroundStyle(Palette.textMuted)
+            Button { exportKind = .csv; showingExporter = true } label: {
+                Label("Export CSV", systemImage: "tablecells")
             }
+            Button { copyJSON() } label: {
+                Label("Copy JSON to Clipboard", systemImage: "doc.on.doc")
+            }
+            Button { showingImporter = true } label: {
+                Label("Import from File", systemImage: "square.and.arrow.down")
+            }
+            Button { pasteText = ""; showingPasteSheet = true } label: {
+                Label("Paste JSON / CSV", systemImage: "doc.on.clipboard")
+            }
+        } header: {
+            Text("Backup & Sync")
+        } footer: {
+            Text("Export a backup or move data between devices. JSON includes everything; CSV is transactions only.")
         }
+        .listRowBackground(DS.surface)
     }
 
-    // MARK: Reusable labels
-
-    private func primaryLabel(_ title: String) -> some View {
-        Text(title)
-            .font(.system(.body, weight: .semibold))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(Palette.gold)
-            .foregroundStyle(Palette.background)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-    }
-
-    private func secondaryLabel(_ title: String) -> some View {
-        Text(title)
-            .font(.system(.subheadline, weight: .semibold))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 11)
-            .background(Palette.surfaceHigh)
-            .foregroundStyle(Palette.text)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Palette.hairline, lineWidth: 1))
-    }
-
-    private func rowLabel(_ title: String, system: String) -> some View {
-        HStack {
-            Image(systemName: system).foregroundStyle(Palette.gold).frame(width: 24)
-            Text(title).font(.system(.body)).foregroundStyle(Palette.text)
-            Spacer()
-            Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(Palette.textMuted)
+    private var aboutSection: some View {
+        Section {
+            LabeledContent("App", value: "Ledger")
+            LabeledContent("Rule", value: "50 / 30 / 20")
+        } header: {
+            Text("About")
+        } footer: {
+            Text("A 50/30/20 budget tracker for iPhone, iPad, Mac and Vision Pro.")
         }
-        .padding(.vertical, 6)
-        .contentShape(Rectangle())
+        .listRowBackground(DS.surface)
+    }
+
+    // MARK: Toast
+
+    @ViewBuilder
+    private var toast: some View {
+        if let banner {
+            Text(banner)
+                .font(Typography.mono(.footnote, weight: .medium))
+                .foregroundStyle(.white)
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.md)
+                .background((bannerIsError ? DS.needs : DS.savings), in: Capsule())
+                .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
+                .padding(.bottom, Spacing.xl)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
     }
 
     // MARK: Paste sheet
 
     private var pasteSheet: some View {
         NavigationStack {
-            ZStack {
-                Palette.background.ignoresSafeArea()
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Paste exported JSON or transactions CSV below.")
-                        .font(.system(.subheadline))
-                        .foregroundStyle(Palette.textMuted)
-                    TextEditor(text: $pasteText)
-                        .font(.mono(12))
-                        .foregroundStyle(Palette.text)
-                        .scrollContentBackground(.hidden)
-                        .padding(8)
-                        .background(Palette.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .frame(minHeight: 240)
-                }
-                .padding(20)
+            VStack(alignment: .leading, spacing: Spacing.md) {
+                Text("Paste exported JSON or transactions CSV below.")
+                    .font(.subheadline)
+                    .foregroundStyle(DS.textMuted)
+                TextEditor(text: $pasteText)
+                    .font(Typography.mono(.footnote))
+                    .foregroundStyle(DS.text)
+                    .scrollContentBackground(.hidden)
+                    .padding(Spacing.sm)
+                    .background(DS.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: Radius.field, style: .continuous))
+                    .frame(minHeight: 240)
             }
+            .padding(Spacing.xl)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background(DS.background.ignoresSafeArea())
             .navigationTitle("Paste Data")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
+            .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { showingPasteSheet = false }
-                        .foregroundStyle(Palette.textMuted)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Import") {
                         importText(pasteText)
                         showingPasteSheet = false
                     }
-                    .foregroundStyle(Palette.gold)
                 }
             }
         }
-        .preferredColorScheme(.dark)
+        .tint(DS.gold)
     }
 
     // MARK: Helpers
@@ -382,9 +290,9 @@ struct SettingsView: View {
     private func loadDrafts() {
         let s = settings
         incomeDraft = String(format: "%.0f", s.defaultIncome)
-        needsDraft = String(Int(s.defaultNeedsPct))
-        savingsDraft = String(Int(s.defaultSavingsPct))
-        wantsDraft = String(Int(s.defaultWantsPct))
+        needsPct = Int(s.defaultNeedsPct)
+        savingsPct = Int(s.defaultSavingsPct)
+        wantsPct = Int(s.defaultWantsPct)
     }
 
     private func archive() -> ExportData {
