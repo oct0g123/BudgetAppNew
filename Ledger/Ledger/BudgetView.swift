@@ -265,7 +265,7 @@ struct BucketRow: View {
                     .font(Typography.mono(.caption))
                     .foregroundStyle(over ? DS.needs : DS.textMuted)
                 Spacer()
-                Text(Money.percent(fraction))
+                Text(Money.percent(fraction) + " used")
                     .font(Typography.mono(.caption))
                     .foregroundStyle(DS.textMuted)
             }
