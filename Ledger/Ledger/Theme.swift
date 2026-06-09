@@ -101,11 +101,11 @@ struct Card<Content: View>: View {
         content
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Palette.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(DS.surface)
+            .clipShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Palette.hairline, lineWidth: 1)
+                RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+                    .stroke(DS.hairline, lineWidth: 1)
             )
     }
 }
@@ -116,8 +116,8 @@ struct SectionLabel: View {
     init(_ text: String) { self.text = text }
     var body: some View {
         Text(text.uppercased())
-            .font(.mono(11, weight: .medium))
+            .font(Typography.mono(.caption2, weight: .medium))
             .tracking(2)
-            .foregroundStyle(Palette.goldDim)
+            .foregroundStyle(DS.goldDim)
     }
 }

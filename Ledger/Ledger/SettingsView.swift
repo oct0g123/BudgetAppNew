@@ -23,6 +23,8 @@ struct SettingsView: View {
     @Query(sort: \MonthRecord.key) private var months: [MonthRecord]
     @Query(sort: \RecurringRule.createdAt) private var rules: [RecurringRule]
 
+    @AppStorage("showBucketUsage") private var showBucketUsage = true
+
     @State private var incomeDraft = ""
     @State private var needsPct = 50
     @State private var savingsPct = 20
@@ -52,6 +54,7 @@ struct SettingsView: View {
             Form {
                 incomeSection
                 allocationSection
+                displaySection
                 recurringSection
                 dataSection
                 aboutSection
@@ -178,6 +181,25 @@ struct SettingsView: View {
 
     private func setPreset(_ n: Int, _ s: Int, _ w: Int) {
         needsPct = n; savingsPct = s; wantsPct = w
+    }
+
+    // MARK: Display
+
+    private var displaySection: some View {
+        Section {
+            Toggle(isOn: $showBucketUsage) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Show bucket usage %")
+                    Text("e.g. \"84% used\" on each bucket")
+                        .font(.caption)
+                        .foregroundStyle(DS.textMuted)
+                }
+            }
+            .tint(DS.savings)
+        } header: {
+            Text("Display")
+        }
+        .listRowBackground(DS.surface)
     }
 
     // MARK: Recurring

@@ -15,29 +15,29 @@ struct HistoryView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Palette.background.ignoresSafeArea()
+                DS.background.ignoresSafeArea()
                 if months.isEmpty {
-                    Text("No months yet.")
-                        .font(.system(.body))
-                        .foregroundStyle(Palette.textMuted)
+                    ContentUnavailableView("No months yet",
+                                           systemImage: "clock.arrow.circlepath",
+                                           description: Text("Closed and active months will appear here."))
                 } else {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: Spacing.lg) {
                             overallCard
                             ForEach(months) { month in
                                 MonthSummaryCard(month: month)
                             }
                         }
-                        .padding(20)
+                        .padding(Spacing.xl)
                     }
                 }
             }
             .navigationTitle("History")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.large)
+            #if !os(macOS)
+            .toolbarTitleDisplayMode(.large)
             #endif
         }
-        .tint(Palette.gold)
+        .tint(DS.gold)
     }
 
     private var totalIncome: Double { months.reduce(0) { $0 + $1.income } }
@@ -48,7 +48,7 @@ struct HistoryView: View {
 
     private var overallCard: some View {
         Card {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: Spacing.md) {
                 SectionLabel("All Time")
                 HStack {
                     stat("Months", "\(months.count)")
@@ -64,11 +64,11 @@ struct HistoryView: View {
     private func stat(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(value)
-                .font(.mono(18, weight: .medium))
-                .foregroundStyle(Palette.text)
+                .font(Typography.mono(.title3, weight: .medium))
+                .foregroundStyle(DS.text)
             Text(label)
-                .font(.mono(10))
-                .foregroundStyle(Palette.textMuted)
+                .font(Typography.mono(.caption2))
+                .foregroundStyle(DS.textMuted)
         }
     }
 }
@@ -78,24 +78,24 @@ struct MonthSummaryCard: View {
 
     var body: some View {
         Card {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Spacing.md) {
                 HStack {
                     Text(MonthKey.displayName(month.key))
-                        .font(.serif(18))
-                        .foregroundStyle(Palette.text)
+                        .font(Typography.serif(.title3))
+                        .foregroundStyle(DS.text)
                     if month.isClosed {
                         Text("CLOSED")
-                            .font(.mono(9, weight: .medium))
+                            .font(Typography.mono(.caption2, weight: .medium))
                             .tracking(1.5)
-                            .foregroundStyle(Palette.goldDim)
+                            .foregroundStyle(DS.goldDim)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .overlay(Capsule().stroke(Palette.goldDim, lineWidth: 1))
+                            .overlay(Capsule().stroke(DS.goldDim, lineWidth: 1))
                     }
                     Spacer()
                     Text(Money.percent(month.savingsRate) + " saved")
-                        .font(.mono(12))
-                        .foregroundStyle(Palette.savings)
+                        .font(Typography.mono(.footnote))
+                        .foregroundStyle(DS.savings)
                 }
 
                 ProportionBar(month: month)
@@ -114,11 +114,11 @@ struct MonthSummaryCard: View {
     private func detail(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
-                .font(.mono(10))
-                .foregroundStyle(Palette.textMuted)
+                .font(Typography.mono(.caption2))
+                .foregroundStyle(DS.textMuted)
             Text(value)
-                .font(.mono(14))
-                .foregroundStyle(Palette.text)
+                .font(Typography.mono(.footnote))
+                .foregroundStyle(DS.text)
         }
     }
 }
@@ -134,7 +134,7 @@ struct ProportionBar: View {
                 ForEach(BudgetCategory.allCases) { category in
                     let fraction = month.spent(for: category) / total
                     Rectangle()
-                        .fill(Palette.color(for: category))
+                        .fill(DS.category(category))
                         .frame(width: max(0, geo.size.width * fraction - 2))
                 }
             }

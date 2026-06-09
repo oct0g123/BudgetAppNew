@@ -16,9 +16,15 @@ struct BudgetView: View {
     @AppStorage("viewedMonthKey") private var viewedKey: String = MonthKey.current
     @Query(sort: \MonthRecord.key) private var months: [MonthRecord]
 
+    @AppStorage("showBucketUsage") private var showBucketUsage = true
+
     @State private var filter: BudgetCategory? = nil
     @State private var showingAdd = false
     @State private var confirmingClose = false
+
+    private var currencyCode: String {
+        Locale.current.currency?.identifier ?? "USD"
+    }
 
     private var currentMonth: MonthRecord? {
         months.first { $0.key == viewedKey }
@@ -127,35 +133,33 @@ struct BudgetView: View {
 
     private func incomeSection(_ month: MonthRecord) -> some View {
         Section {
-            LabeledContent {
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                Text("Monthly Income")
+                    .font(Typography.mono(.caption2, weight: .semibold))
+                    .tracking(2)
+                    .foregroundStyle(DS.goldDim)
                 TextField("Income",
                           value: Binding(get: { month.income },
                                          set: { month.income = $0 }),
-                          format: .number)
+                          format: .currency(code: currencyCode))
                     .labelsHidden()
                     #if os(iOS)
                     .keyboardType(.decimalPad)
                     #endif
-                    .multilineTextAlignment(.trailing)
-                    .font(Typography.mono(.body, weight: .medium))
+                    .font(Typography.mono(.title, weight: .medium))
                     .foregroundStyle(DS.text)
                     .disabled(month.isClosed)
-            } label: {
-                Text("Monthly income")
-            }
-            LabeledContent("Split") {
-                Text(splitDescription(month.split))
+                Text(splitWords(month.split))
                     .font(Typography.mono(.footnote))
                     .foregroundStyle(DS.textMuted)
             }
-        } header: {
-            Text("Income")
+            .padding(.vertical, Spacing.xs)
         }
         .listRowBackground(DS.surface)
     }
 
-    private func splitDescription(_ split: BudgetSplit) -> String {
-        "\(Int(split.needs)) / \(Int(split.savings)) / \(Int(split.wants))"
+    private func splitWords(_ split: BudgetSplit) -> String {
+        "Needs \(Int(split.needs))% · Savings \(Int(split.savings))% · Wants \(Int(split.wants))%"
     }
 
     // MARK: Buckets
@@ -165,7 +169,8 @@ struct BudgetView: View {
             ForEach(BudgetCategory.allCases) { category in
                 BucketRow(category: category,
                           budget: month.budget(for: category),
-                          spent: month.spent(for: category))
+                          spent: month.spent(for: category),
+                          showUsage: showBucketUsage)
             }
         }
         .listRowBackground(DS.surface)
@@ -184,6 +189,7 @@ struct BudgetView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+            .frame(maxWidth: .infinity)
 
             let txns = filteredTransactions(month)
             if txns.isEmpty {
@@ -236,6 +242,7 @@ struct BucketRow: View {
     let category: BudgetCategory
     let budget: Double
     let spent: Double
+    var showUsage: Bool = true
 
     private var remaining: Double { budget - spent }
     private var fraction: Double { budget > 0 ? min(spent / budget, 1) : 0 }
@@ -265,9 +272,11 @@ struct BucketRow: View {
                     .font(Typography.mono(.caption))
                     .foregroundStyle(over ? DS.needs : DS.textMuted)
                 Spacer()
-                Text(Money.percent(fraction) + " used")
-                    .font(Typography.mono(.caption))
-                    .foregroundStyle(DS.textMuted)
+                if showUsage {
+                    Text(Money.percent(fraction) + " used")
+                        .font(Typography.mono(.caption))
+                        .foregroundStyle(DS.textMuted)
+                }
             }
         }
         .padding(.vertical, Spacing.xs)

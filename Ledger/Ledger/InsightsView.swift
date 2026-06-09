@@ -30,30 +30,30 @@ struct InsightsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Palette.background.ignoresSafeArea()
+                DS.background.ignoresSafeArea()
                 if recentMonths.isEmpty {
-                    Text("Add some data to see insights.")
-                        .font(.system(.body))
-                        .foregroundStyle(Palette.textMuted)
+                    ContentUnavailableView("No insights yet",
+                                           systemImage: "chart.bar.xaxis",
+                                           description: Text("Add income and transactions to see charts."))
                 } else {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 20) {
+                        VStack(alignment: .leading, spacing: Spacing.xl) {
                             savingsRateChart
                             categorySpendChart
                             if let month = currentMonth {
                                 budgetVsActualChart(month)
                             }
                         }
-                        .padding(20)
+                        .padding(Spacing.xl)
                     }
                 }
             }
             .navigationTitle("Insights")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.large)
+            #if !os(macOS)
+            .toolbarTitleDisplayMode(.large)
             #endif
         }
-        .tint(Palette.gold)
+        .tint(DS.gold)
     }
 
     // MARK: Savings rate over time
@@ -67,7 +67,7 @@ struct InsightsView: View {
                         x: .value("Month", MonthKey.shortMonthName(month.key)),
                         y: .value("Rate", month.savingsRate)
                     )
-                    .foregroundStyle(Palette.savings)
+                    .foregroundStyle(DS.savings)
                     .cornerRadius(4)
                 }
                 .chartYAxis {
@@ -96,9 +96,9 @@ struct InsightsView: View {
                     }
                 }
                 .chartForegroundStyleScale([
-                    BudgetCategory.needs.title: Palette.needs,
-                    BudgetCategory.savings.title: Palette.savings,
-                    BudgetCategory.wants.title: Palette.wants
+                    BudgetCategory.needs.title: DS.needs,
+                    BudgetCategory.savings.title: DS.savings,
+                    BudgetCategory.wants.title: DS.wants
                 ])
                 .frame(height: 200)
                 .chartLegend(position: .bottom)
@@ -118,21 +118,21 @@ struct InsightsView: View {
                             x: .value("Amount", month.budget(for: category)),
                             y: .value("Bucket", category.title)
                         )
-                        .foregroundStyle(Palette.surfaceHigh)
+                        .foregroundStyle(DS.surfaceHigh)
                         .cornerRadius(4)
 
                         BarMark(
                             x: .value("Amount", month.spent(for: category)),
                             y: .value("Bucket", category.title)
                         )
-                        .foregroundStyle(Palette.color(for: category))
+                        .foregroundStyle(DS.category(category))
                         .cornerRadius(4)
                     }
                 }
                 .frame(height: 160)
-                HStack(spacing: 16) {
-                    legendDot(Palette.surfaceHigh, "Budget")
-                    legendDot(Palette.gold, "Spent")
+                HStack(spacing: Spacing.lg) {
+                    legendDot(DS.surfaceHigh, "Budget")
+                    legendDot(DS.gold, "Spent")
                 }
             }
         }
@@ -141,7 +141,7 @@ struct InsightsView: View {
     private func legendDot(_ color: Color, _ label: String) -> some View {
         HStack(spacing: 6) {
             RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 12, height: 12)
-            Text(label).font(.mono(11)).foregroundStyle(Palette.textMuted)
+            Text(label).font(Typography.mono(.caption)).foregroundStyle(DS.textMuted)
         }
     }
 }
