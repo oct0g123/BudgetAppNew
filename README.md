@@ -81,8 +81,15 @@ Apple ID as-is. Move data between devices with **Settings → Backup & Sync**
 1. Set `enableCloudKitSync = true` in `LedgerApp.swift`.
 2. Target → **Signing & Capabilities** → **+ Capability** → **iCloud**, check
    **CloudKit**, and create/select a container (e.g. `iCloud.com.yourname.Ledger`).
-3. Uncomment the iCloud keys in `Ledger.entitlements` and set the container id to
-   match.
+   Xcode adds the required keys to `Ledger.entitlements` for you. (If you'd
+   rather add them by hand, they are
+   `com.apple.developer.icloud-services` = `[CloudKit]` and
+   `com.apple.developer.icloud-container-identifiers` = `[your container id]`.)
+
+> Note: keep `Ledger.entitlements` free of XML comments and don't edit it while
+> a build is running — Xcode's build system verifies the file doesn't change
+> mid-build and fails with "Entitlements file was modified during the build"
+> otherwise.
 
 If CloudKit is ever requested but unavailable at runtime, the app automatically
 falls back to the local store so it still launches.
