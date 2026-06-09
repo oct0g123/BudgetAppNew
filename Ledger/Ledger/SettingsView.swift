@@ -60,7 +60,9 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .background(DS.background.ignoresSafeArea())
             .navigationTitle("Settings")
+            #if !os(macOS)
             .toolbarTitleDisplayMode(.large)
+            #endif
             .overlay(alignment: .bottom) { toast }
             .animation(.spring(duration: 0.3), value: banner)
         }
