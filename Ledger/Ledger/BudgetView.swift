@@ -2,8 +2,9 @@
 //  BudgetView.swift
 //  Ledger
 //
-//  The main screen: month navigation, income, the three 50/30/20 buckets with
-//  live progress bars, and the transaction list with category filtering.
+//  The main screen, rebuilt on a native List: month navigation in the toolbar,
+//  income, the three buckets with progress, and transactions with a segmented
+//  filter and real swipe-to-delete. Closing a month now asks for confirmation.
 //
 
 import SwiftUI
@@ -17,8 +18,7 @@ struct BudgetView: View {
 
     @State private var filter: BudgetCategory? = nil
     @State private var showingAdd = false
-    @State private var editingIncome = false
-    @State private var incomeDraft = ""
+    @State private var confirmingClose = false
 
     private var currentMonth: MonthRecord? {
         months.first { $0.key == viewedKey }
@@ -26,261 +26,186 @@ struct BudgetView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Palette.background.ignoresSafeArea()
-                content
+            Group {
+                if let month = currentMonth {
+                    monthList(month)
+                } else {
+                    emptyState
+                }
             }
-            .navigationTitle("")
-            #if os(iOS)
-            .toolbar(.hidden, for: .navigationBar)
+            .scrollContentBackground(.hidden)
+            .background(DS.background.ignoresSafeArea())
+            .navigationTitle(MonthKey.displayName(viewedKey))
+            #if !os(macOS)
+            .toolbarTitleDisplayMode(.inline)
             #endif
+            .toolbar {
+                ToolbarItemGroup(placement: .navigation) {
+                    Button {
+                        viewedKey = MonthKey.offset(viewedKey, by: -1)
+                    } label: {
+                        Label("Previous month", systemImage: "chevron.left")
+                    }
+                    Button {
+                        viewedKey = MonthKey.offset(viewedKey, by: 1)
+                    } label: {
+                        Label("Next month", systemImage: "chevron.right")
+                    }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showingAdd = true
+                    } label: {
+                        Label("Add transaction", systemImage: "plus")
+                    }
+                    .disabled(currentMonth == nil || currentMonth?.isClosed == true)
+                }
+            }
         }
-        .tint(Palette.gold)
+        .tint(DS.gold)
         .onAppear {
             // Make sure the real current month exists on first launch.
             if currentMonth == nil && viewedKey == MonthKey.current {
                 LedgerService.ensureMonth(forKey: viewedKey, in: context)
             }
         }
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                header
-
+        .sheet(isPresented: $showingAdd) {
+            if let month = currentMonth {
+                AddTransactionView(month: month)
+            }
+        }
+        .confirmationDialog(
+            "Close \(MonthKey.displayName(viewedKey))?",
+            isPresented: $confirmingClose,
+            titleVisibility: .visible
+        ) {
+            Button("Close Month", role: .destructive) {
                 if let month = currentMonth {
-                    monthBody(month)
-                } else {
-                    emptyMonthState
+                    LedgerService.closeMonth(month, in: context)
+                    viewedKey = MonthKey.offset(month.key, by: 1)
                 }
             }
-            .padding(20)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The month becomes read-only and the next month starts fresh. This can't be undone.")
         }
-        .scrollDismissesKeyboard(.interactively)
     }
 
-    // MARK: Header / month navigation
+    // MARK: Month content
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Ledger")
-                    .font(.serif(30, weight: .bold))
-                    .foregroundStyle(Palette.text)
-                Spacer()
-                SavedIndicator()
+    private func monthList(_ month: MonthRecord) -> some View {
+        List {
+            if month.isClosed {
+                Section {
+                    Label("This month is closed and read-only.", systemImage: "lock.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(DS.textMuted)
+                }
+                .listRowBackground(DS.surfaceHigh)
             }
 
-            HStack(spacing: 16) {
-                navButton(system: "chevron.left") {
-                    viewedKey = MonthKey.offset(viewedKey, by: -1)
-                }
-                VStack(alignment: .center, spacing: 2) {
-                    Text(MonthKey.displayName(viewedKey))
-                        .font(.serif(20, weight: .semibold))
-                        .foregroundStyle(Palette.text)
-                    if currentMonth?.isClosed == true {
-                        Text("CLOSED")
-                            .font(.mono(10, weight: .medium))
-                            .tracking(2)
-                            .foregroundStyle(Palette.goldDim)
+            incomeSection(month)
+            bucketsSection(month)
+            transactionsSection(month)
+
+            if !month.isClosed {
+                Section {
+                    Button(role: .destructive) {
+                        confirmingClose = true
+                    } label: {
+                        Label("Close \(MonthKey.shortMonthName(month.key)) & Start Next Month",
+                              systemImage: "checkmark.seal")
+                            .frame(maxWidth: .infinity)
                     }
                 }
-                .frame(maxWidth: .infinity)
-                navButton(system: "chevron.right") {
-                    viewedKey = MonthKey.offset(viewedKey, by: 1)
-                }
+                .listRowBackground(DS.surface)
             }
         }
     }
 
-    private func navButton(system: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: system)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Palette.gold)
-                .frame(width: 40, height: 40)
-                .background(Palette.surface)
-                .clipShape(Circle())
-                .overlay(Circle().stroke(Palette.hairline, lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-    }
+    // MARK: Income
 
-    // MARK: Empty state
-
-    private var emptyMonthState: some View {
-        Card {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("No data for \(MonthKey.displayName(viewedKey))")
-                    .font(.serif(18))
-                    .foregroundStyle(Palette.text)
-                Text("Start this month to begin tracking. It will use your default income and allocation from Settings.")
-                    .font(.system(.subheadline))
-                    .foregroundStyle(Palette.textMuted)
-                Button {
-                    LedgerService.ensureMonth(forKey: viewedKey, in: context)
-                } label: {
-                    Text("Start \(MonthKey.displayName(viewedKey))")
-                        .font(.system(.body, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Palette.gold)
-                        .foregroundStyle(Palette.background)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 4)
+    private func incomeSection(_ month: MonthRecord) -> some View {
+        Section {
+            LabeledContent {
+                TextField("Income",
+                          value: Binding(get: { month.income },
+                                         set: { month.income = $0 }),
+                          format: .number)
+                    .labelsHidden()
+                    #if os(iOS)
+                    .keyboardType(.decimalPad)
+                    #endif
+                    .multilineTextAlignment(.trailing)
+                    .font(Typography.mono(.body, weight: .medium))
+                    .foregroundStyle(DS.text)
+                    .disabled(month.isClosed)
+            } label: {
+                Text("Monthly income")
             }
-        }
-    }
-
-    // MARK: Month body
-
-    @ViewBuilder
-    private func monthBody(_ month: MonthRecord) -> some View {
-        incomeCard(month)
-        bucketsSection(month)
-        transactionsSection(month)
-        if !month.isClosed {
-            closeMonthButton(month)
-        }
-    }
-
-    private func incomeCard(_ month: MonthRecord) -> some View {
-        Card {
-            VStack(alignment: .leading, spacing: 8) {
-                SectionLabel("Monthly Income")
-                if editingIncome && !month.isClosed {
-                    HStack {
-                        TextField("0", text: $incomeDraft)
-                            #if os(iOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                            .font(.mono(28, weight: .medium))
-                            .foregroundStyle(Palette.text)
-                        Button("Save") {
-                            month.income = Double(incomeDraft) ?? month.income
-                            editingIncome = false
-                        }
-                        .font(.system(.subheadline, weight: .semibold))
-                        .foregroundStyle(Palette.gold)
-                    }
-                } else {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(Money.string(month.income))
-                            .font(.mono(28, weight: .medium))
-                            .foregroundStyle(Palette.text)
-                        Spacer()
-                        if !month.isClosed {
-                            Button {
-                                incomeDraft = String(format: "%.0f", month.income)
-                                editingIncome = true
-                            } label: {
-                                Image(systemName: "pencil")
-                                    .foregroundStyle(Palette.gold)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
+            LabeledContent("Split") {
                 Text(splitDescription(month.split))
-                    .font(.mono(12))
-                    .foregroundStyle(Palette.textMuted)
+                    .font(Typography.mono(.footnote))
+                    .foregroundStyle(DS.textMuted)
             }
+        } header: {
+            Text("Income")
         }
+        .listRowBackground(DS.surface)
     }
 
     private func splitDescription(_ split: BudgetSplit) -> String {
-        return "Needs " + Money.percent(split.needs / 100)
-            + " · Savings " + Money.percent(split.savings / 100)
-            + " · Wants " + Money.percent(split.wants / 100)
+        "\(Int(split.needs)) / \(Int(split.savings)) / \(Int(split.wants))"
     }
 
+    // MARK: Buckets
+
     private func bucketsSection(_ month: MonthRecord) -> some View {
-        VStack(spacing: 12) {
+        Section("Buckets") {
             ForEach(BudgetCategory.allCases) { category in
-                BucketCard(category: category,
-                           budget: month.budget(for: category),
-                           spent: month.spent(for: category))
+                BucketRow(category: category,
+                          budget: month.budget(for: category),
+                          spent: month.spent(for: category))
             }
         }
+        .listRowBackground(DS.surface)
     }
 
     // MARK: Transactions
 
+    @ViewBuilder
     private func transactionsSection(_ month: MonthRecord) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                SectionLabel("Transactions")
-                Spacer()
-                if !month.isClosed {
-                    Button {
-                        showingAdd = true
-                    } label: {
-                        Label("Add", systemImage: "plus")
-                            .font(.system(.subheadline, weight: .semibold))
-                            .foregroundStyle(Palette.gold)
-                    }
-                    .buttonStyle(.plain)
+        Section("Transactions") {
+            Picker("Filter", selection: $filter) {
+                Text("All").tag(BudgetCategory?.none)
+                ForEach(BudgetCategory.allCases) { category in
+                    Text(category.title).tag(Optional(category))
                 }
             }
-
-            filterChips
+            .pickerStyle(.segmented)
+            .labelsHidden()
 
             let txns = filteredTransactions(month)
             if txns.isEmpty {
-                Text("No transactions yet.")
-                    .font(.system(.subheadline))
-                    .foregroundStyle(Palette.textMuted)
-                    .padding(.vertical, 8)
+                Text(filter == nil ? "No transactions yet."
+                                   : "No \(filter?.title.lowercased() ?? "") transactions.")
+                    .font(.subheadline)
+                    .foregroundStyle(DS.textMuted)
             } else {
-                VStack(spacing: 0) {
-                    ForEach(txns) { txn in
-                        TransactionRow(txn: txn)
-                            .contextMenu {
-                                if !month.isClosed {
-                                    Button(role: .destructive) {
-                                        LedgerService.delete(txn, in: context)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                }
-                            }
-                        if txn.id != txns.last?.id {
-                            Divider().background(Palette.hairline)
-                        }
+                ForEach(txns) { txn in
+                    TransactionRow(txn: txn)
+                }
+                .onDelete { offsets in
+                    guard !month.isClosed else { return }
+                    let txns = filteredTransactions(month)
+                    for index in offsets {
+                        LedgerService.delete(txns[index], in: context)
                     }
                 }
-                .background(Palette.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Palette.hairline, lineWidth: 1))
+                .deleteDisabled(month.isClosed)
             }
         }
-        .sheet(isPresented: $showingAdd) {
-            AddTransactionView(month: month)
-                .preferredColorScheme(.dark)
-        }
-    }
-
-    private var filterChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                FilterChip(title: "All", color: Palette.gold, selected: filter == nil) {
-                    filter = nil
-                }
-                ForEach(BudgetCategory.allCases) { category in
-                    FilterChip(title: category.title,
-                               color: Palette.color(for: category),
-                               selected: filter == category) {
-                        filter = (filter == category) ? nil : category
-                    }
-                }
-            }
-        }
+        .listRowBackground(DS.surface)
     }
 
     private func filteredTransactions(_ month: MonthRecord) -> [Transaction] {
@@ -289,29 +214,25 @@ struct BudgetView: View {
             .sorted { $0.date > $1.date }
     }
 
-    private func closeMonthButton(_ month: MonthRecord) -> some View {
-        Button {
-            LedgerService.closeMonth(month, in: context)
-            // Jump to the freshly opened next month.
-            viewedKey = MonthKey.offset(month.key, by: 1)
-        } label: {
-            Text("Close \(MonthKey.shortMonthName(month.key)) & Start Next Month")
-                .font(.system(.subheadline, weight: .semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .foregroundStyle(Palette.textMuted)
-                .background(Palette.surfaceHigh)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Palette.hairline, lineWidth: 1))
+    // MARK: Empty state
+
+    private var emptyState: some View {
+        ContentUnavailableView {
+            Label(MonthKey.displayName(viewedKey), systemImage: "calendar")
+        } description: {
+            Text("Start this month to begin tracking. It will use your default income and allocation from Settings.")
+        } actions: {
+            Button("Start \(MonthKey.displayName(viewedKey))") {
+                LedgerService.ensureMonth(forKey: viewedKey, in: context)
+            }
+            .buttonStyle(.borderedProminent)
         }
-        .buttonStyle(.plain)
     }
 }
 
-// MARK: - Bucket card with progress bar
+// MARK: - Bucket row
 
-struct BucketCard: View {
+struct BucketRow: View {
     let category: BudgetCategory
     let budget: Double
     let spent: Double
@@ -321,79 +242,35 @@ struct BucketCard: View {
     private var over: Bool { spent > budget }
 
     var body: some View {
-        Card(padding: 16) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Circle()
-                        .fill(Palette.color(for: category))
-                        .frame(width: 8, height: 8)
-                    Text(category.title)
-                        .font(.serif(17))
-                        .foregroundStyle(Palette.text)
-                    Spacer()
-                    Text(Money.string(spent) + " / " + Money.string(budget))
-                        .font(.mono(13))
-                        .foregroundStyle(Palette.textMuted)
-                }
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            HStack {
+                Circle()
+                    .fill(DS.category(category))
+                    .frame(width: 9, height: 9)
+                Text(category.title)
+                    .font(Typography.serif(.headline))
+                    .foregroundStyle(DS.text)
+                Spacer()
+                Text(Money.string(spent) + " / " + Money.string(budget))
+                    .font(Typography.mono(.footnote))
+                    .foregroundStyle(DS.textMuted)
+            }
 
-                ProgressBar(fraction: fraction,
-                            color: Palette.color(for: category),
-                            over: over)
+            ProgressView(value: fraction)
+                .tint(over ? DS.needs : DS.category(category))
 
-                HStack {
-                    Text(over ? "Over by " + Money.string(-remaining)
-                              : Money.string(remaining) + " remaining")
-                        .font(.mono(12))
-                        .foregroundStyle(over ? Palette.needs : Palette.textMuted)
-                    Spacer()
-                    Text(Money.percent(fraction))
-                        .font(.mono(12))
-                        .foregroundStyle(Palette.textMuted)
-                }
+            HStack {
+                Text(over ? "Over by " + Money.string(-remaining)
+                          : Money.string(remaining) + " remaining")
+                    .font(Typography.mono(.caption))
+                    .foregroundStyle(over ? DS.needs : DS.textMuted)
+                Spacer()
+                Text(Money.percent(fraction))
+                    .font(Typography.mono(.caption))
+                    .foregroundStyle(DS.textMuted)
             }
         }
-    }
-}
-
-struct ProgressBar: View {
-    let fraction: Double
-    let color: Color
-    var over: Bool = false
-
-    var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Palette.surfaceHigh)
-                Capsule()
-                    .fill(over ? Palette.needs : color)
-                    .frame(width: max(0, geo.size.width * fraction))
-            }
-        }
-        .frame(height: 8)
-    }
-}
-
-// MARK: - Filter chip
-
-struct FilterChip: View {
-    let title: String
-    let color: Color
-    let selected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.mono(12, weight: .medium))
-                .foregroundStyle(selected ? Palette.background : Palette.text)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .background(selected ? color : Palette.surface)
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(selected ? .clear : Palette.hairline, lineWidth: 1))
-        }
-        .buttonStyle(.plain)
+        .padding(.vertical, Spacing.xs)
     }
 }
 
@@ -403,39 +280,21 @@ struct TransactionRow: View {
     let txn: Transaction
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Spacing.md) {
             Circle()
-                .fill(Palette.color(for: txn.category))
-                .frame(width: 8, height: 8)
+                .fill(DS.category(txn.category))
+                .frame(width: 9, height: 9)
             VStack(alignment: .leading, spacing: 2) {
                 Text(txn.desc.isEmpty ? txn.category.title : txn.desc)
-                    .font(.system(.body))
-                    .foregroundStyle(Palette.text)
+                    .foregroundStyle(DS.text)
                 Text(txn.date, format: .dateTime.month().day())
-                    .font(.mono(11))
-                    .foregroundStyle(Palette.textMuted)
+                    .font(Typography.mono(.caption))
+                    .foregroundStyle(DS.textMuted)
             }
             Spacer()
             Text(Money.string(txn.amount))
-                .font(.mono(15, weight: .medium))
-                .foregroundStyle(Palette.text)
+                .font(Typography.mono(.body, weight: .medium))
+                .foregroundStyle(DS.text)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .contentShape(Rectangle())
-    }
-}
-
-// MARK: - Saved indicator
-
-struct SavedIndicator: View {
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "checkmark.circle")
-                .font(.system(size: 12))
-            Text("Saved")
-                .font(.mono(11))
-        }
-        .foregroundStyle(Palette.savings)
     }
 }

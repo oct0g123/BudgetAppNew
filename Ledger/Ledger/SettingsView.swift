@@ -91,7 +91,8 @@ struct SettingsView: View {
     private var incomeSection: some View {
         Section {
             LabeledContent {
-                TextField("0", text: $incomeDraft)
+                TextField("Monthly default", text: $incomeDraft, prompt: Text("0"))
+                    .labelsHidden()
                     #if os(iOS)
                     .keyboardType(.decimalPad)
                     #endif
