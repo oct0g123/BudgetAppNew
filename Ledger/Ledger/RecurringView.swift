@@ -2,8 +2,8 @@
 //  RecurringView.swift
 //  Ledger
 //
-//  Manage monthly recurring transactions (rent, subscriptions, paychecks…).
-//  Active rules are materialized into each month as it's opened.
+//  Manage monthly recurring transactions (rent, subscriptions, paychecks…) on
+//  a native List: tap to edit, swipe to delete, toggle to pause.
 //
 
 import SwiftUI
@@ -17,88 +17,90 @@ struct RecurringView: View {
     @State private var showingNew = false
 
     var body: some View {
-        ZStack {
-            Palette.background.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Active rules are added to each new month automatically. Editing or removing a rule does not change months you've already closed.")
-                        .font(.system(.caption))
-                        .foregroundStyle(Palette.textMuted)
-
-                    if rules.isEmpty {
-                        Card {
-                            Text("No recurring transactions yet.")
-                                .font(.system(.subheadline))
-                                .foregroundStyle(Palette.textMuted)
-                        }
-                    } else {
-                        ForEach(rules) { rule in
-                            ruleCard(rule)
-                        }
-                    }
-
-                    Button { showingNew = true } label: {
-                        Label("Add Recurring", systemImage: "plus")
-                            .font(.system(.body, weight: .semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Palette.gold)
-                            .foregroundStyle(Palette.background)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
+        Group {
+            if rules.isEmpty {
+                ContentUnavailableView {
+                    Label("No recurring transactions", systemImage: "arrow.triangle.2.circlepath")
+                } description: {
+                    Text("Rules are added to each new month automatically — rent, subscriptions, or a regular savings transfer.")
+                } actions: {
+                    Button("Add Recurring") { showingNew = true }
+                        .buttonStyle(.borderedProminent)
                 }
-                .padding(20)
+            } else {
+                List {
+                    Section {
+                        ForEach(rules) { rule in
+                            ruleRow(rule)
+                        }
+                        .onDelete { offsets in
+                            for index in offsets { context.delete(rules[index]) }
+                        }
+                    } footer: {
+                        Text("Active rules are added to each new month automatically. Editing or removing a rule never changes closed months.")
+                    }
+                    .listRowBackground(DS.surface)
+                }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(DS.background.ignoresSafeArea())
         .navigationTitle("Recurring")
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
+        #if !os(macOS)
+        .toolbarTitleDisplayMode(.inline)
         #endif
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showingNew = true
+                } label: {
+                    Label("Add recurring", systemImage: "plus")
+                }
+            }
+        }
         .sheet(isPresented: $showingNew) {
-            RecurringEditor(rule: nil).preferredColorScheme(.dark)
+            RecurringEditor(rule: nil)
         }
         .sheet(item: $editing) { rule in
-            RecurringEditor(rule: rule).preferredColorScheme(.dark)
+            RecurringEditor(rule: rule)
         }
+        .tint(DS.gold)
     }
 
-    private func ruleCard(_ rule: RecurringRule) -> some View {
-        Card {
-            HStack(spacing: 12) {
-                Circle().fill(Palette.color(for: rule.category)).frame(width: 8, height: 8)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(rule.desc.isEmpty ? rule.category.title : rule.desc)
-                        .font(.system(.body))
-                        .foregroundStyle(Palette.text)
-                    Text("Day \(rule.dayOfMonth) · " + rule.category.title + " · from " + MonthKey.shortMonthName(rule.startKey))
-                        .font(.mono(11))
-                        .foregroundStyle(Palette.textMuted)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 6) {
+    private func ruleRow(_ rule: RecurringRule) -> some View {
+        HStack(spacing: Spacing.md) {
+            Button {
+                editing = rule
+            } label: {
+                HStack(spacing: Spacing.md) {
+                    Circle()
+                        .fill(DS.category(rule.category))
+                        .frame(width: 9, height: 9)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(rule.desc.isEmpty ? rule.category.title : rule.desc)
+                            .foregroundStyle(DS.text)
+                        Text("Day \(rule.dayOfMonth) · \(rule.category.title) · from \(MonthKey.shortMonthName(rule.startKey))")
+                            .font(Typography.mono(.caption))
+                            .foregroundStyle(DS.textMuted)
+                    }
+                    Spacer()
                     Text(Money.string(rule.amount))
-                        .font(.mono(15, weight: .medium))
-                        .foregroundStyle(Palette.text)
-                    Toggle("", isOn: Binding(
-                        get: { rule.isActive },
-                        set: { newValue in
-                            rule.isActive = newValue
-                            if newValue { LedgerService.applyRule(rule, in: context) }
-                        }))
-                    .labelsHidden()
-                    .tint(Palette.savings)
+                        .font(Typography.mono(.body, weight: .medium))
+                        .foregroundStyle(rule.isActive ? DS.text : DS.textMuted)
                 }
             }
-            .contentShape(Rectangle())
-            .onTapGesture { editing = rule }
-            .contextMenu {
-                Button { editing = rule } label: { Label("Edit", systemImage: "pencil") }
-                Button(role: .destructive) {
-                    context.delete(rule)
-                } label: { Label("Delete", systemImage: "trash") }
-            }
+            .buttonStyle(.plain)
+
+            Toggle("Active", isOn: Binding(
+                get: { rule.isActive },
+                set: { newValue in
+                    rule.isActive = newValue
+                    if newValue { LedgerService.applyRule(rule, in: context) }
+                }))
+                .labelsHidden()
+                .tint(DS.savings)
         }
+        .opacity(rule.isActive ? 1 : 0.6)
     }
 }
 
@@ -113,108 +115,91 @@ struct RecurringEditor: View {
     let rule: RecurringRule?
 
     @State private var desc = ""
-    @State private var amount = ""
+    @State private var amount: Double? = nil
     @State private var category: BudgetCategory = .needs
     @State private var day = 1
 
-    private var amountValue: Double? {
-        let cleaned = amount.replacingOccurrences(of: ",", with: ".")
-        guard let v = Double(cleaned), v > 0 else { return nil }
-        return v
+    private var currencyCode: String {
+        Locale.current.currency?.identifier ?? "USD"
     }
+
+    private var isValid: Bool { (amount ?? 0) > 0 }
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Palette.background.ignoresSafeArea()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        labeled("Description") {
-                            TextField("e.g. Rent", text: $desc)
-                                .textFieldStyle(.plain)
-                                .foregroundStyle(Palette.text)
-                        }
-                        labeled("Amount") {
-                            TextField("0.00", text: $amount)
-                                #if os(iOS)
-                                .keyboardType(.decimalPad)
-                                #endif
-                                .textFieldStyle(.plain)
-                                .font(.mono(20, weight: .medium))
-                                .foregroundStyle(Palette.text)
-                        }
-                        VStack(alignment: .leading, spacing: 10) {
-                            SectionLabel("Category")
-                            HStack(spacing: 8) {
-                                ForEach(BudgetCategory.allCases) { cat in
-                                    Button { category = cat } label: {
-                                        Text(cat.title)
-                                            .font(.mono(13, weight: .medium))
-                                            .foregroundStyle(category == cat ? Palette.background : Palette.text)
-                                            .frame(maxWidth: .infinity)
-                                            .padding(.vertical, 10)
-                                            .background(category == cat ? Palette.color(for: cat) : Palette.surface)
-                                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                                .stroke(category == cat ? .clear : Palette.hairline, lineWidth: 1))
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        }
-                        labeled("Day of Month") {
-                            Stepper(value: $day, in: 1...28) {
-                                Text("Day \(day)")
-                                    .font(.mono(15))
-                                    .foregroundStyle(Palette.text)
-                            }
-                            .tint(Palette.gold)
+            Form {
+                Section {
+                    TextField("Description", text: $desc, prompt: Text("e.g. Rent"))
+                        .foregroundStyle(DS.text)
+                    TextField("Amount", value: $amount,
+                              format: .currency(code: currencyCode),
+                              prompt: Text("Amount"))
+                        #if os(iOS)
+                        .keyboardType(.decimalPad)
+                        #endif
+                        .font(Typography.mono(.body, weight: .medium))
+                        .foregroundStyle(DS.text)
+                }
+                .listRowBackground(DS.surface)
+
+                Section {
+                    Picker("Category", selection: $category) {
+                        ForEach(BudgetCategory.allCases) { cat in
+                            Text(cat.title).tag(cat)
                         }
                     }
-                    .padding(20)
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+
+                    Stepper(value: $day, in: 1...28) {
+                        LabeledContent("Day of month") {
+                            Text("\(day)")
+                                .font(Typography.mono(.body, weight: .medium))
+                                .foregroundStyle(DS.text)
+                        }
+                    }
+                } footer: {
+                    Text("The transaction is dated this day in each month (capped at 28 so it exists in every month).")
                 }
+                .listRowBackground(DS.surface)
             }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .background(DS.background.ignoresSafeArea())
             .navigationTitle(rule == nil ? "New Recurring" : "Edit Recurring")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
+            #if !os(macOS)
+            .toolbarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.foregroundStyle(Palette.textMuted)
+                    Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
-                        .foregroundStyle(amountValue == nil ? Palette.textMuted : Palette.gold)
-                        .disabled(amountValue == nil)
+                        .disabled(!isValid)
                 }
             }
             .onAppear(perform: load)
         }
-    }
-
-    private func labeled<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SectionLabel(label)
-            content()
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Palette.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(Palette.hairline, lineWidth: 1))
-        }
+        .tint(DS.gold)
+        #if os(iOS)
+        .presentationDetents([.medium, .large])
+        #endif
+        #if os(macOS)
+        .frame(minWidth: 400, minHeight: 340)
+        #endif
     }
 
     private func load() {
         guard let rule else { return }
         desc = rule.desc
-        amount = String(format: "%.2f", rule.amount)
+        amount = rule.amount
         category = rule.category
         day = rule.dayOfMonth
     }
 
     private func save() {
-        guard let value = amountValue else { return }
+        guard let value = amount, value > 0 else { return }
         let trimmed = desc.trimmingCharacters(in: .whitespacesAndNewlines)
         if let rule {
             rule.desc = trimmed

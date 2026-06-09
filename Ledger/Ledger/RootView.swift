@@ -21,7 +21,7 @@ struct RootView: View {
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape") }
         }
-        .background(Palette.background)
+        .background(DS.background)
     }
 }
 
@@ -29,5 +29,4 @@ struct RootView: View {
     RootView()
         .modelContainer(for: [MonthRecord.self, Transaction.self, AppSettings.self, RecurringRule.self],
                         inMemory: true)
-        .preferredColorScheme(.dark)
 }

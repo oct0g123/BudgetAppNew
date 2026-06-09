@@ -2,61 +2,11 @@
 //  Theme.swift
 //  Ledger
 //
-//  Dark editorial theme: warm gold accent, serif headings, monospaced numbers,
-//  muted earth tones.
-//
-//  Fonts: the brief calls for Playfair Display (headings) and DM Mono
-//  (numbers). To keep the project buildable with zero bundled assets, we
-//  approximate them with the system serif (New York) and the system monospaced
-//  face (SF Mono). To use the real fonts, drop the .ttf files into the app
-//  target, list them under "Fonts provided by application" in Info.plist, and
-//  swap the `Font.system(...)` calls below for `Font.custom("Playfair Display"...)`
-//  and `Font.custom("DMMono-Regular"...)`.
+//  Shared formatting and reusable surfaces. Colors and typography live in
+//  DesignSystem.swift (DS / Typography), which is adaptive light + dark.
 //
 
 import SwiftUI
-
-// MARK: - Palette
-
-enum Palette {
-    static let background  = Color(hex: 0x141210) // near-black warm brown
-    static let surface     = Color(hex: 0x1E1B17) // card
-    static let surfaceHigh = Color(hex: 0x2A251F) // raised card / fields
-    static let hairline    = Color(hex: 0x3A332B)
-
-    static let gold        = Color(hex: 0xCBA85A) // warm gold accent
-    static let goldDim     = Color(hex: 0x8A7338)
-
-    static let text        = Color(hex: 0xEDE6DA) // warm off-white
-    static let textMuted   = Color(hex: 0x9A8F7E) // muted taupe
-
-    // Category earth tones
-    static let needs       = Color(hex: 0xB5734A) // terracotta
-    static let savings     = Color(hex: 0x7F8F6E) // sage / olive
-    static let wants       = Color(hex: 0xCBA85A) // gold/amber
-
-    static func color(for category: BudgetCategory) -> Color {
-        switch category {
-        case .needs:   return needs
-        case .savings: return savings
-        case .wants:   return wants
-        }
-    }
-}
-
-// MARK: - Fonts
-
-extension Font {
-    /// Serif display face (approximating Playfair Display).
-    static func serif(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-        .system(size: size, weight: weight, design: .serif)
-    }
-
-    /// Monospaced face for figures (approximating DM Mono).
-    static func mono(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .monospaced)
-    }
-}
 
 // MARK: - Currency formatting
 

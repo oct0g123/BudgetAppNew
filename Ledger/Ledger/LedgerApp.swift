@@ -61,8 +61,7 @@ struct LedgerApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                .tint(Palette.gold)
-                .preferredColorScheme(.dark)
+                .tint(DS.gold)
         }
         .modelContainer(container)
         #if os(macOS)

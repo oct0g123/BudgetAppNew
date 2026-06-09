@@ -11,9 +11,8 @@
 //                   are bundled
 //    • Spacing / Radius — layout tokens
 //
-//  The existing `Palette`, `Font.serif/mono`, etc. in Theme.swift are left in
-//  place so the current UI keeps working; Phase 2 migrates the views onto this
-//  system and then the old tokens are removed.
+//  As of Phase 2, every screen uses this system; the old dark-only Palette and
+//  Font helpers have been removed from Theme.swift.
 //
 
 import SwiftUI
