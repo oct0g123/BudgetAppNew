@@ -180,17 +180,16 @@ struct BudgetView: View {
 
     @ViewBuilder
     private func transactionsSection(_ month: MonthRecord) -> some View {
-        Section("Transactions") {
-            Picker("Filter", selection: $filter) {
-                Text("All").tag(BudgetCategory?.none)
-                ForEach(BudgetCategory.allCases) { category in
-                    Text(category.title).tag(Optional(category))
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(maxWidth: .infinity)
+        // Floating glass filter pill, detached above the transaction rows.
+        Section {
+            TransactionFilterBar(filter: $filter)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: Spacing.md, leading: Spacing.md,
+                                          bottom: Spacing.xs, trailing: Spacing.md))
+        }
 
+        Section {
             let txns = filteredTransactions(month)
             if txns.isEmpty {
                 Text(filter == nil ? "No transactions yet."
@@ -280,6 +279,58 @@ struct BucketRow: View {
             }
         }
         .padding(.vertical, Spacing.xs)
+    }
+}
+
+// MARK: - Floating glass filter bar
+
+/// A custom segmented filter that floats on a Liquid Glass capsule (iOS/macOS/
+/// visionOS 26), falling back to a translucent material on earlier systems.
+struct TransactionFilterBar: View {
+    @Binding var filter: BudgetCategory?
+
+    private var options: [(title: String, value: BudgetCategory?)] {
+        [("All", nil)] + BudgetCategory.allCases.map { ($0.title, Optional($0)) }
+    }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(options, id: \.title) { option in
+                Button {
+                    withAnimation(.snappy(duration: 0.25)) { filter = option.value }
+                } label: {
+                    Text(option.title)
+                        .font(Typography.mono(.subheadline, weight: .medium))
+                        .foregroundStyle(filter == option.value ? DS.background : DS.text)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                        .background {
+                            if filter == option.value {
+                                Capsule().fill(option.value.map { DS.category($0) } ?? DS.gold)
+                            }
+                        }
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(5)
+        .glassCapsule()
+        .frame(maxWidth: .infinity)
+    }
+}
+
+extension View {
+    /// Liquid Glass capsule background where available, translucent material
+    /// otherwise.
+    @ViewBuilder
+    func glassCapsule() -> some View {
+        if #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) {
+            self.glassEffect(.regular, in: .capsule)
+        } else {
+            self.background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().stroke(DS.hairline, lineWidth: 1))
+        }
     }
 }
 

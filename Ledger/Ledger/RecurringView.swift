@@ -153,9 +153,18 @@ struct RecurringEditor: View {
 
                     Stepper(value: $day, in: 1...28) {
                         LabeledContent("Day of month") {
-                            Text("\(day)")
+                            TextField("Day", value: $day, format: .number)
+                                .labelsHidden()
+                                #if os(iOS)
+                                .keyboardType(.numberPad)
+                                #endif
+                                .multilineTextAlignment(.trailing)
                                 .font(Typography.mono(.body, weight: .medium))
                                 .foregroundStyle(DS.text)
+                                .frame(width: 44)
+                                .onChange(of: day) { _, newValue in
+                                    day = min(max(newValue, 1), 28)
+                                }
                         }
                     }
                 } footer: {
