@@ -268,8 +268,30 @@ struct BucketRow: View {
     var showUsage: Bool = true
 
     private var remaining: Double { budget - spent }
-    private var fraction: Double { budget > 0 ? min(spent / budget, 1) : 0 }
+    /// Uncapped ratio for the label (can exceed 100%).
+    private var rawFraction: Double { budget > 0 ? spent / budget : 0 }
+    /// Clamped for the progress bar.
+    private var fraction: Double { min(rawFraction, 1) }
     private var over: Bool { spent > budget }
+    private var isSavings: Bool { category == .savings }
+    /// Going over Savings is a good thing, so it's never the "alarm" red.
+    private var alarmOver: Bool { over && !isSavings }
+
+    private var statusText: String {
+        if over && isSavings {
+            return Money.string(-remaining) + " past goal"
+        } else if over {
+            return "Over by " + Money.string(-remaining)
+        } else {
+            return Money.string(remaining) + " remaining"
+        }
+    }
+
+    private var statusColor: Color {
+        if over && isSavings { return DS.savings }
+        if over { return DS.needs }
+        return DS.textMuted
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
@@ -287,18 +309,17 @@ struct BucketRow: View {
             }
 
             ProgressView(value: fraction)
-                .tint(over ? DS.needs : DS.category(category))
+                .tint(alarmOver ? DS.needs : DS.category(category))
 
             HStack {
-                Text(over ? "Over by " + Money.string(-remaining)
-                          : Money.string(remaining) + " remaining")
+                Text(statusText)
                     .font(Typography.mono(.caption))
-                    .foregroundStyle(over ? DS.needs : DS.textMuted)
+                    .foregroundStyle(statusColor)
                 Spacer()
                 if showUsage {
-                    Text(Money.percent(fraction) + " used")
+                    Text(Money.percent(rawFraction) + " used")
                         .font(Typography.mono(.caption))
-                        .foregroundStyle(DS.textMuted)
+                        .foregroundStyle(alarmOver ? DS.needs : DS.textMuted)
                 }
             }
         }

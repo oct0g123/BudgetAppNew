@@ -16,6 +16,7 @@
 //
 
 import SwiftUI
+import CoreText
 #if canImport(UIKit)
 import UIKit
 #elseif canImport(AppKit)
@@ -82,18 +83,31 @@ enum DS {
 /// fonts are bundled; otherwise falls back to the system serif / monospaced
 /// designs automatically.
 ///
-/// To enable the custom fonts: add the .ttf files to the target, list them under
-/// "Fonts provided by application" in Info.plist, and make sure the PostScript
-/// names match those below (e.g. "PlayfairDisplay-Bold", "DMMono-Medium").
+/// The bundled .ttf files are registered at launch via `registerBundledFonts()`
+/// (called from LedgerApp), so no Info.plist entries are needed. If a font ever
+/// fails to register, the system serif / monospaced designs are used instead.
 enum Typography {
 
-    private static let hasSerif = fontExists("PlayfairDisplay-Regular") || fontExists("Playfair Display")
-    private static let hasMono  = fontExists("DMMono-Regular") || fontExists("DM Mono")
+    /// Variable-font family name for Playfair Display.
+    private static let serifFamily = "Playfair Display"
 
-    /// Serif display face (titles, headings).
+    private static let hasSerif = fontExists(serifFamily)
+    private static let hasMono  = fontExists("DMMono-Regular")
+
+    /// Register the bundled font files with CoreText at app launch.
+    static func registerBundledFonts() {
+        for file in ["PlayfairDisplay-VF", "DMMono-Regular", "DMMono-Medium", "DMMono-Light"] {
+            if let url = Bundle.main.url(forResource: file, withExtension: "ttf") {
+                _ = CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+            }
+        }
+    }
+
+    /// Serif display face (titles, headings). Playfair Display is a variable
+    /// font, so weight is applied via the weight axis.
     static func serif(_ style: Font.TextStyle = .title, weight: Font.Weight = .semibold) -> Font {
         if hasSerif {
-            return .custom(serifName(weight), size: baseSize(style), relativeTo: style)
+            return .custom(serifFamily, size: baseSize(style), relativeTo: style).weight(weight)
         }
         return .system(style, design: .serif, weight: weight)
     }
@@ -112,15 +126,6 @@ enum Typography {
     }
 
     // MARK: Helpers
-
-    private static func serifName(_ w: Font.Weight) -> String {
-        switch w {
-        case .bold, .heavy, .black: return "PlayfairDisplay-Bold"
-        case .semibold:             return "PlayfairDisplay-SemiBold"
-        case .medium:               return "PlayfairDisplay-Medium"
-        default:                    return "PlayfairDisplay-Regular"
-        }
-    }
 
     private static func monoName(_ w: Font.Weight) -> String {
         switch w {

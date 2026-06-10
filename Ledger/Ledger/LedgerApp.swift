@@ -30,6 +30,8 @@ struct LedgerApp: App {
     let container: ModelContainer
 
     init() {
+        Typography.registerBundledFonts()
+
         let schema = Schema([
             MonthRecord.self,
             Transaction.self,

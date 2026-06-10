@@ -22,6 +22,10 @@
 		100000000000000000000013 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000013 /* InsightsView.swift */; };
 		100000000000000000000014 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000014 /* DesignSystem.swift */; };
 		100000000000000000000100 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000100 /* Assets.xcassets */; };
+		100000000000000000000201 /* PlayfairDisplay-VF.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000401 /* PlayfairDisplay-VF.ttf */; };
+		100000000000000000000202 /* DMMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000402 /* DMMono-Regular.ttf */; };
+		100000000000000000000203 /* DMMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000403 /* DMMono-Medium.ttf */; };
+		100000000000000000000204 /* DMMono-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000404 /* DMMono-Light.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +44,10 @@
 		200000000000000000000013 /* InsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsView.swift; sourceTree = "<group>"; };
 		200000000000000000000014 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		200000000000000000000100 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		200000000000000000000401 /* PlayfairDisplay-VF.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PlayfairDisplay-VF.ttf"; sourceTree = "<group>"; };
+		200000000000000000000402 /* DMMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMMono-Regular.ttf"; sourceTree = "<group>"; };
+		200000000000000000000403 /* DMMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMMono-Medium.ttf"; sourceTree = "<group>"; };
+		200000000000000000000404 /* DMMono-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMMono-Light.ttf"; sourceTree = "<group>"; };
 		200000000000000000000200 /* Ledger.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Ledger.entitlements; sourceTree = "<group>"; };
 		200000000000000000000300 /* Ledger.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ledger.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -82,8 +90,20 @@
 				200000000000000000000014 /* DesignSystem.swift */,
 				200000000000000000000100 /* Assets.xcassets */,
 				200000000000000000000200 /* Ledger.entitlements */,
+				200000000000000000000400 /* Fonts */,
 			);
 			path = Ledger;
+			sourceTree = "<group>";
+		};
+		200000000000000000000400 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000401 /* PlayfairDisplay-VF.ttf */,
+				200000000000000000000402 /* DMMono-Regular.ttf */,
+				200000000000000000000403 /* DMMono-Medium.ttf */,
+				200000000000000000000404 /* DMMono-Light.ttf */,
+			);
+			path = Fonts;
 			sourceTree = "<group>";
 		};
 		300000000000000000000003 /* Products */ = {
@@ -153,6 +173,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				100000000000000000000100 /* Assets.xcassets in Resources */,
+				100000000000000000000201 /* PlayfairDisplay-VF.ttf in Resources */,
+				100000000000000000000202 /* DMMono-Regular.ttf in Resources */,
+				100000000000000000000203 /* DMMono-Medium.ttf in Resources */,
+				100000000000000000000204 /* DMMono-Light.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
