@@ -70,6 +70,10 @@ struct SettingsView: View {
             .animation(.spring(duration: 0.3), value: banner)
         }
         .tint(DS.gold)
+        .sensoryFeedback(trigger: banner) { _, newValue in
+            guard newValue != nil else { return nil }
+            return bannerIsError ? .error : .success
+        }
         .onAppear(perform: loadDrafts)
         .fileExporter(isPresented: $showingExporter,
                       document: ExportDocument(data: exportKind == .json ? jsonData()

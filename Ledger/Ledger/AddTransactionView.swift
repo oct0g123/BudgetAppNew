@@ -18,6 +18,7 @@ struct AddTransactionView: View {
     @State private var amount: Double? = nil
     @State private var category: BudgetCategory = .needs
     @State private var date = Date()
+    @State private var saveCount = 0
 
     private var currencyCode: String {
         Locale.current.currency?.identifier ?? "USD"
@@ -74,6 +75,7 @@ struct AddTransactionView: View {
             }
         }
         .tint(DS.gold)
+        .sensoryFeedback(.success, trigger: saveCount)
         #if os(iOS)
         .presentationDetents([.medium, .large])
         #endif
@@ -90,6 +92,7 @@ struct AddTransactionView: View {
                                      category: category,
                                      date: date,
                                      in: context)
+        saveCount += 1
         dismiss()
     }
 }

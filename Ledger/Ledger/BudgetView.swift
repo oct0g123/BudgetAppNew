@@ -21,6 +21,7 @@ struct BudgetView: View {
     @State private var filter: BudgetCategory? = nil
     @State private var showingAdd = false
     @State private var confirmingClose = false
+    @State private var closeCount = 0
 
     private var currencyCode: String {
         Locale.current.currency?.identifier ?? "USD"
@@ -72,6 +73,8 @@ struct BudgetView: View {
             }
         }
         .tint(DS.gold)
+        .sensoryFeedback(.selection, trigger: filter)
+        .sensoryFeedback(.success, trigger: closeCount)
         .onAppear {
             // Make sure the real current month exists on first launch.
             if currentMonth == nil && viewedKey == MonthKey.current {
@@ -92,6 +95,7 @@ struct BudgetView: View {
                 if let month = currentMonth {
                     LedgerService.closeMonth(month, in: context)
                     viewedKey = MonthKey.offset(month.key, by: 1)
+                    closeCount += 1
                 }
             }
             Button("Cancel", role: .cancel) {}
@@ -306,10 +310,12 @@ struct BucketRow: View {
                 Text(Money.string(spent) + " / " + Money.string(budget))
                     .font(Typography.mono(.footnote))
                     .foregroundStyle(DS.textMuted)
+                    .contentTransition(.numericText(value: spent))
             }
 
             ProgressView(value: fraction)
                 .tint(alarmOver ? DS.needs : DS.category(category))
+                .animation(.spring(duration: 0.5), value: fraction)
 
             HStack {
                 Text(statusText)
@@ -324,6 +330,7 @@ struct BucketRow: View {
             }
         }
         .padding(.vertical, Spacing.xs)
+        .animation(.snappy(duration: 0.3), value: spent)
     }
 }
 

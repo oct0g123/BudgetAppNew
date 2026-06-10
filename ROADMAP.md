@@ -37,8 +37,18 @@ components so we get Liquid Glass and cross-platform consistency for free.
       - [x] Floating glass add button (iOS)
       - [x] Tab-bar "safe to spend" accessory + minimizing tab bar (iOS 26)
       - [ ] Pinned "scrolls-under" filter bar (deferred — low priority)
-- [ ] **Phase 4 — Identity polish:** bundle Playfair Display + DM Mono, bucket
-      card & chart styling, final palette tuning, haptics & animation
+- [ ] **Phase 4 — Identity polish**
+      - [x] Bundle Playfair Display (variable) + DM Mono, registered at launch
+            via CoreText (no Info.plist needed; falls back to system faces)
+      - [x] Chart styling: DM Mono axes, hairline grid, avg savings-rate
+            rule line
+      - [x] Haptics (`sensoryFeedback`): filter selection, transaction saved,
+            month closed, settings success/error toasts
+      - [x] Animation: animated bucket progress bars, numeric rolling on
+            amounts
+      - [ ] Final palette tuning pass
+      - [ ] **Open question:** keep Playfair or revert to the system serif
+            (New York)? One-line change either way — decide near the end.
 
 ## Future ideas (post-redesign)
 

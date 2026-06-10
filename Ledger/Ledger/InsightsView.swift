@@ -58,23 +58,55 @@ struct InsightsView: View {
 
     // MARK: Savings rate over time
 
+    private var avgSavingsRate: Double {
+        guard !recentMonths.isEmpty else { return 0 }
+        return recentMonths.reduce(0) { $0 + $1.savingsRate } / Double(recentMonths.count)
+    }
+
     private var savingsRateChart: some View {
         Card {
             VStack(alignment: .leading, spacing: 14) {
                 SectionLabel("Savings Rate")
-                Chart(recentMonths) { month in
-                    BarMark(
-                        x: .value("Month", MonthKey.shortMonthName(month.key)),
-                        y: .value("Rate", month.savingsRate)
-                    )
-                    .foregroundStyle(DS.savings)
-                    .cornerRadius(4)
+                Chart {
+                    ForEach(recentMonths) { month in
+                        BarMark(
+                            x: .value("Month", MonthKey.shortMonthName(month.key)),
+                            y: .value("Rate", month.savingsRate)
+                        )
+                        .foregroundStyle(DS.savings)
+                        .cornerRadius(4)
+                    }
+                    if recentMonths.count > 1 {
+                        RuleMark(y: .value("Average", avgSavingsRate))
+                            .foregroundStyle(DS.gold.opacity(0.7))
+                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                            .annotation(position: .top, alignment: .trailing) {
+                                Text("avg " + Money.percent(avgSavingsRate))
+                                    .font(Typography.mono(.caption2))
+                                    .foregroundStyle(DS.gold)
+                            }
+                    }
                 }
+                .chartXAxis { monoAxisLabels() }
                 .chartYAxis {
-                    AxisMarks(format: FloatingPointFormatStyle<Double>.Percent())
+                    AxisMarks { _ in
+                        AxisGridLine().foregroundStyle(DS.hairline)
+                        AxisValueLabel(format: FloatingPointFormatStyle<Double>.Percent())
+                            .font(Typography.mono(.caption2))
+                            .foregroundStyle(DS.textMuted)
+                    }
                 }
                 .frame(height: 180)
             }
+        }
+    }
+
+    /// Shared mono styling for category-axis labels.
+    private func monoAxisLabels() -> some AxisContent {
+        AxisMarks { _ in
+            AxisValueLabel()
+                .font(Typography.mono(.caption2))
+                .foregroundStyle(DS.textMuted)
         }
     }
 
@@ -100,6 +132,15 @@ struct InsightsView: View {
                     BudgetCategory.savings.title: DS.savings,
                     BudgetCategory.wants.title: DS.wants
                 ])
+                .chartXAxis { monoAxisLabels() }
+                .chartYAxis {
+                    AxisMarks { _ in
+                        AxisGridLine().foregroundStyle(DS.hairline)
+                        AxisValueLabel()
+                            .font(Typography.mono(.caption2))
+                            .foregroundStyle(DS.textMuted)
+                    }
+                }
                 .frame(height: 200)
                 .chartLegend(position: .bottom)
             }
@@ -127,6 +168,15 @@ struct InsightsView: View {
                         )
                         .foregroundStyle(DS.category(category))
                         .cornerRadius(4)
+                    }
+                }
+                .chartYAxis { monoAxisLabels() }
+                .chartXAxis {
+                    AxisMarks { _ in
+                        AxisGridLine().foregroundStyle(DS.hairline)
+                        AxisValueLabel()
+                            .font(Typography.mono(.caption2))
+                            .foregroundStyle(DS.textMuted)
                     }
                 }
                 .frame(height: 160)
