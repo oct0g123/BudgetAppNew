@@ -41,6 +41,9 @@ struct BudgetView: View {
             }
             .scrollContentBackground(.hidden)
             .background(DS.background.ignoresSafeArea())
+            #if os(iOS)
+            .overlay(alignment: .bottomTrailing) { addButton }
+            #endif
             .navigationTitle(MonthKey.displayName(viewedKey))
             #if !os(macOS)
             .toolbarTitleDisplayMode(.inline)
@@ -219,6 +222,27 @@ struct BudgetView: View {
             .sorted { $0.date > $1.date }
     }
 
+    // MARK: Floating add button (iOS)
+
+    @ViewBuilder
+    private var addButton: some View {
+        if let month = currentMonth, !month.isClosed {
+            Button {
+                showingAdd = true
+            } label: {
+                Image(systemName: "plus")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(DS.background)
+                    .frame(width: 56, height: 56)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .glassCircle(tint: DS.gold)
+            .padding(Spacing.xl)
+            .accessibilityLabel("Add transaction")
+        }
+    }
+
     // MARK: Empty state
 
     private var emptyState: some View {
@@ -330,6 +354,18 @@ extension View {
         } else {
             self.background(.ultraThinMaterial, in: Capsule())
                 .overlay(Capsule().stroke(DS.hairline, lineWidth: 1))
+        }
+    }
+
+    /// Tinted, interactive Liquid Glass circle where available; a solid tinted
+    /// circle with a soft shadow otherwise.
+    @ViewBuilder
+    func glassCircle(tint: Color) -> some View {
+        if #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) {
+            self.glassEffect(.regular.tint(tint).interactive(), in: .circle)
+        } else {
+            self.background(tint, in: Circle())
+                .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
         }
     }
 }

@@ -29,19 +29,16 @@ components so we get Liquid Glass and cross-platform consistency for free.
 
 - [x] **Phase 1 — Foundation:** design system (adaptive light/dark colors,
       Dynamic Type-aware typography, layout tokens)
-- [ ] **Phase 2 — Native structure:** real nav bars, `Form`/`List`, glass
-      `TabView`, applied to every screen; then switch on light/dark
-      - [x] Settings (native `Form`)
-      - [ ] Budget (native nav + `List` with swipe-to-delete/edit)
-      - [ ] Insights
-      - [ ] History
-      - [ ] Add Transaction / Recurring editor sheets
-      - [ ] Enable light + dark (remove the dark-mode pin)
-- [ ] **Phase 3 — Liquid Glass accents:** glass on hero elements (bucket cards,
-      floating add button), scroll-edge effects, a tab-bar "safe to spend"
-      accessory
-- [ ] **Phase 4 — Identity polish:** bundle Playfair Display + DM Mono, final
-      palette tuning, restyled charts, haptics & animation
+- [x] **Phase 2 — Native structure:** real nav bars, `Form`/`List` on every
+      screen, native sheets, light + dark enabled
+- [ ] **Phase 3 — Liquid Glass accents** (glass goes on controls/chrome, not
+      content, per HIG)
+      - [x] Floating glass filter bar above transactions
+      - [x] Floating glass add button (iOS)
+      - [x] Tab-bar "safe to spend" accessory + minimizing tab bar (iOS 26)
+      - [ ] Pinned "scrolls-under" filter bar (deferred — low priority)
+- [ ] **Phase 4 — Identity polish:** bundle Playfair Display + DM Mono, bucket
+      card & chart styling, final palette tuning, haptics & animation
 
 ## Future ideas (post-redesign)
 
