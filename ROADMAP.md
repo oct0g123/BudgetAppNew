@@ -54,16 +54,53 @@ components so we get Liquid Glass and cross-platform consistency for free.
 
 ### Phase 5 — On-device intelligence (Apple Foundation Models)
 Use Apple's on-device LLM (Foundation Models framework, iOS 26+) for private,
-offline, no-cost AI features. **Principle: compute numbers deterministically;
-the model only explains/classifies/converses — never does the math.**
-- Plain-language monthly insight summaries generated from the real aggregates
-- Auto-categorize transactions (Needs/Savings/Wants) from the description
-- Natural-language entry ("40 on groceries yesterday" → structured transaction
-  via `@Generable`)
-- Ask-your-data Q&A via tool calling into `LedgerService`
-- Merchant name cleanup / suggested tags
-- Gate on `SystemLanguageModel.default.availability`; opt-in; graceful fallback
-  to deterministic insights on unsupported devices
+offline, no-cost AI. **Core principle: the model extracts structured data and
+writes prose; Swift validates, computes, and mutates. The LLM never does
+arithmetic or directly changes the ledger.**
+
+Cross-cutting architecture:
+- `IntelligenceService` wrapper isolates all model use; gate on
+  `SystemLanguageModel.default.availability` so AI UI only appears on supported
+  devices (A17 Pro / M-series, iOS 26+). Manual flows always remain.
+- Guided generation with `@Generable` structs (no JSON parsing). `@Guide` to
+  constrain fields; `@Guide(.anyOf([...]))` for controlled vocabularies.
+- Privacy is a feature: 100% on-device — surface a "processed on your device"
+  note.
+- Stream responses; cache per-month results and regenerate on data change.
+
+**5a — Natural-language command bar ("Tell Ledger")** (do first)
+- Sparkle button → text field → e.g. "Add $500 to needs, utilities" → model
+  returns `[DraftTxn]` (description/amount/category) → **preview card** →
+  confirm → commit.
+- Always preview before applying (money = confirm). Multi-action supported via
+  array output. Model can infer bucket from the description.
+- Heuristic regex fallback for "add $X to <bucket>" so the common case works
+  even without the model.
+- Natural extension point for App Intents / Siri / Shortcuts.
+
+**5b — AI insights (Insights tab)**
+- Narrative summaries: compute real aggregates (savings rate, per-bucket spend,
+  MoM deltas, top transactions), feed the *summary* (not raw rows) to the
+  model, get a structured `MonthInsight { headline, observations, suggestion }`
+  rendered next to the actual figures.
+- On-demand generate + per-month cache.
+
+**5c — Understanding purchase types**
+- Model clusters transaction *descriptions* into finer types (Dining,
+  Groceries, Subscriptions, Transport, Health, Shopping…). Powers insights like
+  "Dining up 40%" or "6 subscriptions = $94/mo".
+- Decision: STORED sub-category tags (richer — filter/chart/trend by type, but
+  a data-model addition) vs. on-the-fly narrative only (lighter, nothing
+  stored).
+
+**5d — Ask-your-data Q&A (later)**
+- Conversational mode using tool calling: expose `monthSummary(...)`,
+  `spendByCategory(...)` etc. so the model grounds answers in real data.
+
+Open decisions to settle before building:
+- Confirm-before-apply vs instant for commands (recommend confirm).
+- Stored tags vs narrative-only for purchase types.
+- v1 command scope: transactions only, or also income/split/close-month.
 
 ### Core features
 - **Edit transactions** (currently add/delete only) — highest-priority gap
