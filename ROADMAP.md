@@ -3,6 +3,15 @@
 A living list of where the app is and where it's going. Not a commitment to
 order or scope — just so good ideas don't get lost.
 
+## Pinned decisions (don't forget)
+
+Things deliberately deferred — revisit before final polish / before building
+the related feature:
+- **Font:** keep Playfair Display, or revert headings to the system serif
+  (New York)? One-line change in `Typography.serif`.
+- **Purchase types (Phase 5c):** persistent stored sub-category tags (richer:
+  filter/chart/trend by type) vs. AI narrative-only (lighter, nothing stored).
+
 ## Where we are
 
 **Shipped (working):**
@@ -97,10 +106,10 @@ Cross-cutting architecture:
 - Conversational mode using tool calling: expose `monthSummary(...)`,
   `spendByCategory(...)` etc. so the model grounds answers in real data.
 
-Open decisions to settle before building:
-- Confirm-before-apply vs instant for commands (recommend confirm).
-- Stored tags vs narrative-only for purchase types.
-- v1 command scope: transactions only, or also income/split/close-month.
+Decisions made:
+- Commands show a **preview + confirm** before applying (not instant). ✅
+- v1 command scope: **adding transactions only** (one or many per phrase). ✅
+- Purchase-type tags (5c): **undecided — pinned** (see Pinned decisions).
 
 ### Core features
 - **Edit transactions** (currently add/delete only) — highest-priority gap
