@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Flat gold "L" — keep it flat so Icon Composer applies the glass material. -->
+  <g fill="#CBA85A">
+    <rect x="362" y="310" width="112" height="404" rx="26"/>
+    <rect x="362" y="602" width="300" height="112" rx="26"/>
+  </g>
+</svg>

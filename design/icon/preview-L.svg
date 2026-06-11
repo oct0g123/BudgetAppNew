@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#241E17"/>
+      <stop offset="1" stop-color="#0E0B08"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.4" r="0.62">
+      <stop offset="0" stop-color="#3C3022" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#3C3022" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="squircle">
+      <rect width="1024" height="1024" rx="224"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#squircle)">
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <rect width="1024" height="1024" fill="url(#glow)"/>
+    <g fill="#CBA85A">
+      <rect x="362" y="310" width="112" height="404" rx="26"/>
+      <rect x="362" y="602" width="300" height="112" rx="26"/>
+    </g>
+  </g>
+</svg>
