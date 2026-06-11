@@ -106,6 +106,18 @@ Cross-cutting architecture:
 - Conversational mode using tool calling: expose `monthSummary(...)`,
   `spendByCategory(...)` etc. so the model grounds answers in real data.
 
+**5e — Receipt capture (after 5a — shares the parser)**
+- Two-stage on-device pipeline (Foundation Models is text-only, so it can't
+  read the photo directly):
+  1. Capture + OCR with Vision: `VNDocumentCameraViewController` (scan/deskew)
+     + text recognition (iOS 26 can return structured document data).
+  2. Feed the OCR text to the model → `@Generable ReceiptDraft { merchant,
+     total, date, suggestedCategory }`.
+  3. Preview → confirm/edit → add transaction (same pattern as 5a).
+- OCR works on all devices; heuristic "find the TOTAL" fallback when the model
+  is unavailable. Fully on-device/private. iOS/iPadOS capture (Mac: drag image
+  / Continuity Camera). Optional: attach the receipt photo to the transaction.
+
 Decisions made:
 - Commands show a **preview + confirm** before applying (not instant). ✅
 - v1 command scope: **adding transactions only** (one or many per phrase). ✅
