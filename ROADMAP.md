@@ -126,12 +126,41 @@ Decisions made:
 - Month-over-month comparison, category trends, average daily spend
 - Category drill-down from the charts
 
-### Platform power-ups
-- **Home/Lock Screen widgets** + Control Center control (remaining budget)
-- **App Intents / Siri / Shortcuts** ("how's my budget this month?")
-- **Budget alerts** (notify at 80% / over a bucket)
-- **Biometric lock** (Face ID) for privacy
-- CloudKit **sharing** for household/shared budgets
+### Platform expansion
+
+Glanceability is the real win for a budget app. These share infrastructure —
+an **App Group + the CloudKit-synced store** (unlocked by the paid developer
+account). Natural order: iCloud sync → iOS widgets → watch complications →
+watch app → App Intents. Effort tags: (S)mall / (M)edium / (L)arge.
+
+**iOS — widgets & system integration (highest ROI)**
+- (M) Home Screen widgets: buckets remaining, safe-to-spend, savings ring —
+  reuses figures we already compute
+- (S–M) Lock Screen widgets: inline "$X left", circular bucket ring; free
+  StandBy support once Home widgets exist
+- (S–M) Control Center control + Action Button: one-tap "Add Transaction"
+  deep-link, or remaining-budget readout
+- (M) App Intents / Siri / Shortcuts / Spotlight ("how much is left?",
+  "add $12 groceries") — **shares the AI command parser (5a)**
+
+**watchOS**
+- (M) Watch-face **complications**: glanceable "$X left" / bucket ring — the
+  standout wrist feature for budgeting
+- (M–L) Companion app: quick-add (Crown amount + category), recents, glance
+- Dictation quick-add → leans on the AI parser
+- Syncs via CloudKit (shares the iCloud store)
+
+**visionOS (already a supported destination — polish, not a killer app)**
+- (S) Easy wins: ornament for month nav / filter; verify materials in the
+  Shared Space
+- (L, low ROI) Ambitious/gimmicky: volumetric 3D charts, multi-window
+  (Budget + Insights). Skip unless a spatial showpiece is wanted.
+
+**Other system features**
+- (M) **Budget alerts** — local notifications at 80% / over a bucket (no push
+  entitlement needed)
+- (S–M) **Biometric lock** (Face ID) for privacy
+- (L) CloudKit **sharing** — household / shared budgets
 
 ### Polish & correctness
 - First-run onboarding (income + split)
@@ -141,4 +170,3 @@ Decisions made:
 
 ### Maybe
 - Export back to the original web-app JSON format (round-trip compatibility)
-- watchOS companion
