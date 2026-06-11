@@ -9,18 +9,20 @@ import SwiftData
 struct RootView: View {
     var body: some View {
         TabView {
-            BudgetView()
-                .tabItem { Label("Budget", systemImage: "chart.pie") }
-
-            InsightsView()
-                .tabItem { Label("Insights", systemImage: "chart.bar.xaxis") }
-
-            HistoryView()
-                .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
-
-            SettingsView()
-                .tabItem { Label("Settings", systemImage: "gearshape") }
+            Tab("Budget", systemImage: "chart.pie") {
+                BudgetView()
+            }
+            Tab("Insights", systemImage: "chart.bar.xaxis") {
+                InsightsView()
+            }
+            Tab("History", systemImage: "clock.arrow.circlepath") {
+                HistoryView()
+            }
+            Tab("Settings", systemImage: "gearshape") {
+                SettingsView()
+            }
         }
+        .tabViewStyle(.sidebarAdaptable)
         .background(DS.background)
         .modifier(TabChrome())
     }

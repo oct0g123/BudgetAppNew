@@ -23,6 +23,9 @@ struct BudgetView: View {
     @State private var editingTransaction: Transaction?
     @State private var confirmingClose = false
     @State private var closeCount = 0
+    @State private var pendingUndo: [DeletedTxn] = []
+    @State private var undoVisible = false
+    @State private var undoToken = 0
 
     private var currencyCode: String {
         Locale.current.currency?.identifier ?? "USD"
@@ -46,6 +49,8 @@ struct BudgetView: View {
             #if os(iOS)
             .overlay(alignment: .bottomTrailing) { addButton }
             #endif
+            .overlay(alignment: .bottom) { undoToast }
+            .animation(.spring(duration: 0.3), value: undoVisible)
             .navigationTitle(MonthKey.displayName(viewedKey))
             #if !os(macOS)
             .toolbarTitleDisplayMode(.inline)
@@ -224,9 +229,7 @@ struct BudgetView: View {
                 .onDelete { offsets in
                     guard !month.isClosed else { return }
                     let txns = filteredTransactions(month)
-                    for index in offsets {
-                        LedgerService.delete(txns[index], in: context)
-                    }
+                    performDelete(offsets.map { txns[$0] })
                 }
                 .deleteDisabled(month.isClosed)
             }
@@ -261,6 +264,60 @@ struct BudgetView: View {
         }
     }
 
+    // MARK: Delete with undo
+
+    private func performDelete(_ toDelete: [Transaction]) {
+        guard !toDelete.isEmpty else { return }
+        pendingUndo = toDelete.map {
+            DeletedTxn(desc: $0.desc, amount: $0.amount, category: $0.category,
+                       date: $0.date, recurringRuleID: $0.recurringRuleID, month: $0.month)
+        }
+        for txn in toDelete { LedgerService.delete(txn, in: context) }
+
+        undoVisible = true
+        undoToken += 1
+        let token = undoToken
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            if token == undoToken {
+                undoVisible = false
+                pendingUndo = []
+            }
+        }
+    }
+
+    private func undoDelete() {
+        for d in pendingUndo {
+            guard let month = d.month else { continue }
+            let txn = Transaction(desc: d.desc, amount: d.amount, category: d.category,
+                                  date: d.date, recurringRuleID: d.recurringRuleID)
+            txn.month = month
+            context.insert(txn)
+        }
+        pendingUndo = []
+        undoToken += 1
+        undoVisible = false
+    }
+
+    @ViewBuilder
+    private var undoToast: some View {
+        if undoVisible {
+            HStack(spacing: Spacing.md) {
+                Text(pendingUndo.count > 1 ? "\(pendingUndo.count) deleted" : "Transaction deleted")
+                    .font(Typography.mono(.footnote, weight: .medium))
+                    .foregroundStyle(.white)
+                Button("Undo") { undoDelete() }
+                    .font(Typography.mono(.footnote, weight: .bold))
+                    .foregroundStyle(DS.gold)
+            }
+            .padding(.horizontal, Spacing.lg)
+            .padding(.vertical, Spacing.md)
+            .background(Color.black.opacity(0.82), in: Capsule())
+            .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
+            .padding(.bottom, 96)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
     // MARK: Empty state
 
     private var emptyState: some View {
@@ -275,6 +332,18 @@ struct BudgetView: View {
             .buttonStyle(.borderedProminent)
         }
     }
+}
+
+// MARK: - Deleted-transaction snapshot (for undo)
+
+struct DeletedTxn: Identifiable {
+    let id = UUID()
+    var desc: String
+    var amount: Double
+    var category: BudgetCategory
+    var date: Date
+    var recurringRuleID: UUID?
+    var month: MonthRecord?
 }
 
 // MARK: - Bucket row
