@@ -112,9 +112,11 @@ Decisions made:
 - Purchase-type tags (5c): **undecided — pinned** (see Pinned decisions).
 
 ### Core features
-- **Edit transactions** (currently add/delete only) — highest-priority gap
-- **Undo + confirmation** on destructive actions (delete, close-month)
-- **"Safe to spend"** / projected end-of-month number
+- [x] **Edit transactions** — tap a row to edit/delete (open months only)
+- [x] **Reopen a closed month** (from the closed-month banner)
+- [x] **Close-month confirmation**
+- **Undo on delete** — swipe-delete is instant; add a "Deleted · Undo" toast
+- **"Safe to spend"** / projected end-of-month number (partly in the tab bar)
 - **Budget rollover** — carry unspent buckets into the next month
 - Savings-rate definition option: money-moved vs. leftover (or show both)
 - Tags / sub-categories within the three buckets

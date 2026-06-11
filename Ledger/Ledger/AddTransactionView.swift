@@ -2,7 +2,8 @@
 //  AddTransactionView.swift
 //  Ledger
 //
-//  Native Form sheet for logging a transaction.
+//  Native Form sheet for logging a transaction — also used to edit an existing
+//  one (pass `existing`).
 //
 
 import SwiftUI
@@ -12,7 +13,10 @@ struct AddTransactionView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
-    let month: MonthRecord
+    /// Target month for a NEW transaction. Ignored when editing.
+    var month: MonthRecord? = nil
+    /// When set, the sheet edits this transaction instead of creating one.
+    var existing: Transaction? = nil
 
     @State private var desc = ""
     @State private var amount: Double? = nil
@@ -20,10 +24,10 @@ struct AddTransactionView: View {
     @State private var date = Date()
     @State private var saveCount = 0
 
+    private var isEditing: Bool { existing != nil }
     private var currencyCode: String {
         Locale.current.currency?.identifier ?? "USD"
     }
-
     private var isValid: Bool { (amount ?? 0) > 0 }
 
     var body: some View {
@@ -56,11 +60,19 @@ struct AddTransactionView: View {
                         .foregroundStyle(DS.text)
                 }
                 .listRowBackground(DS.surface)
+
+                if isEditing {
+                    Section {
+                        Button("Delete Transaction", role: .destructive) { delete() }
+                            .frame(maxWidth: .infinity)
+                    }
+                    .listRowBackground(DS.surface)
+                }
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
             .background(DS.background.ignoresSafeArea())
-            .navigationTitle("New Transaction")
+            .navigationTitle(isEditing ? "Edit Transaction" : "New Transaction")
             #if !os(macOS)
             .toolbarTitleDisplayMode(.inline)
             #endif
@@ -73,6 +85,7 @@ struct AddTransactionView: View {
                         .disabled(!isValid)
                 }
             }
+            .onAppear(perform: load)
         }
         .tint(DS.gold)
         .sensoryFeedback(.success, trigger: saveCount)
@@ -84,15 +97,38 @@ struct AddTransactionView: View {
         #endif
     }
 
+    private func load() {
+        guard let existing else { return }
+        desc = existing.desc
+        amount = existing.amount
+        category = existing.category
+        date = existing.date
+    }
+
     private func save() {
         guard let value = amount, value > 0 else { return }
-        LedgerService.addTransaction(to: month,
-                                     desc: desc.trimmingCharacters(in: .whitespacesAndNewlines),
-                                     amount: value,
-                                     category: category,
-                                     date: date,
-                                     in: context)
+        let trimmed = desc.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let existing {
+            existing.desc = trimmed
+            existing.amount = value
+            existing.category = category
+            existing.date = date
+        } else if let month {
+            LedgerService.addTransaction(to: month,
+                                         desc: trimmed,
+                                         amount: value,
+                                         category: category,
+                                         date: date,
+                                         in: context)
+        }
         saveCount += 1
+        dismiss()
+    }
+
+    private func delete() {
+        if let existing {
+            LedgerService.delete(existing, in: context)
+        }
         dismiss()
     }
 }

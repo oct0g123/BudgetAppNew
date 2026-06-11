@@ -20,6 +20,7 @@ struct BudgetView: View {
 
     @State private var filter: BudgetCategory? = nil
     @State private var showingAdd = false
+    @State private var editingTransaction: Transaction?
     @State private var confirmingClose = false
     @State private var closeCount = 0
 
@@ -86,6 +87,9 @@ struct BudgetView: View {
                 AddTransactionView(month: month)
             }
         }
+        .sheet(item: $editingTransaction) { txn in
+            AddTransactionView(existing: txn)
+        }
         .confirmationDialog(
             "Close \(MonthKey.displayName(viewedKey))?",
             isPresented: $confirmingClose,
@@ -113,6 +117,11 @@ struct BudgetView: View {
                     Label("This month is closed and read-only.", systemImage: "lock.fill")
                         .font(.subheadline)
                         .foregroundStyle(DS.textMuted)
+                    Button {
+                        LedgerService.reopenMonth(month, in: context)
+                    } label: {
+                        Label("Reopen Month", systemImage: "lock.open")
+                    }
                 }
                 .listRowBackground(DS.surfaceHigh)
             }
@@ -205,7 +214,12 @@ struct BudgetView: View {
                     .foregroundStyle(DS.textMuted)
             } else {
                 ForEach(txns) { txn in
-                    TransactionRow(txn: txn)
+                    Button {
+                        if !month.isClosed { editingTransaction = txn }
+                    } label: {
+                        TransactionRow(txn: txn)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .onDelete { offsets in
                     guard !month.isClosed else { return }

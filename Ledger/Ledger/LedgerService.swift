@@ -133,6 +133,11 @@ enum LedgerService {
         ensureMonth(forKey: nextKey, in: context)
     }
 
+    /// Reopen a closed month so it can be edited again.
+    static func reopenMonth(_ month: MonthRecord, in context: ModelContext) {
+        month.isClosed = false
+    }
+
     // MARK: Import
 
     /// Merge an imported archive into the store. Existing months (matched by
