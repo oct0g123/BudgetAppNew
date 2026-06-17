@@ -22,7 +22,7 @@ import SwiftData
 
 /// Set to `true` only when building with a paid developer account that has the
 /// iCloud + CloudKit capability enabled.
-private let enableCloudKitSync = false
+private let enableCloudKitSync = true
 
 @main
 struct LedgerApp: App {

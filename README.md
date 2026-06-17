@@ -76,20 +76,17 @@ iCloud / CloudKit needs a **paid** Apple Developer Program membership, so sync i
 Apple ID as-is. Move data between devices with **Settings → Backup & Sync**
 (JSON/CSV export & import).
 
-### Enabling iCloud sync later (paid account)
+### iCloud sync (enabled)
 
-1. Set `enableCloudKitSync = true` in `LedgerApp.swift`.
-2. Target → **Signing & Capabilities** → **+ Capability** → **iCloud**, check
-   **CloudKit**, and create/select a container (e.g. `iCloud.com.yourname.Ledger`).
-   Xcode adds the required keys to `Ledger.entitlements` for you. (If you'd
-   rather add them by hand, they are
-   `com.apple.developer.icloud-services` = `[CloudKit]` and
-   `com.apple.developer.icloud-container-identifiers` = `[your container id]`.)
+`enableCloudKitSync = true` in `LedgerApp.swift`, with the iCloud/CloudKit
+entitlements set for container `iCloud.com.anthonystacy.Ledger`. Requires a
+paid developer account. In Xcode: target → **Signing & Capabilities** → add the
+**iCloud** capability with **CloudKit** and make sure that container exists
+(Xcode can create it). If the cloud store ever can't be created at runtime, the
+app falls back to a local store automatically.
 
-> Note: keep `Ledger.entitlements` free of XML comments and don't edit it while
-> a build is running — Xcode's build system verifies the file doesn't change
-> mid-build and fails with "Entitlements file was modified during the build"
-> otherwise.
+> Keep `Ledger.entitlements` free of XML comments and don't edit it while a
+> build is running ("Entitlements file was modified during the build").
 
 If CloudKit is ever requested but unavailable at runtime, the app automatically
 falls back to the local store so it still launches.
