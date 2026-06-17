@@ -77,6 +77,19 @@ Cross-cutting architecture:
   note.
 - Stream responses; cache per-month results and regenerate on data change.
 
+**WWDC26 updates that change this plan:**
+- **Multimodal prompts** — Foundation Models now accepts images, and can call
+  Vision OCR/barcode as tools. Simplifies receipt capture (5e) a lot (the model
+  reads the image directly). The old "model is text-only" constraint is gone.
+- **Private Cloud Compute** — a bigger, still-private Apple model at no cloud
+  cost for App Store Small Business Program members (<2M downloads); the
+  framework can also plug in external LLM providers (Claude/Gemini). Option for
+  deeper insights (5b/5d) when on-device isn't enough.
+- **Evaluations Framework** — adopt when building AI to verify the parser /
+  insights behave correctly across inputs.
+- **Dynamic Profiles** — swap model/tools/instructions mid-session; handy for
+  the conversational 5d mode.
+
 **5a — Natural-language command bar ("Tell Ledger")** (do first)
 - Sparkle button → text field → e.g. "Add $500 to needs, utilities" → model
   returns `[DraftTxn]` (description/amount/category) → **preview card** →
@@ -106,17 +119,15 @@ Cross-cutting architecture:
 - Conversational mode using tool calling: expose `monthSummary(...)`,
   `spendByCategory(...)` etc. so the model grounds answers in real data.
 
-**5e — Receipt capture (after 5a — shares the parser)**
-- Two-stage on-device pipeline (Foundation Models is text-only, so it can't
-  read the photo directly):
-  1. Capture + OCR with Vision: `VNDocumentCameraViewController` (scan/deskew)
-     + text recognition (iOS 26 can return structured document data).
-  2. Feed the OCR text to the model → `@Generable ReceiptDraft { merchant,
-     total, date, suggestedCategory }`.
-  3. Preview → confirm/edit → add transaction (same pattern as 5a).
-- OCR works on all devices; heuristic "find the TOTAL" fallback when the model
-  is unavailable. Fully on-device/private. iOS/iPadOS capture (Mac: drag image
-  / Continuity Camera). Optional: attach the receipt photo to the transaction.
+**5e — Receipt capture (after 5a — shares the parser)** — simplified by WWDC26
+- Capture with `VNDocumentCameraViewController` (scan/deskew), then feed the
+  **image directly** to the multimodal model → `@Generable ReceiptDraft
+  { merchant, total, date, suggestedCategory }`. The model can also call Vision
+  OCR/barcode as a tool when helpful.
+- Preview → confirm/edit → add transaction (same pattern as 5a).
+- Fallback on older devices: Vision OCR + heuristic "find the TOTAL". Fully
+  on-device/private. iOS/iPadOS capture (Mac: drag image / Continuity Camera).
+  Optional: attach the receipt photo to the transaction.
 
 Decisions made:
 - Commands show a **preview + confirm** before applying (not instant). ✅
@@ -153,7 +164,11 @@ watch app → App Intents. Effort tags: (S)mall / (M)edium / (L)arge.
 - (S–M) Control Center control + Action Button: one-tap "Add Transaction"
   deep-link, or remaining-budget readout
 - (M) App Intents / Siri / Shortcuts / Spotlight ("how much is left?",
-  "add $12 groceries") — **shares the AI command parser (5a)**
+  "add $12 groceries") — **shares the AI command parser (5a)**. WWDC26: use
+  **App/Entity/Intent Schemas** to expose transactions/budgets to Siri with
+  little code, **View Annotations** for on-screen references, and the
+  **Spotlight semantic index** so "show my restaurant spending" works
+  (ties to tags / purchase-types 5c). Validate with **AppIntentsTesting**.
 
 **watchOS**
 - (M) Watch-face **complications**: glanceable "$X left" / bucket ring — the
