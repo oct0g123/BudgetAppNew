@@ -23,6 +23,16 @@ import os
 
 private let storeLog = Logger(subsystem: "com.anthonystacy.Ledger", category: "store")
 
+/// Observable, read-anywhere snapshot of how the data store came up. Set once
+/// during app init, before any UI appears. Lets Settings show the user whether
+/// iCloud sync is actually live or the app fell back to a local store.
+enum StoreStatus {
+    /// `true` when the CloudKit-backed store initialized successfully.
+    static var usingCloudKit = false
+    /// Non-nil when the CloudKit store failed and we fell back to local.
+    static var fallbackError: String?
+}
+
 /// Set to `true` only when building with a paid developer account that has the
 /// iCloud + CloudKit capability enabled.
 private let enableCloudKitSync = true
@@ -49,11 +59,13 @@ struct LedgerApp: App {
         do {
             container = try ModelContainer(for: schema, configurations: configuration)
             if enableCloudKitSync {
+                StoreStatus.usingCloudKit = true
                 storeLog.notice("🟢 Ledger: CloudKit store ACTIVE (cloud sync enabled).")
             } else {
                 storeLog.notice("⚪️ Ledger: local store (CloudKit sync disabled in code).")
             }
         } catch {
+            StoreStatus.fallbackError = String(describing: error)
             // If the configured store can't be created (e.g. CloudKit requested
             // without a valid entitlement, or not signed in to iCloud), fall
             // back to a plain local store so the app still runs.

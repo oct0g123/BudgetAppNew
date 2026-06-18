@@ -55,6 +55,7 @@ struct SettingsView: View {
                 incomeSection
                 allocationSection
                 displaySection
+                syncSection
                 recurringSection
                 dataSection
                 aboutSection
@@ -202,6 +203,36 @@ struct SettingsView: View {
             .tint(DS.savings)
         } header: {
             Text("Display")
+        }
+        .listRowBackground(DS.surface)
+    }
+
+    // MARK: iCloud sync status
+
+    private var syncSection: some View {
+        Section {
+            LabeledContent {
+                HStack(spacing: Spacing.sm) {
+                    Circle()
+                        .fill(StoreStatus.usingCloudKit ? DS.savings : DS.needs)
+                        .frame(width: 9, height: 9)
+                    Text(StoreStatus.usingCloudKit ? "On" : "Local only")
+                        .font(Typography.mono(.body, weight: .medium))
+                        .foregroundStyle(StoreStatus.usingCloudKit ? DS.savings : DS.needs)
+                }
+            } label: {
+                Text("iCloud Sync")
+            }
+        } header: {
+            Text("iCloud")
+        } footer: {
+            if StoreStatus.usingCloudKit {
+                Text("Your data syncs across your devices via iCloud. New changes can take a moment to appear on other devices.")
+            } else if let err = StoreStatus.fallbackError {
+                Text("Couldn't start iCloud sync, so data is stored only on this device. Details: \(err)")
+            } else {
+                Text("iCloud sync is turned off in this build; data is stored only on this device.")
+            }
         }
         .listRowBackground(DS.surface)
     }
