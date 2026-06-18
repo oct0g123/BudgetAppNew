@@ -20,8 +20,38 @@
 import SwiftUI
 import SwiftData
 import os
+#if os(iOS) || os(visionOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 private let storeLog = Logger(subsystem: "com.anthonystacy.Ledger", category: "store")
+
+// MARK: - Remote notification registration
+//
+// SwiftData/CloudKit pulls remote changes down through its import pipeline,
+// which is driven by CloudKit subscription *push* notifications. In a SwiftUI
+// `App`, nothing calls `registerForRemoteNotifications()` for us, so the
+// registration "gives up", the subscription never finishes setting up, and
+// changes made on other devices never sync down (while local changes still
+// export fine). Registering on launch via an app-delegate adaptor fixes import.
+
+#if os(iOS) || os(visionOS)
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        application.registerForRemoteNotifications()
+        return true
+    }
+}
+#elseif os(macOS)
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApplication.shared.registerForRemoteNotifications()
+    }
+}
+#endif
 
 /// Observable, read-anywhere snapshot of how the data store came up. Set once
 /// during app init, before any UI appears. Lets Settings show the user whether
@@ -39,6 +69,12 @@ private let enableCloudKitSync = true
 
 @main
 struct LedgerApp: App {
+
+    #if os(iOS) || os(visionOS)
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    #elseif os(macOS)
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    #endif
 
     let container: ModelContainer
 
