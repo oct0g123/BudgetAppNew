@@ -19,6 +19,9 @@
 
 import SwiftUI
 import SwiftData
+import os
+
+private let storeLog = Logger(subsystem: "com.anthonystacy.Ledger", category: "store")
 
 /// Set to `true` only when building with a paid developer account that has the
 /// iCloud + CloudKit capability enabled.
@@ -45,10 +48,16 @@ struct LedgerApp: App {
         )
         do {
             container = try ModelContainer(for: schema, configurations: configuration)
+            if enableCloudKitSync {
+                storeLog.notice("🟢 Ledger: CloudKit store ACTIVE (cloud sync enabled).")
+            } else {
+                storeLog.notice("⚪️ Ledger: local store (CloudKit sync disabled in code).")
+            }
         } catch {
             // If the configured store can't be created (e.g. CloudKit requested
             // without a valid entitlement, or not signed in to iCloud), fall
             // back to a plain local store so the app still runs.
+            storeLog.error("🔴 Ledger: CloudKit store FAILED, falling back to LOCAL. Error: \(String(describing: error), privacy: .public)")
             let localConfig = ModelConfiguration(schema: schema,
                                                  isStoredInMemoryOnly: false,
                                                  cloudKitDatabase: .none)
