@@ -20,6 +20,8 @@
 import SwiftUI
 import SwiftData
 import os
+import CoreData
+import Combine
 #if os(iOS) || os(visionOS)
 import UIKit
 #elseif os(macOS)
@@ -63,6 +65,62 @@ enum StoreStatus {
     static var fallbackError: String?
 }
 
+// MARK: - Sync monitor
+//
+// SwiftData drives iCloud through NSPersistentCloudKitContainer, which posts an
+// `eventChangedNotification` for every setup / import / export operation —
+// including whether it succeeded and the underlying error. Observing those lets
+// us show real sync status (and surface failures) instead of just "store opened".
+
+final class SyncMonitor: ObservableObject {
+
+    struct Phase {
+        var inProgress = false
+        var lastEnd: Date?
+        var succeeded = true
+        var error: String?
+    }
+
+    @Published private(set) var setup = Phase()
+    @Published private(set) var imports = Phase()
+    @Published private(set) var exports = Phase()
+
+    private var observer: NSObjectProtocol?
+
+    init() {
+        observer = NotificationCenter.default.addObserver(
+            forName: NSPersistentCloudKitContainer.eventChangedNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            guard
+                let self,
+                let event = note.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey]
+                    as? NSPersistentCloudKitContainer.Event
+            else { return }
+            self.apply(event)
+        }
+    }
+
+    deinit {
+        if let observer { NotificationCenter.default.removeObserver(observer) }
+    }
+
+    private func apply(_ event: NSPersistentCloudKitContainer.Event) {
+        var phase = Phase()
+        phase.inProgress = event.endDate == nil
+        phase.lastEnd = event.endDate
+        phase.succeeded = event.succeeded
+        phase.error = event.error?.localizedDescription
+        switch event.type {
+        case .setup:  setup = phase
+        case .import: imports = phase
+        case .export: exports = phase
+        @unknown default: break
+        }
+    }
+}
+
 /// Set to `true` only when building with a paid developer account that has the
 /// iCloud + CloudKit capability enabled.
 private let enableCloudKitSync = true
@@ -75,6 +133,8 @@ struct LedgerApp: App {
     #elseif os(macOS)
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     #endif
+
+    @StateObject private var syncMonitor = SyncMonitor()
 
     let container: ModelContainer
 
@@ -121,6 +181,7 @@ struct LedgerApp: App {
         WindowGroup {
             RootView()
                 .tint(DS.gold)
+                .environmentObject(syncMonitor)
         }
         .modelContainer(container)
         #if os(macOS)

@@ -25,6 +25,8 @@ struct SettingsView: View {
 
     @AppStorage("showBucketUsage") private var showBucketUsage = true
 
+    @EnvironmentObject private var sync: SyncMonitor
+
     @State private var incomeDraft = ""
     @State private var needsPct = 50
     @State private var savingsPct = 20
@@ -223,18 +225,63 @@ struct SettingsView: View {
             } label: {
                 Text("iCloud Sync")
             }
+
+            if StoreStatus.usingCloudKit {
+                syncPhaseRow("Setup", phase: sync.setup)
+                syncPhaseRow("Last received", phase: sync.imports)
+                syncPhaseRow("Last sent", phase: sync.exports)
+            }
         } header: {
             Text("iCloud")
         } footer: {
-            if StoreStatus.usingCloudKit {
-                Text("Your data syncs across your devices via iCloud. New changes can take a moment to appear on other devices.")
-            } else if let err = StoreStatus.fallbackError {
+            syncFooter
+        }
+        .listRowBackground(DS.surface)
+    }
+
+    /// One status line for a sync phase: in-progress, last success time, or a failure.
+    private func syncPhaseRow(_ label: String, phase: SyncMonitor.Phase) -> some View {
+        LabeledContent {
+            Group {
+                if phase.inProgress {
+                    Text("Syncing…").foregroundStyle(DS.textMuted)
+                } else if phase.error != nil {
+                    Text("Failed").foregroundStyle(DS.needs)
+                } else if let end = phase.lastEnd {
+                    Text(relativeTime(end)).foregroundStyle(DS.text)
+                } else {
+                    Text("—").foregroundStyle(DS.textMuted)
+                }
+            }
+            .font(Typography.mono(.footnote, weight: .medium))
+        } label: {
+            Text(label)
+        }
+    }
+
+    @ViewBuilder
+    private var syncFooter: some View {
+        if !StoreStatus.usingCloudKit {
+            if let err = StoreStatus.fallbackError {
                 Text("Couldn't start iCloud sync, so data is stored only on this device. Details: \(err)")
             } else {
                 Text("iCloud sync is turned off in this build; data is stored only on this device.")
             }
+        } else if let err = sync.imports.error {
+            Text("Receive (import) error: \(err)").foregroundStyle(DS.needs)
+        } else if let err = sync.setup.error {
+            Text("Setup error: \(err)").foregroundStyle(DS.needs)
+        } else if let err = sync.exports.error {
+            Text("Send (export) error: \(err)").foregroundStyle(DS.needs)
+        } else {
+            Text("Your data syncs across your devices via iCloud. \"Received\" is the last time changes came down from another device; \"Sent\" is the last time this device's changes went up.")
         }
-        .listRowBackground(DS.surface)
+    }
+
+    private func relativeTime(_ date: Date) -> String {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .abbreviated
+        return f.localizedString(for: date, relativeTo: Date())
     }
 
     // MARK: Recurring
