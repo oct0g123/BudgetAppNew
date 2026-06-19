@@ -72,8 +72,15 @@ struct InsightsView: View {
         for category in BudgetCategory.allCases {
             let budget = month.budget(for: category)
             let used = budget > 0 ? Int((month.spent(for: category) / budget) * 100) : 0
-            let state = month.spent(for: category) > budget ? "over its limit" : "within its limit"
-            lines.append("\(category.title): used \(used)% of its allocation, \(state).")
+            if category == .savings {
+                let note = month.spent(for: category) >= budget
+                    ? "meeting or exceeding the savings target (this is good)"
+                    : "below the savings target"
+                lines.append("Savings: \(used)% of its target — \(note).")
+            } else {
+                let state = month.spent(for: category) > budget ? "over its spending limit" : "within its spending limit"
+                lines.append("\(category.title): \(used)% of its limit, \(state).")
+            }
         }
         lines.append("Overall savings rate: \(Int(month.savingsRate * 100))%.")
         if let prev = previousMonth(before: month), prev.totalSpent > 0 {

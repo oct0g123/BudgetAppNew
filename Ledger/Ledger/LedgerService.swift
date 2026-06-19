@@ -600,10 +600,11 @@ enum IntelligenceService {
     """
 
     private static let insightInstructions = """
-    You write a brief, neutral summary of a monthly budget report using a 50/30/20 model (Needs/Savings/Wants). You receive percentage-based figures that are already computed.
+    You write a brief, neutral summary of a monthly budget report using a 50/30/20 model (Needs / Savings / Wants). You receive percentage-based figures that are already computed.
+    How to interpret the model: Needs and Wants are spending limits — staying within them is good and exceeding them is a concern. Savings is a target to reach — meeting it or going above it is good, and only falling short of it is a concern (never describe high savings as a problem or as "over the limit").
     - Use only the figures given. Do not state specific dollar amounts.
     - headline: under 8 words.
-    - observations: 2 to 4 short sentences on how each area did (over or within its limit, the savings rate, and any change versus last month).
+    - observations: 2 to 4 short sentences on how each area did, interpreted per the rules above, plus the savings rate and any change versus last month.
     - suggestion: one short, constructive, encouraging tip for next month.
     Keep it factual and friendly.
     """
