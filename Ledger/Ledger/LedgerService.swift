@@ -299,6 +299,35 @@ struct DraftTxn: Identifiable {
     var category: BudgetCategory
 }
 
+/// Structured, model-written analysis of a month. The numbers are computed in
+/// Swift; the model only writes the prose.
+struct MonthInsight: Codable {
+    var headline: String
+    var observations: [String]
+    var suggestion: String
+}
+
+/// Per-month cache of generated insights (local, in UserDefaults). Keyed by a
+/// data "signature" so a cached insight is reused until the month's numbers
+/// actually change. No data-model change, so iCloud sync is untouched.
+enum InsightStore {
+    private struct Stored: Codable { var insight: MonthInsight; var signature: String }
+
+    static func load(for monthKey: String) -> (insight: MonthInsight, signature: String)? {
+        guard let data = UserDefaults.standard.data(forKey: key(monthKey)),
+              let stored = try? JSONDecoder().decode(Stored.self, from: data) else { return nil }
+        return (stored.insight, stored.signature)
+    }
+
+    static func save(_ insight: MonthInsight, signature: String, for monthKey: String) {
+        if let data = try? JSONEncoder().encode(Stored(insight: insight, signature: signature)) {
+            UserDefaults.standard.set(data, forKey: key(monthKey))
+        }
+    }
+
+    private static func key(_ monthKey: String) -> String { "ledgerInsight.\(monthKey)" }
+}
+
 // MARK: - Learned merchant categories
 
 /// Remembers the category you chose for a given merchant/description so the
@@ -433,6 +462,26 @@ enum IntelligenceService {
     /// Reused so the model + schema only warm up once per launch.
     private static var _session: Any?
 
+    /// Generate a short narrative insight from a pre-computed month summary.
+    /// Returns nil when AI is unavailable or the model errors.
+    static func generateInsight(summary: String) async -> MonthInsight? {
+        #if canImport(FoundationModels)
+        if #available(iOS 26, macOS 26, *), isAvailable {
+            do {
+                let session = LanguageModelSession { Self.insightInstructions }
+                let response = try await session.respond(to: summary, generating: MonthInsightAI.self)
+                let ai = response.content
+                return MonthInsight(headline: ai.headline,
+                                    observations: ai.observations,
+                                    suggestion: ai.suggestion)
+            } catch {
+                return nil
+            }
+        }
+        #endif
+        return nil
+    }
+
     // MARK: Heuristic fallback
 
     /// Best-effort "$X <desc> to <bucket>" parser, splitting on "and"/commas.
@@ -540,6 +589,15 @@ enum IntelligenceService {
 
     Only include transactions the person actually mentioned. Amounts are positive numbers with no currency symbols.
     """
+
+    private static let insightInstructions = """
+    You are a concise, encouraging budgeting assistant. You receive a factual summary of one month's 50/30/20 budget (Needs/Savings/Wants), already computed. Write a brief, friendly analysis.
+    - Never invent numbers; only reference figures present in the summary.
+    - headline: under 8 words, specific to this month.
+    - observations: 2 to 4 short sentences on how spending went — over/under each bucket, the savings rate, and any notable change versus last month.
+    - suggestion: one short, actionable, non-judgmental tip for next month.
+    Keep it warm and practical, never preachy or alarmist.
+    """
     #endif
 }
 
@@ -560,5 +618,16 @@ struct DraftTxnAI {
 struct CommandResultAI {
     @Guide(description: "Every transaction the user described, in order.")
     var transactions: [DraftTxnAI]
+}
+
+@available(iOS 26, macOS 26, *)
+@Generable
+struct MonthInsightAI {
+    @Guide(description: "A short, specific headline summarizing the month, under 8 words.")
+    var headline: String
+    @Guide(description: "2 to 4 brief, concrete observations about the month's budget, each one sentence.")
+    var observations: [String]
+    @Guide(description: "One short, actionable, encouraging suggestion for next month.")
+    var suggestion: String
 }
 #endif
