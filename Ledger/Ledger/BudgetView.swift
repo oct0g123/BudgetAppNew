@@ -79,6 +79,9 @@ struct BudgetView: View {
                         .disabled(currentMonth == nil || currentMonth?.isClosed == true)
                     }
                 }
+                // iOS has the floating bottom-right + button, so the toolbar +
+                // is redundant there; keep it on macOS/visionOS (no floating one).
+                #if !os(iOS)
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         showingAdd = true
@@ -87,6 +90,7 @@ struct BudgetView: View {
                     }
                     .disabled(currentMonth == nil || currentMonth?.isClosed == true)
                 }
+                #endif
             }
         }
         .tint(DS.gold)
