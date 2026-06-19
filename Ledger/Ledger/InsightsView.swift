@@ -246,6 +246,7 @@ struct AIInsightCard: View {
 
     @State private var insight: MonthInsight?
     @State private var isGenerating = false
+    @State private var errorText: String?
 
     var body: some View {
         Card {
@@ -293,11 +294,22 @@ struct AIInsightCard: View {
                         .font(Typography.mono(.caption2))
                         .foregroundStyle(DS.textMuted)
                 } else {
-                    Text("Get a quick, private read on this month's spending.")
-                        .font(.subheadline)
-                        .foregroundStyle(DS.textMuted)
+                    if let errorText {
+                        Text("Couldn't generate an insight.")
+                            .font(.subheadline)
+                            .foregroundStyle(DS.needs)
+                        Text(errorText)
+                            .font(Typography.mono(.caption2))
+                            .foregroundStyle(DS.textMuted)
+                            .textSelection(.enabled)
+                    } else {
+                        Text("Get a quick, private read on this month's spending.")
+                            .font(.subheadline)
+                            .foregroundStyle(DS.textMuted)
+                    }
                     Button(action: generate) {
-                        Label("Generate insight", systemImage: "sparkles")
+                        Label(errorText == nil ? "Generate insight" : "Try again",
+                              systemImage: "sparkles")
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(DS.gold)
@@ -317,13 +329,19 @@ struct AIInsightCard: View {
 
     private func generate() {
         isGenerating = true
+        errorText = nil
         Task {
-            let result = await IntelligenceService.generateInsight(summary: summary)
-            await MainActor.run {
-                isGenerating = false
-                if let result {
+            do {
+                let result = try await IntelligenceService.generateInsight(summary: summary)
+                await MainActor.run {
+                    isGenerating = false
                     insight = result
                     InsightStore.save(result, signature: signature, for: month.key)
+                }
+            } catch {
+                await MainActor.run {
+                    isGenerating = false
+                    errorText = String(describing: error)
                 }
             }
         }

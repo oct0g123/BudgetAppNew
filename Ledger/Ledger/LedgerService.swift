@@ -8,9 +8,12 @@
 
 import Foundation
 import SwiftData
+import os
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
+
+private let aiLog = Logger(subsystem: "com.anthonystacy.Ledger", category: "ai")
 
 enum LedgerService {
 
@@ -307,6 +310,11 @@ struct MonthInsight: Codable {
     var suggestion: String
 }
 
+enum InsightError: LocalizedError {
+    case unavailable
+    var errorDescription: String? { "On-device AI is unavailable on this device." }
+}
+
 /// Per-month cache of generated insights (local, in UserDefaults). Keyed by a
 /// data "signature" so a cached insight is reused until the month's numbers
 /// actually change. No data-model change, so iCloud sync is untouched.
@@ -463,8 +471,8 @@ enum IntelligenceService {
     private static var _session: Any?
 
     /// Generate a short narrative insight from a pre-computed month summary.
-    /// Returns nil when AI is unavailable or the model errors.
-    static func generateInsight(summary: String) async -> MonthInsight? {
+    /// Throws so the caller can surface why it failed.
+    static func generateInsight(summary: String) async throws -> MonthInsight {
         #if canImport(FoundationModels)
         if #available(iOS 26, macOS 26, *), isAvailable {
             do {
@@ -475,11 +483,12 @@ enum IntelligenceService {
                                     observations: ai.observations,
                                     suggestion: ai.suggestion)
             } catch {
-                return nil
+                aiLog.error("🔴 Insight generation failed: \(String(describing: error), privacy: .public)")
+                throw error
             }
         }
         #endif
-        return nil
+        throw InsightError.unavailable
     }
 
     // MARK: Heuristic fallback
