@@ -8,6 +8,9 @@
 
 import Foundation
 import SwiftData
+#if canImport(FoundationModels)
+import FoundationModels
+#endif
 
 enum LedgerService {
 
@@ -284,3 +287,165 @@ enum LedgerService {
         }
     }
 }
+
+// MARK: - Draft transaction (command bar)
+
+/// A proposed transaction produced by the "Tell Ledger" command bar, shown for
+/// review before it's committed. Plain value type so the UI compiles on every OS.
+struct DraftTxn: Identifiable {
+    let id = UUID()
+    var note: String
+    var amount: Double
+    var category: BudgetCategory
+}
+
+// MARK: - On-device intelligence
+
+/// Wraps all Apple Foundation Models use behind availability gates. On devices
+/// without Apple Intelligence (or OSes < 26) it reports unavailable and the AI
+/// UI is hidden; a small regex fallback still parses the simplest commands.
+///
+/// Core principle: the model only *extracts* structured drafts. Swift validates
+/// the amounts/categories and performs the actual mutation — the model never
+/// does arithmetic or writes to the store.
+enum IntelligenceService {
+
+    /// Whether the on-device model is ready to use right now.
+    static var isAvailable: Bool {
+        #if canImport(FoundationModels)
+        if #available(iOS 26, macOS 26, *) {
+            if case .available = SystemLanguageModel.default.availability { return true }
+        }
+        #endif
+        return false
+    }
+
+    /// Human-readable status for the Settings blurb.
+    static var statusMessage: String {
+        #if canImport(FoundationModels)
+        if #available(iOS 26, macOS 26, *) {
+            switch SystemLanguageModel.default.availability {
+            case .available:
+                return "On-device AI is ready. Tap the sparkle button on the Budget screen to add transactions just by typing what you spent — it's processed entirely on your device."
+            case .unavailable(.deviceNotEligible):
+                return "This device doesn't support Apple Intelligence, so the AI command bar is hidden. Everything else works normally — add transactions with the + button."
+            case .unavailable(.appleIntelligenceNotEnabled):
+                return "Turn on Apple Intelligence in System Settings to enable the AI command bar."
+            case .unavailable(.modelNotReady):
+                return "The on-device AI model is still downloading. The command bar will appear once it's ready."
+            case .unavailable:
+                return "The AI command bar is currently unavailable on this device."
+            @unknown default:
+                return "The AI command bar is currently unavailable on this device."
+            }
+        }
+        #endif
+        return "The AI command bar is available on Apple Intelligence-capable devices running iOS 26 or macOS 26. Everything else works on every device."
+    }
+
+    /// Parse free text into draft transactions. Uses the on-device model when
+    /// available; falls back to a small regex parser otherwise.
+    static func parse(_ text: String) async -> [DraftTxn] {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        #if canImport(FoundationModels)
+        if #available(iOS 26, macOS 26, *), isAvailable {
+            if let drafts = try? await parseWithModel(trimmed), !drafts.isEmpty {
+                return drafts
+            }
+        }
+        #endif
+        return parseHeuristic(trimmed)
+    }
+
+    // MARK: Heuristic fallback
+
+    /// Best-effort "$X <desc> to <bucket>" parser, splitting on "and"/commas.
+    static func parseHeuristic(_ text: String) -> [DraftTxn] {
+        text.replacingOccurrences(of: " and ", with: ",")
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .compactMap(parseChunk)
+    }
+
+    private static func parseChunk(_ chunk: String) -> DraftTxn? {
+        guard let amount = firstAmount(in: chunk), amount > 0 else { return nil }
+        let category = bucket(in: chunk) ?? .needs
+        let note = cleanNote(chunk)
+        return DraftTxn(note: note.isEmpty ? category.title : note,
+                        amount: amount, category: category)
+    }
+
+    private static let amountPattern = #"\$?\s?\d+(?:\.\d{1,2})?"#
+
+    private static func firstAmount(in s: String) -> Double? {
+        guard let range = s.range(of: amountPattern, options: .regularExpression) else { return nil }
+        return Double(s[range].filter { $0.isNumber || $0 == "." })
+    }
+
+    private static func bucket(in s: String) -> BudgetCategory? {
+        let lower = s.lowercased()
+        if lower.contains("need") { return .needs }
+        if lower.contains("saving") || lower.contains("save") { return .savings }
+        if lower.contains("want") { return .wants }
+        return nil
+    }
+
+    private static func cleanNote(_ s: String) -> String {
+        var out = s
+        if let r = out.range(of: amountPattern, options: .regularExpression) {
+            out.removeSubrange(r)
+        }
+        let fillers: Set<String> = ["add", "to", "for", "the", "needs", "savings",
+                                    "saving", "save", "wants", "in", "a", "an", "$", "spent", "on"]
+        let words = out.split(whereSeparator: { $0 == " " }).map(String.init)
+            .filter { !fillers.contains($0.lowercased()) && !$0.isEmpty }
+        return words.joined(separator: " ").trimmingCharacters(in: .whitespaces)
+    }
+
+    // MARK: On-device model
+
+    #if canImport(FoundationModels)
+    @available(iOS 26, macOS 26, *)
+    private static func parseWithModel(_ text: String) async throws -> [DraftTxn] {
+        let session = LanguageModelSession { Self.instructions }
+        let response = try await session.respond(to: text, generating: CommandResultAI.self)
+        return response.content.transactions.compactMap { ai in
+            guard ai.amount > 0 else { return nil }
+            let category = BudgetCategory(rawValue: ai.category.lowercased()) ?? .needs
+            let note = ai.note.trimmingCharacters(in: .whitespacesAndNewlines)
+            return DraftTxn(note: note.isEmpty ? category.title : note,
+                            amount: (ai.amount * 100).rounded() / 100,
+                            category: category)
+        }
+    }
+
+    private static let instructions = """
+    You turn a person's plain-language note about money they spent or saved into structured transactions for a 50/30/20 budget.
+    For each distinct transaction, extract a short note, a positive dollar amount, and one bucket.
+    Buckets: "needs" = essentials like rent, groceries, utilities, transport, insurance; "savings" = money saved, transferred to savings, or invested; "wants" = discretionary like dining out, entertainment, shopping, hobbies.
+    If the bucket isn't stated, infer the most likely one from the description.
+    Only include transactions the person actually mentioned. Amounts are positive numbers with no currency symbols.
+    """
+    #endif
+}
+
+#if canImport(FoundationModels)
+@available(iOS 26, macOS 26, *)
+@Generable
+struct DraftTxnAI {
+    @Guide(description: "Short description of the purchase, e.g. 'Groceries', 'Electric bill', 'Movie tickets'.")
+    var note: String
+    @Guide(description: "Amount in dollars as a positive number with no currency symbol.")
+    var amount: Double
+    @Guide(description: "Exactly one of these words: needs, savings, wants.")
+    var category: String
+}
+
+@available(iOS 26, macOS 26, *)
+@Generable
+struct CommandResultAI {
+    @Guide(description: "Every transaction the user described, in order.")
+    var transactions: [DraftTxnAI]
+}
+#endif

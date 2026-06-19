@@ -58,6 +58,7 @@ struct SettingsView: View {
                 allocationSection
                 displaySection
                 syncSection
+                intelligenceSection
                 recurringSection
                 dataSection
                 aboutSection
@@ -282,6 +283,30 @@ struct SettingsView: View {
         let f = RelativeDateTimeFormatter()
         f.unitsStyle = .abbreviated
         return f.localizedString(for: date, relativeTo: Date())
+    }
+
+    // MARK: Intelligence (AI command bar)
+
+    private var intelligenceSection: some View {
+        Section {
+            LabeledContent {
+                HStack(spacing: Spacing.sm) {
+                    Circle()
+                        .fill(IntelligenceService.isAvailable ? DS.savings : DS.textMuted)
+                        .frame(width: 9, height: 9)
+                    Text(IntelligenceService.isAvailable ? "Available" : "Unavailable")
+                        .font(Typography.mono(.body, weight: .medium))
+                        .foregroundStyle(IntelligenceService.isAvailable ? DS.savings : DS.textMuted)
+                }
+            } label: {
+                Text("AI Command Bar")
+            }
+        } header: {
+            Text("Intelligence")
+        } footer: {
+            Text(IntelligenceService.statusMessage)
+        }
+        .listRowBackground(DS.surface)
     }
 
     // MARK: Recurring

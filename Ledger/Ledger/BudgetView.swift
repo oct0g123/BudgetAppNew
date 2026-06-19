@@ -20,6 +20,7 @@ struct BudgetView: View {
 
     @State private var filter: BudgetCategory? = nil
     @State private var showingAdd = false
+    @State private var showingCommandBar = false
     @State private var editingTransaction: Transaction?
     @State private var confirmingClose = false
     @State private var closeCount = 0
@@ -68,6 +69,16 @@ struct BudgetView: View {
                         Label("Next month", systemImage: "chevron.right")
                     }
                 }
+                if IntelligenceService.isAvailable {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            showingCommandBar = true
+                        } label: {
+                            Label("Tell Ledger", systemImage: "sparkles")
+                        }
+                        .disabled(currentMonth == nil || currentMonth?.isClosed == true)
+                    }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         showingAdd = true
@@ -94,6 +105,9 @@ struct BudgetView: View {
         }
         .sheet(item: $editingTransaction) { txn in
             AddTransactionView(existing: txn)
+        }
+        .sheet(isPresented: $showingCommandBar) {
+            CommandBarView(month: currentMonth)
         }
         .confirmationDialog(
             "Close \(MonthKey.displayName(viewedKey))?",
@@ -478,6 +492,164 @@ extension View {
             self.background(tint, in: Circle())
                 .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
         }
+    }
+}
+
+// MARK: - AI command bar ("Tell Ledger")
+
+/// Natural-language entry: type what you spent, the on-device model proposes
+/// draft transactions, you review/edit, then confirm. Nothing is saved until
+/// you tap Add (money always gets an explicit confirm).
+struct CommandBarView: View {
+    @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
+    let month: MonthRecord?
+
+    @State private var text = ""
+    @State private var drafts: [DraftTxn] = []
+    @State private var stage: Stage = .input
+    @State private var notice: String?
+    @State private var saveCount = 0
+
+    private enum Stage { case input, thinking, review }
+    private var currencyCode: String { Locale.current.currency?.identifier ?? "USD" }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if stage == .review { reviewForm } else { inputForm }
+            }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .background(DS.background.ignoresSafeArea())
+            .navigationTitle("Tell Ledger")
+            #if !os(macOS)
+            .toolbarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                if stage == .review {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Add \(drafts.count)") { commit() }
+                            .disabled(drafts.allSatisfy { $0.amount <= 0 })
+                    }
+                }
+            }
+        }
+        .tint(DS.gold)
+        .sensoryFeedback(.success, trigger: saveCount)
+        #if os(iOS)
+        .presentationDetents([.medium, .large])
+        #endif
+        #if os(macOS)
+        .frame(minWidth: 420, minHeight: 360)
+        #endif
+    }
+
+    private var inputForm: some View {
+        Form {
+            Section {
+                TextField("e.g. spent $80 on groceries and $25 on a movie",
+                          text: $text, axis: .vertical)
+                    .lineLimit(2...5)
+                    .foregroundStyle(DS.text)
+            } footer: {
+                Text("Describe what you spent or saved in plain English. You'll review everything before it's added. Processed entirely on your device.")
+            }
+            .listRowBackground(DS.surface)
+
+            if let notice {
+                Section { Text(notice).foregroundStyle(DS.needs).font(.subheadline) }
+                    .listRowBackground(DS.surface)
+            }
+
+            Section {
+                Button {
+                    interpret()
+                } label: {
+                    HStack(spacing: Spacing.sm) {
+                        if stage == .thinking { ProgressView() }
+                        Label(stage == .thinking ? "Interpreting…" : "Interpret",
+                              systemImage: "sparkles")
+                        Spacer()
+                    }
+                }
+                .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty || stage == .thinking)
+            }
+            .listRowBackground(DS.surface)
+        }
+    }
+
+    private var reviewForm: some View {
+        Form {
+            Section {
+                ForEach($drafts) { $draft in
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        TextField("Description", text: $draft.note)
+                            .foregroundStyle(DS.text)
+                        HStack {
+                            TextField("Amount", value: $draft.amount,
+                                      format: .currency(code: currencyCode))
+                                #if os(iOS)
+                                .keyboardType(.decimalPad)
+                                #endif
+                                .font(Typography.mono(.body, weight: .medium))
+                                .foregroundStyle(DS.text)
+                            Spacer()
+                            Picker("Category", selection: $draft.category) {
+                                ForEach(BudgetCategory.allCases) { c in
+                                    Text(c.title).tag(c)
+                                }
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .tint(DS.gold)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+                .onDelete { drafts.remove(atOffsets: $0) }
+            } header: {
+                Text(drafts.count == 1 ? "1 transaction" : "\(drafts.count) transactions")
+            } footer: {
+                Text("Review and edit, then Add. Nothing is saved until you tap Add. Added to \(MonthKey.displayName(month?.key ?? MonthKey.current)).")
+            }
+            .listRowBackground(DS.surface)
+        }
+    }
+
+    private func interpret() {
+        notice = nil
+        stage = .thinking
+        let input = text
+        Task {
+            let result = await IntelligenceService.parse(input)
+            await MainActor.run {
+                if result.isEmpty {
+                    notice = "Couldn't find any transactions in that. Try something like \"$40 dinner, $1200 rent\"."
+                    stage = .input
+                } else {
+                    drafts = result
+                    stage = .review
+                }
+            }
+        }
+    }
+
+    private func commit() {
+        guard let month else { dismiss(); return }
+        for draft in drafts where draft.amount > 0 {
+            LedgerService.addTransaction(to: month,
+                                         desc: draft.note.trimmingCharacters(in: .whitespacesAndNewlines),
+                                         amount: draft.amount,
+                                         category: draft.category,
+                                         date: Date(),
+                                         in: context)
+        }
+        saveCount += 1
+        dismiss()
     }
 }
 
