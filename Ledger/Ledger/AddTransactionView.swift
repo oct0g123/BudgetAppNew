@@ -22,6 +22,7 @@ struct AddTransactionView: View {
     @State private var amount: Double? = nil
     @State private var category: BudgetCategory = .needs
     @State private var date = Date()
+    @State private var makeRecurring = false
     @State private var saveCount = 0
 
     private var isEditing: Bool { existing != nil }
@@ -58,6 +59,18 @@ struct AddTransactionView: View {
 
                     DatePicker("Date", selection: $date, displayedComponents: .date)
                         .foregroundStyle(DS.text)
+
+                    if !isEditing {
+                        Toggle(isOn: $makeRecurring) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Repeat monthly")
+                                Text("Also save as a recurring rule")
+                                    .font(.caption)
+                                    .foregroundStyle(DS.textMuted)
+                            }
+                        }
+                        .tint(DS.savings)
+                    }
                 }
                 .listRowBackground(DS.surface)
 
@@ -114,15 +127,41 @@ struct AddTransactionView: View {
             existing.category = category
             existing.date = date
         } else if let month {
-            LedgerService.addTransaction(to: month,
-                                         desc: trimmed,
+            if makeRecurring {
+                // Create the rule, then add this month's occurrence tagged with
+                // the rule id so applyRule won't double-add it for this month.
+                let rule = RecurringRule(desc: trimmed,
                                          amount: value,
                                          category: category,
-                                         date: date,
-                                         in: context)
+                                         dayOfMonth: dayOfMonth(from: date),
+                                         startKey: month.key)
+                context.insert(rule)
+                let txn = Transaction(desc: trimmed,
+                                      amount: value,
+                                      category: category,
+                                      date: date,
+                                      recurringRuleID: rule.id)
+                txn.month = month
+                context.insert(txn)
+                LedgerService.applyRule(rule, in: context)
+            } else {
+                LedgerService.addTransaction(to: month,
+                                             desc: trimmed,
+                                             amount: value,
+                                             category: category,
+                                             date: date,
+                                             in: context)
+            }
         }
         saveCount += 1
         dismiss()
+    }
+
+    /// Day-of-month for a recurring rule, clamped to 1...28 so it exists in
+    /// every month.
+    private func dayOfMonth(from date: Date) -> Int {
+        let day = Calendar.current.component(.day, from: date)
+        return min(max(day, 1), 28)
     }
 
     private func delete() {

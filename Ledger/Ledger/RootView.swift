@@ -6,28 +6,41 @@
 import SwiftUI
 import SwiftData
 
+/// The four top-level tabs, used as `TabView` selection values so other screens
+/// (e.g. History) can switch tabs programmatically.
+enum AppTab: Hashable {
+    case budget, insights, history, settings
+}
+
+/// Lightweight app-wide navigation state injected into the environment.
+final class AppNavigator: ObservableObject {
+    @Published var selectedTab: AppTab = .budget
+}
+
 struct RootView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var navigator = AppNavigator()
 
     var body: some View {
-        TabView {
-            Tab("Budget", systemImage: "chart.pie") {
+        TabView(selection: $navigator.selectedTab) {
+            Tab("Budget", systemImage: "chart.pie", value: AppTab.budget) {
                 BudgetView()
             }
-            Tab("Insights", systemImage: "chart.bar.xaxis") {
+            Tab("Insights", systemImage: "chart.bar.xaxis", value: AppTab.insights) {
                 InsightsView()
             }
-            Tab("History", systemImage: "clock.arrow.circlepath") {
+            Tab("History", systemImage: "clock.arrow.circlepath", value: AppTab.history) {
                 HistoryView()
             }
-            Tab("Settings", systemImage: "gearshape") {
+            Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
                 SettingsView()
             }
         }
         .tabViewStyle(.sidebarAdaptable)
         .background(DS.background)
         .modifier(TabChrome())
+        .environmentObject(navigator)
         // Consolidate any duplicate months/settings that arrive via iCloud sync.
         // Runs on launch and whenever the app re-activates (e.g. after a fresh
         // import has brought duplicates down from another device).

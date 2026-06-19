@@ -11,6 +11,8 @@ import SwiftData
 
 struct HistoryView: View {
     @Query(sort: \MonthRecord.key, order: .reverse) private var months: [MonthRecord]
+    @EnvironmentObject private var navigator: AppNavigator
+    @AppStorage("viewedMonthKey") private var viewedKey: String = MonthKey.current
 
     var body: some View {
         NavigationStack {
@@ -25,7 +27,13 @@ struct HistoryView: View {
                         VStack(alignment: .leading, spacing: Spacing.lg) {
                             overallCard
                             ForEach(months) { month in
-                                MonthSummaryCard(month: month)
+                                Button {
+                                    viewedKey = month.key
+                                    navigator.selectedTab = .budget
+                                } label: {
+                                    MonthSummaryCard(month: month)
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                         .padding(Spacing.xl)
@@ -96,6 +104,9 @@ struct MonthSummaryCard: View {
                     Text(Money.percent(month.savingsRate) + " saved")
                         .font(Typography.mono(.footnote))
                         .foregroundStyle(DS.savings)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
+                        .foregroundStyle(DS.textMuted)
                 }
 
                 ProportionBar(month: month)
