@@ -38,10 +38,9 @@ struct InsightsView: View {
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: Spacing.xl) {
-                            if IntelligenceService.isAvailable, let month = currentMonth {
-                                AIInsightCard(month: month,
-                                              summary: insightSummary(month),
-                                              signature: insightSignature(month))
+                            if let month = currentMonth {
+                                MonthSummaryInsightCard(month: month,
+                                                        previousMonth: previousMonth(before: month))
                             }
                             savingsRateChart
                             categorySpendChart
@@ -59,44 +58,6 @@ struct InsightsView: View {
             #endif
         }
         .tint(DS.gold)
-        .task { IntelligenceService.prewarm() }
-    }
-
-    // MARK: AI insight inputs
-
-    /// Abstracted away from finance terms (Category A/B/C, no dollars) so the
-    /// model's "sensitive financial content" guardrail doesn't refuse benign
-    /// budget data. The labels are mapped back to Needs/Savings/Wants after
-    /// generation (see `delabel`).
-    private func insightSummary(_ month: MonthRecord) -> String {
-        let names: [BudgetCategory: String] = [.needs: "Category A",
-                                               .savings: "Category B",
-                                               .wants: "Category C"]
-        var lines = ["Three categories for \(MonthKey.displayName(month.key)):"]
-        for category in BudgetCategory.allCases {
-            let label = names[category] ?? category.title
-            let budget = month.budget(for: category)
-            let used = budget > 0 ? Int((month.spent(for: category) / budget) * 100) : 0
-            if category == .savings {
-                let note = month.spent(for: category) >= budget ? "at or above its target (good)" : "below its target"
-                lines.append("\(label): \(used)% of its target, \(note).")
-            } else {
-                let state = month.spent(for: category) > budget ? "over its limit" : "within its limit"
-                lines.append("\(label): \(used)% of its limit, \(state).")
-            }
-        }
-        if let prev = previousMonth(before: month), prev.totalSpent > 0 {
-            let delta = (month.totalSpent - prev.totalSpent) / prev.totalSpent
-            let direction = delta >= 0 ? "higher" : "lower"
-            lines.append("Overall total is \(Int(abs(delta) * 100))% \(direction) than last month.")
-        }
-        return lines.joined(separator: "\n")
-    }
-
-    /// Changes whenever the month's numbers change, so a cached insight is reused
-    /// until it's actually stale.
-    private func insightSignature(_ month: MonthRecord) -> String {
-        "\(Int(month.income))-\(Int(month.totalSpent))-\(month.txns.count)"
     }
 
     private func previousMonth(before month: MonthRecord) -> MonthRecord? {
@@ -243,125 +204,49 @@ struct InsightsView: View {
     }
 }
 
-// MARK: - AI insight card
+// MARK: - Monthly summary card
 
-/// On-demand, on-device narrative for a month. Swift computes the numbers
-/// (`summary`); the model only writes the prose. Cached per month by signature.
-struct AIInsightCard: View {
+/// A concise, always-correct monthly summary. Computed entirely in Swift so the
+/// figures are consistent and right every time (the on-device model was too
+/// unreliable with numbers/labels to trust for this). Updates live with the data.
+struct MonthSummaryInsightCard: View {
     let month: MonthRecord
-    let summary: String
-    let signature: String
+    var previousMonth: MonthRecord?
 
-    @State private var insight: MonthInsight?
-    @State private var isGenerating = false
+    private var insight: MonthInsight { buildInsight() }
 
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: Spacing.md) {
-                HStack {
-                    SectionLabel("AI Insight")
-                    Spacer()
-                    if insight != nil {
-                        Button(action: generate) {
-                            Image(systemName: "arrow.clockwise")
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(DS.gold)
-                        .disabled(isGenerating)
+                SectionLabel("Monthly Summary")
+                Text(insight.headline)
+                    .font(Typography.serif(.title3))
+                    .foregroundStyle(DS.text)
+                ForEach(insight.observations, id: \.self) { obs in
+                    HStack(alignment: .top, spacing: Spacing.sm) {
+                        Circle().fill(DS.gold).frame(width: 5, height: 5).padding(.top, 7)
+                        Text(obs).foregroundStyle(DS.text)
                     }
                 }
-
-                if isGenerating {
-                    HStack(spacing: Spacing.sm) {
-                        ProgressView()
-                        Text("Reading your month…")
-                            .font(Typography.mono(.footnote))
-                            .foregroundStyle(DS.textMuted)
-                    }
-                } else if let insight {
-                    Text(insight.headline)
-                        .font(Typography.serif(.title3))
-                        .foregroundStyle(DS.text)
-                    ForEach(insight.observations, id: \.self) { obs in
-                        HStack(alignment: .top, spacing: Spacing.sm) {
-                            Circle().fill(DS.gold).frame(width: 5, height: 5).padding(.top, 7)
-                            Text(obs).foregroundStyle(DS.text)
-                        }
-                    }
-                    if !insight.suggestion.isEmpty {
-                        Text(insight.suggestion)
-                            .font(.subheadline)
-                            .foregroundStyle(DS.text)
-                            .padding(Spacing.md)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(DS.surfaceHigh,
-                                        in: RoundedRectangle(cornerRadius: Radius.field, style: .continuous))
-                    }
-                    Text("Processed on your device")
-                        .font(Typography.mono(.caption2))
-                        .foregroundStyle(DS.textMuted)
-                } else {
-                    Text("Get a quick, private read on this month's spending.")
+                if !insight.suggestion.isEmpty {
+                    Text(insight.suggestion)
                         .font(.subheadline)
-                        .foregroundStyle(DS.textMuted)
-                    Button(action: generate) {
-                        Label("Generate insight", systemImage: "sparkles")
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(DS.gold)
+                        .foregroundStyle(DS.text)
+                        .padding(Spacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(DS.surfaceHigh,
+                                    in: RoundedRectangle(cornerRadius: Radius.field, style: .continuous))
                 }
             }
         }
-        .task(id: signature) { loadCached() }
     }
 
-    private func loadCached() {
-        if let cached = InsightStore.load(for: month.key), cached.signature == signature {
-            insight = cached.insight
-        } else {
-            insight = nil
-        }
-    }
-
-    private func generate() {
-        isGenerating = true
-        Task {
-            let result: MonthInsight
-            do {
-                result = delabel(try await IntelligenceService.generateInsight(summary: summary))
-            } catch {
-                // Model refused/failed — fall back to a deterministic, on-device
-                // insight computed in Swift so the card always shows something useful.
-                result = fallbackInsight()
-            }
-            await MainActor.run {
-                isGenerating = false
-                insight = result
-                InsightStore.save(result, signature: signature, for: month.key)
-            }
-        }
-    }
-
-    /// Map the model's abstract category labels back to the real bucket names.
-    private func delabel(_ insight: MonthInsight) -> MonthInsight {
-        func fix(_ s: String) -> String {
-            s.replacingOccurrences(of: "Category A", with: BudgetCategory.needs.title, options: .caseInsensitive)
-             .replacingOccurrences(of: "Category B", with: BudgetCategory.savings.title, options: .caseInsensitive)
-             .replacingOccurrences(of: "Category C", with: BudgetCategory.wants.title, options: .caseInsensitive)
-        }
-        return MonthInsight(headline: fix(insight.headline),
-                            observations: insight.observations.map(fix),
-                            suggestion: fix(insight.suggestion))
-    }
-
-    /// Rule-based insight from the month's own figures — the safety net when the
-    /// on-device model isn't usable (e.g. a guardrail refusal).
-    private func fallbackInsight() -> MonthInsight {
+    private func buildInsight() -> MonthInsight {
         var observations: [String] = []
         for category in BudgetCategory.allCases {
             let budget = month.budget(for: category)
             let spent = month.spent(for: category)
-            let pct = budget > 0 ? Int((spent / budget) * 100) : 0
+            let pct = budget > 0 ? Int(((spent / budget) * 100).rounded()) : 0
             if category == .savings {
                 observations.append("Savings reached \(pct)% of your goal\(spent >= budget ? " — nicely done." : ".")")
             } else if spent > budget {
@@ -370,18 +255,31 @@ struct AIInsightCard: View {
                 observations.append("\(category.title) stayed within budget (\(pct)% used).")
             }
         }
-        let rate = Int(month.savingsRate * 100)
+        if let prev = previousMonth, prev.totalSpent > 0 {
+            let delta = (month.totalSpent - prev.totalSpent) / prev.totalSpent
+            let pct = Int((abs(delta) * 100).rounded())
+            if pct >= 1 {
+                observations.append("Total spending was \(pct)% \(delta >= 0 ? "higher" : "lower") than last month.")
+            }
+        }
+
+        let rate = Int((month.savingsRate * 100).rounded())
         let overNeeds = month.spent(for: .needs) > month.budget(for: .needs)
         let overWants = month.spent(for: .wants) > month.budget(for: .wants)
+
         let headline: String
-        if month.savingsRate >= 0.2 { headline = "Strong savings this month" }
+        if month.savingsRate >= 0.2 { headline = "Strong savings in \(MonthKey.shortMonthName(month.key))" }
+        else if overNeeds && overWants { headline = "Over budget in Needs and Wants" }
         else if overNeeds || overWants { headline = "Spending ran over budget" }
         else { headline = "\(MonthKey.shortMonthName(month.key)) is on track" }
+
         let suggestion: String
-        if overWants { suggestion = "Next month, trimming Wants would help you rebalance." }
+        if overNeeds && overWants { suggestion = "Trimming both Needs and Wants would help next month." }
+        else if overWants { suggestion = "Next month, trimming Wants would help you rebalance." }
         else if overNeeds { suggestion = "Needs ran high — see if any essentials can come down next month." }
         else if month.savingsRate < 0.2 { suggestion = "Consider directing a little more toward Savings next month." }
-        else { suggestion = "Keep the momentum going next month." }
+        else { suggestion = "Nice balance — keep the momentum going next month." }
+
         return MonthInsight(headline: headline,
                             observations: observations,
                             suggestion: suggestion + " Savings rate \(rate)%.")

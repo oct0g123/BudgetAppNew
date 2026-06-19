@@ -8,12 +8,9 @@
 
 import Foundation
 import SwiftData
-import os
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
-
-private let aiLog = Logger(subsystem: "com.anthonystacy.Ledger", category: "ai")
 
 enum LedgerService {
 
@@ -302,38 +299,13 @@ struct DraftTxn: Identifiable {
     var category: BudgetCategory
 }
 
-/// Structured, model-written analysis of a month. The numbers are computed in
-/// Swift; the model only writes the prose.
-struct MonthInsight: Codable {
+/// A short, structured monthly summary. Computed entirely in Swift so the
+/// figures are always correct and consistent (the on-device model proved too
+/// unreliable at arithmetic / category mapping for this).
+struct MonthInsight {
     var headline: String
     var observations: [String]
     var suggestion: String
-}
-
-enum InsightError: LocalizedError {
-    case unavailable
-    var errorDescription: String? { "On-device AI is unavailable on this device." }
-}
-
-/// Per-month cache of generated insights (local, in UserDefaults). Keyed by a
-/// data "signature" so a cached insight is reused until the month's numbers
-/// actually change. No data-model change, so iCloud sync is untouched.
-enum InsightStore {
-    private struct Stored: Codable { var insight: MonthInsight; var signature: String }
-
-    static func load(for monthKey: String) -> (insight: MonthInsight, signature: String)? {
-        guard let data = UserDefaults.standard.data(forKey: key(monthKey)),
-              let stored = try? JSONDecoder().decode(Stored.self, from: data) else { return nil }
-        return (stored.insight, stored.signature)
-    }
-
-    static func save(_ insight: MonthInsight, signature: String, for monthKey: String) {
-        if let data = try? JSONEncoder().encode(Stored(insight: insight, signature: signature)) {
-            UserDefaults.standard.set(data, forKey: key(monthKey))
-        }
-    }
-
-    private static func key(_ monthKey: String) -> String { "ledgerInsight.\(monthKey)" }
 }
 
 // MARK: - Learned merchant categories
@@ -470,30 +442,6 @@ enum IntelligenceService {
     /// Reused so the model + schema only warm up once per launch.
     private static var _session: Any?
 
-    /// Generate a short narrative insight from a pre-computed month summary.
-    /// Throws so the caller can surface why it failed.
-    static func generateInsight(summary: String) async throws -> MonthInsight {
-        #if canImport(FoundationModels)
-        if #available(iOS 26, macOS 26, *), isAvailable {
-            do {
-                let session = LanguageModelSession { Self.insightInstructions }
-                let response = try await session.respond(to: summary, generating: MonthInsightAI.self)
-                let ai = response.content
-                return MonthInsight(headline: ai.headline,
-                                    observations: ai.observations,
-                                    suggestion: ai.suggestion)
-            } catch {
-                // Expected when the model's guardrail declines budget content —
-                // the caller falls back to a computed insight, so this is a
-                // calm notice, not an error.
-                aiLog.notice("Insight: on-device model declined this request; using the computed fallback instead.")
-                throw error
-            }
-        }
-        #endif
-        throw InsightError.unavailable
-    }
-
     // MARK: Heuristic fallback
 
     /// Best-effort "$X <desc> to <bucket>" parser, splitting on "and"/commas.
@@ -601,17 +549,6 @@ enum IntelligenceService {
 
     Only include transactions the person actually mentioned. Amounts are positive numbers with no currency symbols.
     """
-
-    private static let insightInstructions = """
-    You summarize abstract performance figures for three categories — Category A, Category B, and Category C — against their limits or targets. This is generic numeric data, not personal or sensitive information.
-    Interpretation: Category A and Category C have limits, where being at or under the limit is good and going over is a concern. Category B has a target, where reaching or exceeding it is good and only falling short is a concern.
-    Refer to the categories exactly as "Category A", "Category B", and "Category C".
-    - Use only the figures given. Do not invent numbers or state any units.
-    - headline: under 8 words.
-    - observations: 2 to 4 short, factual sentences on how each category did this month.
-    - suggestion: one short, general tip for next month.
-    Keep it factual and neutral.
-    """
     #endif
 }
 
@@ -632,16 +569,5 @@ struct DraftTxnAI {
 struct CommandResultAI {
     @Guide(description: "Every transaction the user described, in order.")
     var transactions: [DraftTxnAI]
-}
-
-@available(iOS 26, macOS 26, *)
-@Generable
-struct MonthInsightAI {
-    @Guide(description: "A short, specific headline summarizing the month, under 8 words.")
-    var headline: String
-    @Guide(description: "2 to 4 brief, concrete observations about the month's budget, each one sentence.")
-    var observations: [String]
-    @Guide(description: "One short, actionable, encouraging suggestion for next month.")
-    var suggestion: String
 }
 #endif
