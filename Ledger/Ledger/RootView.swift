@@ -21,6 +21,7 @@ struct RootView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var navigator = AppNavigator()
+    @Query private var months: [MonthRecord]
 
     var body: some View {
         TabView(selection: $navigator.selectedTab) {
@@ -47,6 +48,11 @@ struct RootView: View {
         .task { LedgerService.mergeDuplicates(in: context) }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { LedgerService.mergeDuplicates(in: context) }
+        }
+        // Re-run when months arrive/change — catches duplicates that import
+        // from iCloud a few seconds *after* a cold launch.
+        .onChange(of: months.count) { _, _ in
+            LedgerService.mergeDuplicates(in: context)
         }
     }
 }

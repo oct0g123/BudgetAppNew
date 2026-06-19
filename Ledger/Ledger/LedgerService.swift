@@ -413,7 +413,9 @@ enum IntelligenceService {
                      "movie", "game", "tv", "television", "netflix", "spotify",
                      "subscription", "concert", "clothes", "shopping", "bar",
                      "drinks", "gift", "vacation", "travel", "hobby", "gadget",
-                     "electronics", "restaurant"]
+                     "electronics", "restaurant", "doordash", "uber eats", "ubereats",
+                     "grubhub", "starbucks", "ps5", "playstation", "xbox", "nintendo",
+                     "steam", "amazon", "chipotle", "mcdonald"]
         if savings.contains(where: l.contains) { return .savings }
         if wants.contains(where: l.contains) { return .wants }
         return .needs
@@ -465,10 +467,12 @@ enum IntelligenceService {
     - wants = discretionary: takeout, dining out, coffee, alcohol, movies, games, electronics, a TV, gadgets, clothes, hobbies, streaming subscriptions, gifts, travel, concerts.
     - savings = money set aside or invested: transfers to savings, emergency fund, 401k, IRA, brokerage/investments.
 
+    Common brands/services: DoorDash, Uber Eats, Grubhub, Starbucks, McDonald's, Chipotle, restaurants -> wants (food delivery / dining out). PS5, PlayStation, Xbox, Nintendo, Steam games -> wants. Amazon / Target shopping -> usually wants. Netflix, Spotify, Hulu, Disney+ -> wants. Uber, Lyft, gas, transit -> needs. Costco/grocery stores -> needs.
+
     Examples:
     - "groceries $100" -> note: Groceries, amount: 100, category: needs
-    - "takeout $30" -> note: Takeout, amount: 30, category: wants
-    - "bought a tv for $1000" -> note: TV, amount: 1000, category: wants
+    - "doordash $30" -> note: DoorDash, amount: 30, category: wants
+    - "bought a PS5 for $500" -> note: PS5, amount: 500, category: wants
     - "rent 1800" -> note: Rent, amount: 1800, category: needs
     - "put 500 into savings" -> note: Savings, amount: 500, category: savings
     - "$60 gift for mom" -> note: Gift, amount: 60, category: wants
