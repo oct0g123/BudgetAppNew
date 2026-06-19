@@ -7,6 +7,9 @@ import SwiftUI
 import SwiftData
 
 struct RootView: View {
+    @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some View {
         TabView {
             Tab("Budget", systemImage: "chart.pie") {
@@ -25,6 +28,13 @@ struct RootView: View {
         .tabViewStyle(.sidebarAdaptable)
         .background(DS.background)
         .modifier(TabChrome())
+        // Consolidate any duplicate months/settings that arrive via iCloud sync.
+        // Runs on launch and whenever the app re-activates (e.g. after a fresh
+        // import has brought duplicates down from another device).
+        .task { LedgerService.mergeDuplicates(in: context) }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { LedgerService.mergeDuplicates(in: context) }
+        }
     }
 }
 

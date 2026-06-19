@@ -124,6 +124,76 @@ enum LedgerService {
         context.delete(transaction)
     }
 
+    // MARK: Deduplication
+    //
+    // With iCloud sync, two devices can independently create "singleton-ish"
+    // records before they've synced — most commonly the current month (each
+    // device makes its own on first launch) and the settings row. After they
+    // sync you end up with duplicates: e.g. two "2026-06" months, one of which
+    // holds the transactions while the other (empty) one is what the UI happens
+    // to show. This consolidates them. It's safe to run repeatedly and on every
+    // device — the canonical record is chosen the same way everywhere (the copy
+    // with the most transactions, tie-broken by earliest creation), so devices
+    // converge on deleting the same duplicates rather than fighting.
+
+    static func mergeDuplicates(in context: ModelContext) {
+        mergeDuplicateSettings(in: context)
+        mergeDuplicateMonths(in: context)
+        for month in allMonths(in: context) {
+            dedupeTransactions(in: month, context: context)
+        }
+        dedupeRecurringRules(in: context)
+        try? context.save()
+    }
+
+    private static func mergeDuplicateSettings(in context: ModelContext) {
+        let all = (try? context.fetch(FetchDescriptor<AppSettings>())) ?? []
+        guard all.count > 1 else { return }
+        // Prefer a row that actually has data over a freshly-defaulted one.
+        let keep = all.first(where: { $0.defaultIncome != 0 }) ?? all[0]
+        for s in all where s !== keep { context.delete(s) }
+    }
+
+    private static func mergeDuplicateMonths(in context: ModelContext) {
+        let groups = Dictionary(grouping: allMonths(in: context), by: { $0.key })
+        for (_, group) in groups where group.count > 1 {
+            // Canonical = most transactions, then earliest createdAt (deterministic).
+            let canonical = group.sorted { a, b in
+                if a.txns.count != b.txns.count { return a.txns.count > b.txns.count }
+                return a.createdAt < b.createdAt
+            }.first!
+
+            for dup in group where dup !== canonical {
+                // If the canonical copy is the empty one, carry over real metadata.
+                if canonical.income == 0, dup.income != 0 {
+                    canonical.income = dup.income
+                    canonical.needsPct = dup.needsPct
+                    canonical.savingsPct = dup.savingsPct
+                    canonical.wantsPct = dup.wantsPct
+                }
+                if dup.isClosed { canonical.isClosed = true }
+                for txn in dup.txns { txn.month = canonical }
+                context.delete(dup)
+            }
+        }
+    }
+
+    /// Remove transactions that share an id within a month (can happen when the
+    /// same data was imported on two devices, since imports preserve ids).
+    private static func dedupeTransactions(in month: MonthRecord, context: ModelContext) {
+        var seen = Set<UUID>()
+        for txn in month.txns {
+            if seen.contains(txn.id) { context.delete(txn) } else { seen.insert(txn.id) }
+        }
+    }
+
+    private static func dedupeRecurringRules(in context: ModelContext) {
+        var seen = Set<UUID>()
+        for rule in allRecurringRules(in: context) {
+            if seen.contains(rule.id) { context.delete(rule) } else { seen.insert(rule.id) }
+        }
+    }
+
     // MARK: Close month
 
     static func closeMonth(_ month: MonthRecord, in context: ModelContext) {
