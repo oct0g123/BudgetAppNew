@@ -646,12 +646,15 @@ struct CommandBarView: View {
     private func commit() {
         guard let month else { dismiss(); return }
         for draft in drafts where draft.amount > 0 {
+            let note = draft.note.trimmingCharacters(in: .whitespacesAndNewlines)
             LedgerService.addTransaction(to: month,
-                                         desc: draft.note.trimmingCharacters(in: .whitespacesAndNewlines),
+                                         desc: note,
                                          amount: draft.amount,
                                          category: draft.category,
                                          date: Date(),
                                          in: context)
+            // Remember your final category for this merchant for next time.
+            CategoryMemory.remember(note, as: draft.category)
         }
         saveCount += 1
         dismiss()

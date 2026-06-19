@@ -301,10 +301,20 @@ struct SettingsView: View {
             } label: {
                 Text("AI Command Bar")
             }
+
+            if IntelligenceService.isAvailable {
+                Button("Reset Learned Categories", role: .destructive) {
+                    CategoryMemory.reset()
+                    flash("Cleared learned categories")
+                }
+                .disabled(CategoryMemory.count == 0)
+            }
         } header: {
             Text("Intelligence")
         } footer: {
-            Text(IntelligenceService.statusMessage)
+            Text(IntelligenceService.statusMessage + (CategoryMemory.count > 0
+                 ? " The command bar remembers the categories you pick for each merchant."
+                 : ""))
         }
         .listRowBackground(DS.surface)
     }

@@ -299,6 +299,62 @@ struct DraftTxn: Identifiable {
     var category: BudgetCategory
 }
 
+// MARK: - Learned merchant categories
+
+/// Remembers the category you chose for a given merchant/description so the
+/// command bar can pre-fill it next time, overriding the model's guess. Stored
+/// locally in UserDefaults (tiny, capped, not synced — iCloud sync is a 2.0
+/// idea, deliberately deferred). Self-correcting: a newer choice overwrites.
+enum CategoryMemory {
+    private static let storageKey = "merchantCategoryMemoryV1"
+    private static let cap = 200
+
+    private struct Entry: Codable { var key: String; var category: String }
+
+    /// The remembered category for a description, if any.
+    static func category(for note: String) -> BudgetCategory? {
+        let k = normalize(note)
+        guard !k.isEmpty else { return nil }
+        if let entry = load().last(where: { $0.key == k }) {
+            return BudgetCategory(rawValue: entry.category)
+        }
+        return nil
+    }
+
+    /// Record (or update) the category for a description. Most recent wins.
+    static func remember(_ note: String, as category: BudgetCategory) {
+        let k = normalize(note)
+        guard !k.isEmpty else { return }
+        var entries = load().filter { $0.key != k }
+        entries.append(Entry(key: k, category: category.rawValue))
+        if entries.count > cap { entries.removeFirst(entries.count - cap) }
+        save(entries)
+    }
+
+    static var count: Int { load().count }
+
+    static func reset() { UserDefaults.standard.removeObject(forKey: storageKey) }
+
+    private static func normalize(_ s: String) -> String {
+        s.lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+    }
+
+    private static func load() -> [Entry] {
+        guard let data = UserDefaults.standard.data(forKey: storageKey),
+              let entries = try? JSONDecoder().decode([Entry].self, from: data)
+        else { return [] }
+        return entries
+    }
+
+    private static func save(_ entries: [Entry]) {
+        if let data = try? JSONEncoder().encode(entries) {
+            UserDefaults.standard.set(data, forKey: storageKey)
+        }
+    }
+}
+
 // MARK: - On-device intelligence
 
 /// Wraps all Apple Foundation Models use behind availability gates. On devices
@@ -348,14 +404,19 @@ enum IntelligenceService {
     static func parse(_ text: String) async -> [DraftTxn] {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return [] }
+        var drafts: [DraftTxn] = []
         #if canImport(FoundationModels)
         if #available(iOS 26, macOS 26, *), isAvailable {
-            if let drafts = try? await parseWithModel(trimmed), !drafts.isEmpty {
-                return drafts
-            }
+            drafts = (try? await parseWithModel(trimmed)) ?? []
         }
         #endif
-        return parseHeuristic(trimmed)
+        if drafts.isEmpty { drafts = parseHeuristic(trimmed) }
+        // Your remembered choice for a known merchant wins over the model's guess.
+        return drafts.map { draft in
+            var d = draft
+            if let learned = CategoryMemory.category(for: d.note) { d.category = learned }
+            return d
+        }
     }
 
     /// Warm up the on-device model so the first real interpretation is fast
