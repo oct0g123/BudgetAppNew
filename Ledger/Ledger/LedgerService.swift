@@ -358,6 +358,20 @@ enum IntelligenceService {
         return parseHeuristic(trimmed)
     }
 
+    /// Warm up the on-device model so the first real interpretation is fast
+    /// (the cold first call can otherwise take ~30s while the model loads).
+    /// Safe to call repeatedly; no-op when AI is unavailable.
+    static func prewarm() {
+        #if canImport(FoundationModels)
+        if #available(iOS 26, macOS 26, *), isAvailable {
+            sharedSession().prewarm()
+        }
+        #endif
+    }
+
+    /// Reused so the model + schema only warm up once per launch.
+    private static var _session: Any?
+
     // MARK: Heuristic fallback
 
     /// Best-effort "$X <desc> to <bucket>" parser, splitting on "and"/commas.
@@ -370,7 +384,7 @@ enum IntelligenceService {
 
     private static func parseChunk(_ chunk: String) -> DraftTxn? {
         guard let amount = firstAmount(in: chunk), amount > 0 else { return nil }
-        let category = bucket(in: chunk) ?? .needs
+        let category = bucket(in: chunk) ?? guessCategory(chunk)
         let note = cleanNote(chunk)
         return DraftTxn(note: note.isEmpty ? category.title : note,
                         amount: amount, category: category)
@@ -391,6 +405,20 @@ enum IntelligenceService {
         return nil
     }
 
+    /// Keyword-based bucket guess for the fallback when no bucket is named.
+    private static func guessCategory(_ text: String) -> BudgetCategory {
+        let l = text.lowercased()
+        let savings = ["saving", "save", "invest", "401k", "ira", "emergency fund"]
+        let wants = ["takeout", "take out", "dining", "dinner", "lunch", "coffee",
+                     "movie", "game", "tv", "television", "netflix", "spotify",
+                     "subscription", "concert", "clothes", "shopping", "bar",
+                     "drinks", "gift", "vacation", "travel", "hobby", "gadget",
+                     "electronics", "restaurant"]
+        if savings.contains(where: l.contains) { return .savings }
+        if wants.contains(where: l.contains) { return .wants }
+        return .needs
+    }
+
     private static func cleanNote(_ s: String) -> String {
         var out = s
         if let r = out.range(of: amountPattern, options: .regularExpression) {
@@ -407,8 +435,16 @@ enum IntelligenceService {
 
     #if canImport(FoundationModels)
     @available(iOS 26, macOS 26, *)
+    private static func sharedSession() -> LanguageModelSession {
+        if let existing = _session as? LanguageModelSession { return existing }
+        let created = LanguageModelSession { Self.instructions }
+        _session = created
+        return created
+    }
+
+    @available(iOS 26, macOS 26, *)
     private static func parseWithModel(_ text: String) async throws -> [DraftTxn] {
-        let session = LanguageModelSession { Self.instructions }
+        let session = sharedSession()
         let response = try await session.respond(to: text, generating: CommandResultAI.self)
         return response.content.transactions.compactMap { ai in
             guard ai.amount > 0 else { return nil }
@@ -421,10 +457,22 @@ enum IntelligenceService {
     }
 
     private static let instructions = """
-    You turn a person's plain-language note about money they spent or saved into structured transactions for a 50/30/20 budget.
-    For each distinct transaction, extract a short note, a positive dollar amount, and one bucket.
-    Buckets: "needs" = essentials like rent, groceries, utilities, transport, insurance; "savings" = money saved, transferred to savings, or invested; "wants" = discretionary like dining out, entertainment, shopping, hobbies.
-    If the bucket isn't stated, infer the most likely one from the description.
+    You turn a person's plain-language note about money into structured transactions for a 50/30/20 budget.
+    For each distinct transaction, extract a short note, a positive dollar amount, and one bucket: needs, savings, or wants.
+
+    Always choose the bucket from the description, even when the person doesn't name it:
+    - needs = essentials: rent, mortgage, groceries, utilities, electric/water/gas bills, fuel, transit, insurance, phone bill, medicine, childcare.
+    - wants = discretionary: takeout, dining out, coffee, alcohol, movies, games, electronics, a TV, gadgets, clothes, hobbies, streaming subscriptions, gifts, travel, concerts.
+    - savings = money set aside or invested: transfers to savings, emergency fund, 401k, IRA, brokerage/investments.
+
+    Examples:
+    - "groceries $100" -> note: Groceries, amount: 100, category: needs
+    - "takeout $30" -> note: Takeout, amount: 30, category: wants
+    - "bought a tv for $1000" -> note: TV, amount: 1000, category: wants
+    - "rent 1800" -> note: Rent, amount: 1800, category: needs
+    - "put 500 into savings" -> note: Savings, amount: 500, category: savings
+    - "$60 gift for mom" -> note: Gift, amount: 60, category: wants
+
     Only include transactions the person actually mentioned. Amounts are positive numbers with no currency symbols.
     """
     #endif

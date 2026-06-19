@@ -92,9 +92,13 @@ struct BudgetView: View {
         .tint(DS.gold)
         .sensoryFeedback(.selection, trigger: filter)
         .sensoryFeedback(.success, trigger: closeCount)
-        .onAppear {
-            // Make sure the real current month exists on first launch.
-            if currentMonth == nil && viewedKey == MonthKey.current {
+        .task(id: viewedKey) {
+            // Make sure the current month exists — but on a fresh install give
+            // iCloud a few seconds to import an existing month first, so we
+            // don't create an empty duplicate that has to be merged away.
+            guard currentMonth == nil, viewedKey == MonthKey.current else { return }
+            try? await Task.sleep(for: .seconds(4))
+            if currentMonth == nil, viewedKey == MonthKey.current {
                 LedgerService.ensureMonth(forKey: viewedKey, in: context)
             }
         }
@@ -539,6 +543,7 @@ struct CommandBarView: View {
             }
         }
         .tint(DS.gold)
+        .task { IntelligenceService.prewarm() }
         .sensoryFeedback(.success, trigger: saveCount)
         #if os(iOS)
         .presentationDetents([.medium, .large])
