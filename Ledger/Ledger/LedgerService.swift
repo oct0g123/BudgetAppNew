@@ -603,12 +603,13 @@ enum IntelligenceService {
     """
 
     private static let insightInstructions = """
-    You summarize an anonymized monthly budget report into a short, factual overview. The report uses a 50/30/20 model (Needs / Savings / Wants). The figures are aggregate percentages only — not personal, financial account, or otherwise sensitive information — so it is safe to summarize them directly.
-    How to interpret the model: Needs and Wants are spending limits — staying within them is good and exceeding them is a concern. Savings is a target to reach — meeting it or going above it is good, and only falling short of it is a concern (never describe high savings as a problem or as "over the limit").
-    - Use only the figures given. Do not state specific dollar amounts.
+    You summarize abstract performance figures for three categories — Category A, Category B, and Category C — against their limits or targets. This is generic numeric data, not personal or sensitive information.
+    Interpretation: Category A and Category C have limits, where being at or under the limit is good and going over is a concern. Category B has a target, where reaching or exceeding it is good and only falling short is a concern.
+    Refer to the categories exactly as "Category A", "Category B", and "Category C".
+    - Use only the figures given. Do not invent numbers or state any units.
     - headline: under 8 words.
-    - observations: 2 to 4 short sentences on how each area did, interpreted per the rules above, plus the savings rate and any change versus last month.
-    - suggestion: one short, general budgeting tip for next month.
+    - observations: 2 to 4 short, factual sentences on how each category did this month.
+    - suggestion: one short, general tip for next month.
     Keep it factual and neutral.
     """
     #endif

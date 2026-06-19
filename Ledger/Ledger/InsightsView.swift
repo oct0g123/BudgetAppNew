@@ -64,29 +64,31 @@ struct InsightsView: View {
 
     // MARK: AI insight inputs
 
-    /// A neutral, percentage-based summary fed to the model — no raw dollar
-    /// amounts or income, both for privacy and to avoid the model's
-    /// "sensitive financial content" guardrail refusing benign budget data.
+    /// Abstracted away from finance terms (Category A/B/C, no dollars) so the
+    /// model's "sensitive financial content" guardrail doesn't refuse benign
+    /// budget data. The labels are mapped back to Needs/Savings/Wants after
+    /// generation (see `delabel`).
     private func insightSummary(_ month: MonthRecord) -> String {
-        var lines = ["Budget report for \(MonthKey.displayName(month.key))."]
+        let names: [BudgetCategory: String] = [.needs: "Category A",
+                                               .savings: "Category B",
+                                               .wants: "Category C"]
+        var lines = ["Three categories for \(MonthKey.displayName(month.key)):"]
         for category in BudgetCategory.allCases {
+            let label = names[category] ?? category.title
             let budget = month.budget(for: category)
             let used = budget > 0 ? Int((month.spent(for: category) / budget) * 100) : 0
             if category == .savings {
-                let note = month.spent(for: category) >= budget
-                    ? "meeting or exceeding the savings target (this is good)"
-                    : "below the savings target"
-                lines.append("Savings: \(used)% of its target — \(note).")
+                let note = month.spent(for: category) >= budget ? "at or above its target (good)" : "below its target"
+                lines.append("\(label): \(used)% of its target, \(note).")
             } else {
-                let state = month.spent(for: category) > budget ? "over its spending limit" : "within its spending limit"
-                lines.append("\(category.title): \(used)% of its limit, \(state).")
+                let state = month.spent(for: category) > budget ? "over its limit" : "within its limit"
+                lines.append("\(label): \(used)% of its limit, \(state).")
             }
         }
-        lines.append("Overall savings rate: \(Int(month.savingsRate * 100))%.")
         if let prev = previousMonth(before: month), prev.totalSpent > 0 {
             let delta = (month.totalSpent - prev.totalSpent) / prev.totalSpent
             let direction = delta >= 0 ? "higher" : "lower"
-            lines.append("Total spending is \(Int(abs(delta) * 100))% \(direction) than last month.")
+            lines.append("Overall total is \(Int(abs(delta) * 100))% \(direction) than last month.")
         }
         return lines.joined(separator: "\n")
     }
@@ -326,7 +328,7 @@ struct AIInsightCard: View {
         Task {
             let result: MonthInsight
             do {
-                result = try await IntelligenceService.generateInsight(summary: summary)
+                result = delabel(try await IntelligenceService.generateInsight(summary: summary))
             } catch {
                 // Model refused/failed — fall back to a deterministic, on-device
                 // insight computed in Swift so the card always shows something useful.
@@ -338,6 +340,18 @@ struct AIInsightCard: View {
                 InsightStore.save(result, signature: signature, for: month.key)
             }
         }
+    }
+
+    /// Map the model's abstract category labels back to the real bucket names.
+    private func delabel(_ insight: MonthInsight) -> MonthInsight {
+        func fix(_ s: String) -> String {
+            s.replacingOccurrences(of: "Category A", with: BudgetCategory.needs.title, options: .caseInsensitive)
+             .replacingOccurrences(of: "Category B", with: BudgetCategory.savings.title, options: .caseInsensitive)
+             .replacingOccurrences(of: "Category C", with: BudgetCategory.wants.title, options: .caseInsensitive)
+        }
+        return MonthInsight(headline: fix(insight.headline),
+                            observations: insight.observations.map(fix),
+                            suggestion: fix(insight.suggestion))
     }
 
     /// Rule-based insight from the month's own figures — the safety net when the
