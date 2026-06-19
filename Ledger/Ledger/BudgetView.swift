@@ -19,6 +19,8 @@ struct BudgetView: View {
     @AppStorage("showBucketUsage") private var showBucketUsage = true
 
     @State private var filter: BudgetCategory? = nil
+    @State private var searchText = ""
+    @State private var sort: TxnSort = .dateDesc
     @State private var showingAdd = false
     @State private var showingCommandBar = false
     @State private var editingTransaction: Transaction?
@@ -56,6 +58,7 @@ struct BudgetView: View {
             #if !os(macOS)
             .toolbarTitleDisplayMode(.inline)
             #endif
+            .searchable(text: $searchText, prompt: Text("Search transactions"))
             .toolbar {
                 ToolbarItemGroup(placement: .navigation) {
                     Button {
@@ -78,6 +81,18 @@ struct BudgetView: View {
                         }
                         .disabled(currentMonth == nil || currentMonth?.isClosed == true)
                     }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Picker("Sort", selection: $sort) {
+                            ForEach(TxnSort.allCases, id: \.self) { option in
+                                Text(option.label).tag(option)
+                            }
+                        }
+                    } label: {
+                        Label("Sort", systemImage: "arrow.up.arrow.down")
+                    }
+                    .disabled(currentMonth == nil)
                 }
                 // iOS has the floating bottom-right + button, so the toolbar +
                 // is redundant there; keep it on macOS/visionOS (no floating one).
@@ -235,8 +250,10 @@ struct BudgetView: View {
         Section {
             let txns = filteredTransactions(month)
             if txns.isEmpty {
-                Text(filter == nil ? "No transactions yet."
-                                   : "No \(filter?.title.lowercased() ?? "") transactions.")
+                let query = searchText.trimmingCharacters(in: .whitespaces)
+                Text(!query.isEmpty ? "No transactions match \"\(query)\"."
+                     : filter == nil ? "No transactions yet."
+                     : "No \(filter?.title.lowercased() ?? "") transactions.")
                     .font(.subheadline)
                     .foregroundStyle(DS.textMuted)
             } else {
@@ -260,9 +277,20 @@ struct BudgetView: View {
     }
 
     private func filteredTransactions(_ month: MonthRecord) -> [Transaction] {
-        month.txns
+        let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        return month.txns
             .filter { filter == nil || $0.category == filter }
-            .sorted { $0.date > $1.date }
+            .filter { query.isEmpty || $0.desc.lowercased().contains(query) }
+            .sorted(by: sortPredicate)
+    }
+
+    private func sortPredicate(_ a: Transaction, _ b: Transaction) -> Bool {
+        switch sort {
+        case .dateDesc:   return a.date > b.date
+        case .dateAsc:    return a.date < b.date
+        case .amountDesc: return a.amount > b.amount
+        case .amountAsc:  return a.amount < b.amount
+        }
     }
 
     // MARK: Floating add button (iOS)
@@ -352,6 +380,21 @@ struct BudgetView: View {
                 LedgerService.ensureMonth(forKey: viewedKey, in: context)
             }
             .buttonStyle(.borderedProminent)
+        }
+    }
+}
+
+// MARK: - Transaction sort order
+
+enum TxnSort: CaseIterable {
+    case dateDesc, dateAsc, amountDesc, amountAsc
+
+    var label: String {
+        switch self {
+        case .dateDesc:   return "Newest first"
+        case .dateAsc:    return "Oldest first"
+        case .amountDesc: return "Largest first"
+        case .amountAsc:  return "Smallest first"
         }
     }
 }
