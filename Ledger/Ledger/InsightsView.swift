@@ -64,23 +64,22 @@ struct InsightsView: View {
 
     // MARK: AI insight inputs
 
-    /// A factual, pre-computed summary fed to the model (never raw rows).
+    /// A neutral, percentage-based summary fed to the model — no raw dollar
+    /// amounts or income, both for privacy and to avoid the model's
+    /// "sensitive financial content" guardrail refusing benign budget data.
     private func insightSummary(_ month: MonthRecord) -> String {
-        var lines = ["Month: \(MonthKey.displayName(month.key))",
-                     "Income: \(Money.string(month.income))"]
+        var lines = ["Budget report for \(MonthKey.displayName(month.key))."]
         for category in BudgetCategory.allCases {
-            lines.append("\(category.title): spent \(Money.string(month.spent(for: category))) of \(Money.string(month.budget(for: category))) budgeted")
+            let budget = month.budget(for: category)
+            let used = budget > 0 ? Int((month.spent(for: category) / budget) * 100) : 0
+            let state = month.spent(for: category) > budget ? "over its limit" : "within its limit"
+            lines.append("\(category.title): used \(used)% of its allocation, \(state).")
         }
-        lines.append("Total spent: \(Money.string(month.totalSpent))")
-        lines.append("Savings rate: \(Money.percent(month.savingsRate))")
-        if let prev = previousMonth(before: month) {
-            lines.append("Last month (\(MonthKey.shortMonthName(prev.key))): spent \(Money.string(prev.totalSpent)), savings rate \(Money.percent(prev.savingsRate))")
-        }
-        let top = month.txns.sorted { $0.amount > $1.amount }.prefix(3)
-        if !top.isEmpty {
-            let list = top.map { "\($0.desc.isEmpty ? $0.category.title : $0.desc) \(Money.string($0.amount))" }
-                .joined(separator: ", ")
-            lines.append("Largest transactions: \(list)")
+        lines.append("Overall savings rate: \(Int(month.savingsRate * 100))%.")
+        if let prev = previousMonth(before: month), prev.totalSpent > 0 {
+            let delta = (month.totalSpent - prev.totalSpent) / prev.totalSpent
+            let direction = delta >= 0 ? "higher" : "lower"
+            lines.append("Total spending is \(Int(abs(delta) * 100))% \(direction) than last month.")
         }
         return lines.joined(separator: "\n")
     }
@@ -246,7 +245,6 @@ struct AIInsightCard: View {
 
     @State private var insight: MonthInsight?
     @State private var isGenerating = false
-    @State private var errorText: String?
 
     var body: some View {
         Card {
@@ -294,22 +292,11 @@ struct AIInsightCard: View {
                         .font(Typography.mono(.caption2))
                         .foregroundStyle(DS.textMuted)
                 } else {
-                    if let errorText {
-                        Text("Couldn't generate an insight.")
-                            .font(.subheadline)
-                            .foregroundStyle(DS.needs)
-                        Text(errorText)
-                            .font(Typography.mono(.caption2))
-                            .foregroundStyle(DS.textMuted)
-                            .textSelection(.enabled)
-                    } else {
-                        Text("Get a quick, private read on this month's spending.")
-                            .font(.subheadline)
-                            .foregroundStyle(DS.textMuted)
-                    }
+                    Text("Get a quick, private read on this month's spending.")
+                        .font(.subheadline)
+                        .foregroundStyle(DS.textMuted)
                     Button(action: generate) {
-                        Label(errorText == nil ? "Generate insight" : "Try again",
-                              systemImage: "sparkles")
+                        Label("Generate insight", systemImage: "sparkles")
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(DS.gold)
@@ -329,21 +316,53 @@ struct AIInsightCard: View {
 
     private func generate() {
         isGenerating = true
-        errorText = nil
         Task {
+            let result: MonthInsight
             do {
-                let result = try await IntelligenceService.generateInsight(summary: summary)
-                await MainActor.run {
-                    isGenerating = false
-                    insight = result
-                    InsightStore.save(result, signature: signature, for: month.key)
-                }
+                result = try await IntelligenceService.generateInsight(summary: summary)
             } catch {
-                await MainActor.run {
-                    isGenerating = false
-                    errorText = String(describing: error)
-                }
+                // Model refused/failed — fall back to a deterministic, on-device
+                // insight computed in Swift so the card always shows something useful.
+                result = fallbackInsight()
+            }
+            await MainActor.run {
+                isGenerating = false
+                insight = result
+                InsightStore.save(result, signature: signature, for: month.key)
             }
         }
+    }
+
+    /// Rule-based insight from the month's own figures — the safety net when the
+    /// on-device model isn't usable (e.g. a guardrail refusal).
+    private func fallbackInsight() -> MonthInsight {
+        var observations: [String] = []
+        for category in BudgetCategory.allCases {
+            let budget = month.budget(for: category)
+            let spent = month.spent(for: category)
+            let pct = budget > 0 ? Int((spent / budget) * 100) : 0
+            if category == .savings {
+                observations.append("Savings reached \(pct)% of your goal\(spent >= budget ? " — nicely done." : ".")")
+            } else if spent > budget {
+                observations.append("\(category.title) went over budget (\(pct)% used).")
+            } else {
+                observations.append("\(category.title) stayed within budget (\(pct)% used).")
+            }
+        }
+        let rate = Int(month.savingsRate * 100)
+        let overNeeds = month.spent(for: .needs) > month.budget(for: .needs)
+        let overWants = month.spent(for: .wants) > month.budget(for: .wants)
+        let headline: String
+        if month.savingsRate >= 0.2 { headline = "Strong savings this month" }
+        else if overNeeds || overWants { headline = "Spending ran over budget" }
+        else { headline = "\(MonthKey.shortMonthName(month.key)) is on track" }
+        let suggestion: String
+        if overWants { suggestion = "Next month, trimming Wants would help you rebalance." }
+        else if overNeeds { suggestion = "Needs ran high — see if any essentials can come down next month." }
+        else if month.savingsRate < 0.2 { suggestion = "Consider directing a little more toward Savings next month." }
+        else { suggestion = "Keep the momentum going next month." }
+        return MonthInsight(headline: headline,
+                            observations: observations,
+                            suggestion: suggestion + " Savings rate \(rate)%.")
     }
 }
