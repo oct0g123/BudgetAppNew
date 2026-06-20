@@ -303,6 +303,15 @@ struct SettingsView: View {
             }
             .tint(DS.savings)
             .disabled(!BiometricAuth.isAvailable)
+            .onChange(of: appLockEnabled) { _, enabled in
+                // Trigger the iOS Face ID consent/confirmation right when the
+                // switch is turned on; revert if the user cancels or it fails.
+                guard enabled else { return }
+                Task {
+                    let ok = await BiometricAuth.authenticate(reason: "Confirm Face ID to lock Ledger")
+                    if !ok { await MainActor.run { appLockEnabled = false } }
+                }
+            }
         } header: {
             Text("Privacy")
         }
