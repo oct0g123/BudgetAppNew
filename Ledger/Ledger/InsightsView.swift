@@ -242,20 +242,42 @@ struct MonthSummaryInsightCard: View {
     }
 
     private func buildInsight() -> MonthInsight {
+        // Present tense ("so far") for the current, open month; past tense
+        // (recap) once it's closed or it's a past month.
+        let inProgress = !month.isClosed && month.key >= MonthKey.current
+        let monthName = MonthKey.shortMonthName(month.key)
+
         var observations: [String] = []
         for category in BudgetCategory.allCases {
             let budget = month.budget(for: category)
             let spent = month.spent(for: category)
             let pct = budget > 0 ? Int(((spent / budget) * 100).rounded()) : 0
-            if category == .savings {
-                observations.append("Savings reached \(pct)% of your goal\(spent >= budget ? " — nicely done." : ".")")
-            } else if spent > budget {
-                observations.append("\(category.title) went over budget (\(pct)% used).")
-            } else {
-                observations.append("\(category.title) stayed within budget (\(pct)% used).")
+            let over = spent > budget
+            switch category {
+            case .savings:
+                if inProgress {
+                    observations.append(over
+                        ? "Savings is already past your goal (\(pct)%) — great."
+                        : "Savings is at \(pct)% of your goal so far.")
+                } else {
+                    observations.append(over
+                        ? "Savings reached \(pct)% of your goal — nicely done."
+                        : "Savings reached \(pct)% of your goal.")
+                }
+            default:
+                if inProgress {
+                    observations.append(over
+                        ? "\(category.title) is already over budget (\(pct)% used)."
+                        : "\(category.title) is at \(pct)% of budget so far.")
+                } else {
+                    observations.append(over
+                        ? "\(category.title) went over budget (\(pct)% used)."
+                        : "\(category.title) stayed within budget (\(pct)% used).")
+                }
             }
         }
-        if let prev = previousMonth, prev.totalSpent > 0 {
+        // Month-over-month only compares fairly once the month is complete.
+        if !inProgress, let prev = previousMonth, prev.totalSpent > 0 {
             let delta = (month.totalSpent - prev.totalSpent) / prev.totalSpent
             let pct = Int((abs(delta) * 100).rounded())
             if pct >= 1 {
@@ -268,20 +290,33 @@ struct MonthSummaryInsightCard: View {
         let overWants = month.spent(for: .wants) > month.budget(for: .wants)
 
         let headline: String
-        if month.savingsRate >= 0.2 { headline = "Strong savings in \(MonthKey.shortMonthName(month.key))" }
-        else if overNeeds && overWants { headline = "Over budget in Needs and Wants" }
-        else if overNeeds || overWants { headline = "Spending ran over budget" }
-        else { headline = "\(MonthKey.shortMonthName(month.key)) is on track" }
+        if inProgress {
+            if overNeeds || overWants { headline = "Watch your spending in \(monthName)" }
+            else if month.savingsRate >= 0.2 { headline = "Saving strong so far" }
+            else { headline = "\(monthName) so far" }
+        } else {
+            if month.savingsRate >= 0.2 { headline = "Strong savings in \(monthName)" }
+            else if overNeeds && overWants { headline = "Over budget in Needs and Wants" }
+            else if overNeeds || overWants { headline = "Spending ran over budget" }
+            else { headline = "\(monthName) is on track" }
+        }
 
         let suggestion: String
-        if overNeeds && overWants { suggestion = "Trimming both Needs and Wants would help next month." }
-        else if overWants { suggestion = "Next month, trimming Wants would help you rebalance." }
-        else if overNeeds { suggestion = "Needs ran high — see if any essentials can come down next month." }
-        else if month.savingsRate < 0.2 { suggestion = "Consider directing a little more toward Savings next month." }
-        else { suggestion = "Nice balance — keep the momentum going next month." }
+        if inProgress {
+            let leftText = month.safeToSpend >= 0 ? " You have \(Money.string(month.safeToSpend)) left to spend." : ""
+            if overWants { suggestion = "Ease up on Wants for the rest of the month." + leftText }
+            else if overNeeds { suggestion = "Needs is running high — keep an eye on essentials." + leftText }
+            else if month.savingsRate < 0.2 { suggestion = "Consider moving a bit more toward Savings before month-end." + leftText }
+            else { suggestion = "You're on track — keep it up." + leftText }
+        } else {
+            if overNeeds && overWants { suggestion = "Trimming both Needs and Wants would help next month." }
+            else if overWants { suggestion = "Next month, trimming Wants would help you rebalance." }
+            else if overNeeds { suggestion = "Needs ran high — see if any essentials can come down next month." }
+            else if month.savingsRate < 0.2 { suggestion = "Consider directing a little more toward Savings next month." }
+            else { suggestion = "Nice balance — keep the momentum going next month." }
+            suggestion += " Savings rate \(rate)%."
+        }
 
-        return MonthInsight(headline: headline,
-                            observations: observations,
-                            suggestion: suggestion + " Savings rate \(rate)%.")
+        return MonthInsight(headline: headline, observations: observations, suggestion: suggestion)
     }
 }
