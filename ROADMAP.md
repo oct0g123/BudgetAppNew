@@ -36,6 +36,8 @@ Revisit before final polish / before building the related feature:
 - **iCloud/CloudKit sync (enabled):** cross-device sync of the SwiftData store,
   an in-app **sync status panel** (last received/sent + errors), and automatic
   **merge of duplicate months/settings** created across devices before sync
+- **Home & Lock Screen widgets:** Safe to Spend, Buckets, and Savings Goal —
+  fed by a shared App Group snapshot; tap to open the current month.
 - **AI command bar (5a) — "Tell Ledger":** on-device Apple Foundation Models
   parse plain English into draft transactions → preview/edit → confirm. Gated to
   Apple-Intelligence devices, regex fallback, and **learns your merchant→category
@@ -111,10 +113,11 @@ an **App Group + the CloudKit-synced store**. Order: iOS widgets → watch
 complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)arge.
 
 **iOS — widgets & system integration**
-- (M) Home Screen widgets: buckets remaining, safe-to-spend, savings ring —
-  reuses figures we already compute
-- (S–M) Lock Screen widgets: inline "$X left", circular bucket ring; free
-  StandBy support once Home widgets exist
+- [x] **Home Screen widgets — shipped.** Safe to Spend (small), Buckets
+      (medium), Savings Goal ring (small). A `LedgerWidgets` extension reads a
+      `BudgetSnapshot` the app writes to the App Group `group.com.anthonystacy.Ledger`.
+- [x] **Lock Screen widgets — shipped.** Safe to Spend inline + rectangular,
+      Savings Goal circular. (StandBy rides along.)
 - (S–M) Control Center control + Action Button: one-tap "Add Transaction"
   deep-link, or remaining-budget readout
 - (M) App Intents / Siri / Shortcuts / Spotlight ("how much is left?",
