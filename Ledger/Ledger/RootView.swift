@@ -88,7 +88,7 @@ struct SafeToSpendBar: View {
 
     var body: some View {
         if let month {
-            let left = month.income - month.totalSpent
+            let left = month.safeToSpend
             HStack(spacing: Spacing.sm) {
                 Circle()
                     .fill(left >= 0 ? DS.savings : DS.needs)
@@ -97,7 +97,7 @@ struct SafeToSpendBar: View {
                     .font(Typography.mono(.footnote, weight: .medium))
                     .foregroundStyle(DS.textMuted)
                 Text(left >= 0 ? Money.string(left) + " left to spend"
-                               : Money.string(-left) + " over income")
+                               : Money.string(-left) + " over budget")
                     .font(Typography.mono(.footnote, weight: .semibold))
                     .foregroundStyle(left >= 0 ? DS.text : DS.needs)
             }

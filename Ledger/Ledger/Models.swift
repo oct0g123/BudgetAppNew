@@ -133,6 +133,14 @@ final class MonthRecord {
         guard income > 0 else { return 0 }
         return spent(for: .savings) / income
     }
+
+    /// How much can still be spent this month while keeping the savings goal
+    /// intact — what's left in the Needs and Wants buckets. Savings is treated
+    /// as set aside, so unmet savings is never counted as "spendable." Can go
+    /// negative if Needs + Wants are already over budget.
+    var safeToSpend: Double {
+        remaining(for: .needs) + remaining(for: .wants)
+    }
 }
 
 // MARK: - RecurringRule
