@@ -87,19 +87,32 @@ WWDC26 notes (tooling lands a few months out):
 Decisions made: preview + confirm before applying ✅ · command scope = adding
 transactions ✅ · purchase-type tags (5c) = undecided (see Open decisions).
 
-- [x] **5a — Command bar ("Tell Ledger")** — shipped.
-- [ ] **5b — AI insights (Insights tab)** ← next. Compute real aggregates
-      (savings rate, per-bucket spend, MoM deltas, top transactions) in Swift,
-      feed the *summary* (not raw rows) to the model, render a structured
-      `MonthInsight { headline, observations, suggestion }` beside the real
-      figures. On-demand generate + per-month cache.
+- [x] **5a — Command bar ("Tell Ledger")** — shipped. Uses the on-device model
+      for structured extraction (its strength), with a regex fallback +
+      merchant-category learning.
+- [x] **5b — Monthly summary (Insights tab)** — shipped, but **deterministic
+      (Swift-computed), not model-generated.** We tried the on-device model and
+      it was unreliable for factual financial prose: wrong arithmetic, swapped
+      categories, and the safety **guardrail frequently refused budget content**
+      ("may contain sensitive content") even when fed anonymized percentages.
+      Lesson: the small on-device model is great at *extraction* (5a) but not at
+      *generating accurate financial commentary*. Revisit AI prose here only if a
+      bigger model (PCC) or a future OS with relaxed guardrails makes it reliable.
 - [ ] **5c — Understanding purchase types.** Cluster transaction *descriptions*
       into finer types (Dining, Groceries, Subscriptions, Transport, Health,
-      Shopping…). Powers "Dining up 40%" / "6 subscriptions = $94/mo". (Stored
-      tags vs. narrative-only is an Open decision.)
-- [ ] **5d — Ask-your-data Q&A.** Conversational mode via tool calling: expose
-      `monthSummary(...)`, `spendByCategory(...)` so answers are grounded in
-      real data.
+      Shopping…). Powers "Dining up 40%" / "6 subscriptions = $94/mo". This is
+      *extraction/classification* (the model's strength), so it should be
+      reliable on-device like 5a. (Stored tags vs. narrative-only is an Open
+      decision.)
+- [ ] **5d — Ask-your-data Q&A** ("what did I overspend on?"). Conversational
+      mode via **tool calling**: expose `monthSummary(...)`, `spendByCategory(...)`
+      so Swift returns the real numbers and the model only phrases the answer
+      (never does math). Tool calling solves accuracy, **but the same finance
+      guardrail that blocked 5b will likely refuse free-form answers
+      inconsistently on-device.** So 5d's real home is **Private Cloud Compute**
+      (a larger, still-private Apple model) once that tooling ships post-WWDC26 —
+      or an external provider if privacy trade-offs are acceptable. **Gated on PCC
+      availability; effectively a 2.0-era feature.**
 
 ## Platform expansion
 
