@@ -8,6 +8,7 @@
 
 import Foundation
 import SwiftData
+import WidgetKit
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -306,6 +307,56 @@ struct MonthInsight {
     var headline: String
     var observations: [String]
     var suggestion: String
+}
+
+// MARK: - Widget snapshot
+
+/// A tiny current-month summary the app writes to the shared App Group so the
+/// widgets can render without touching SwiftData. The widget target keeps an
+/// identical copy of this struct (same JSON shape) — keep them in sync.
+struct BudgetSnapshot: Codable {
+    var monthKey: String
+    var monthName: String
+    var shortMonthName: String
+    var safeToSpend: Double
+    var needsSpent: Double
+    var needsBudget: Double
+    var savingsSpent: Double
+    var savingsBudget: Double
+    var wantsSpent: Double
+    var wantsBudget: Double
+    var savingsRate: Double
+    var updatedAt: Date
+}
+
+enum BudgetSnapshotStore {
+    static let appGroup = "group.com.anthonystacy.Ledger"
+    static let key = "currentBudgetSnapshot"
+
+    /// Build a snapshot for the real current calendar month and write it to the
+    /// shared container, then ask WidgetKit to refresh. No-ops if the App Group
+    /// isn't available or the current month doesn't exist yet.
+    static func update(from months: [MonthRecord]) {
+        guard let defaults = UserDefaults(suiteName: appGroup),
+              let month = months.first(where: { $0.key == MonthKey.current }) else { return }
+        let snapshot = BudgetSnapshot(
+            monthKey: month.key,
+            monthName: MonthKey.displayName(month.key),
+            shortMonthName: MonthKey.shortMonthName(month.key),
+            safeToSpend: month.safeToSpend,
+            needsSpent: month.spent(for: .needs),
+            needsBudget: month.budget(for: .needs),
+            savingsSpent: month.spent(for: .savings),
+            savingsBudget: month.budget(for: .savings),
+            wantsSpent: month.spent(for: .wants),
+            wantsBudget: month.budget(for: .wants),
+            savingsRate: month.savingsRate,
+            updatedAt: Date())
+        if let data = try? JSONEncoder().encode(snapshot) {
+            defaults.set(data, forKey: key)
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+    }
 }
 
 // MARK: - Learned merchant categories

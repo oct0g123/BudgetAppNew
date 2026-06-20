@@ -22,6 +22,7 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var navigator = AppNavigator()
     @Query private var months: [MonthRecord]
+    @AppStorage("viewedMonthKey") private var viewedKey: String = MonthKey.current
 
     var body: some View {
         TabView(selection: $navigator.selectedTab) {
@@ -45,14 +46,28 @@ struct RootView: View {
         // Consolidate any duplicate months/settings that arrive via iCloud sync.
         // Runs on launch and whenever the app re-activates (e.g. after a fresh
         // import has brought duplicates down from another device).
-        .task { LedgerService.mergeDuplicates(in: context) }
+        .task {
+            LedgerService.mergeDuplicates(in: context)
+            BudgetSnapshotStore.update(from: months)
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { LedgerService.mergeDuplicates(in: context) }
+            // Refresh the widget snapshot on every scene transition (covers
+            // leaving the app to view a widget after an edit).
+            BudgetSnapshotStore.update(from: months)
         }
         // Re-run when months arrive/change — catches duplicates that import
-        // from iCloud a few seconds *after* a cold launch.
+        // from iCloud a few seconds *after* a cold launch, and keeps the widget
+        // snapshot current.
         .onChange(of: months.count) { _, _ in
             LedgerService.mergeDuplicates(in: context)
+            BudgetSnapshotStore.update(from: months)
+        }
+        // Deep link from a widget tap → jump to the current month's Budget tab.
+        .onOpenURL { url in
+            guard url.scheme == "ledger" else { return }
+            viewedKey = MonthKey.current
+            navigator.selectedTab = .budget
         }
     }
 }
