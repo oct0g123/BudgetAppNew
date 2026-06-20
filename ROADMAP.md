@@ -120,10 +120,9 @@ complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)ar
       Savings Goal circular. (StandBy rides along.)
 - (S–M) Control Center control + Action Button: one-tap "Add Transaction"
   deep-link, or remaining-budget readout
-- (M) App Intents / Siri / Shortcuts / Spotlight ("how much is left?",
-  "add $12 groceries") — **shares the 5a parser**. WWDC26: App/Entity/Intent
-  Schemas, View Annotations, Spotlight semantic index. Validate with
-  AppIntentsTesting.
+- (M) **App Intents / Siri / Shortcuts / Spotlight** ← **up next** ("how much is
+  left?", "add $12 groceries"). WWDC26: App/Entity/Intent Schemas, View
+  Annotations, Spotlight semantic index. Validate with AppIntentsTesting.
 
 **watchOS**
 - (M) Watch-face **complications**: glanceable "$X left" / bucket ring — the
@@ -150,7 +149,7 @@ complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)ar
 ## System features
 - (M) **Budget alerts** — local notifications at 80% / over a bucket (no push
   entitlement needed)
-- (S–M) **Biometric lock** (Face ID) for privacy
+- (S–M) **Biometric lock** (Face ID) for privacy ← **up next**
 
 ## Polish & correctness
 - First-run onboarding (income + split)
