@@ -149,7 +149,10 @@ complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)ar
 ## System features
 - (M) **Budget alerts** — local notifications at 80% / over a bucket (no push
   entitlement needed)
-- (S–M) **Biometric lock** (Face ID) for privacy ← **up next**
+- [x] **Biometric lock** (Face ID) — shipped (Settings → Privacy). ⚠️ **Felt
+      sluggish in Debug** — re-evaluate on a Release/TestFlight build and **remove
+      it if it degrades launch/unlock** (iOS 18's built-in per-app "Require Face
+      ID" is a fine native fallback). Isolated: `LockGate` + the Settings toggle.
 
 ## Polish & correctness
 - First-run onboarding (income + split)
@@ -161,6 +164,9 @@ complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)ar
 ## Reliability & performance
 - **Deploy CloudKit schema to Production** before any TestFlight/App Store build
   (App Store builds use Production; sync fails there until the schema is deployed)
+- ⚠️ **TestFlight check — biometric lock performance.** It was sluggish in Debug;
+  confirm it's fine on a Release build and **remove it if it still degrades
+  launch/unlock** (per the decision above).
 - Verify cold-launch time on a **Release** build (the ~20s first-launch is a
   Debug + first-install + Dev-CloudKit artifact; confirm it's a non-issue shipped)
 - Optional: "delete this occurrence vs. the whole recurring rule" choice when
