@@ -71,3 +71,67 @@ struct SectionLabel: View {
             .foregroundStyle(DS.goldDim)
     }
 }
+
+// MARK: - Money input field
+
+/// A currency text field that formats with the locale symbol + thousands
+/// separators *live* as you type (e.g. "$10,000.50"), bound to a Double.
+/// Used for every money input so formatting is consistent app-wide.
+struct MoneyField: View {
+    var placeholder: String = "0"
+    @Binding var amount: Double
+    @State private var text = ""
+
+    private static var symbol: String { Locale.current.currencySymbol ?? "$" }
+
+    var body: some View {
+        TextField(placeholder, text: $text)
+            #if os(iOS)
+            .keyboardType(.decimalPad)
+            #endif
+            .onAppear { text = amount == 0 ? "" : Self.display(amount) }
+            .onChange(of: text) { _, newValue in
+                let r = Self.reformat(newValue)
+                if r.display != newValue { text = r.display }
+                if abs(r.value - amount) > 0.0001 { amount = r.value }
+            }
+            .onChange(of: amount) { _, newValue in
+                // Reflect external/programmatic changes when not actively editing.
+                if abs(Self.parse(text) - newValue) > 0.0001 {
+                    text = newValue == 0 ? "" : Self.display(newValue)
+                }
+            }
+    }
+
+    static func parse(_ s: String) -> Double {
+        Double(s.filter { $0.isNumber || $0 == "." }) ?? 0
+    }
+
+    static func display(_ value: Double) -> String {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.maximumFractionDigits = 2
+        f.minimumFractionDigits = 0
+        return symbol + (f.string(from: NSNumber(value: value)) ?? "0")
+    }
+
+    /// Re-group the integer part live while preserving an in-progress decimal.
+    static func reformat(_ s: String) -> (display: String, value: Double) {
+        var seenDot = false, intPart = "", fracPart = ""
+        for ch in s {
+            if ch.isNumber {
+                if seenDot { if fracPart.count < 2 { fracPart.append(ch) } }
+                else { intPart.append(ch) }
+            } else if ch == "." && !seenDot {
+                seenDot = true
+            }
+        }
+        if intPart.isEmpty && !seenDot { return ("", 0) }   // empty → show the placeholder
+        let intValue = Int(intPart) ?? 0
+        let gf = NumberFormatter(); gf.numberStyle = .decimal; gf.maximumFractionDigits = 0
+        let groupedInt = gf.string(from: NSNumber(value: intValue)) ?? "0"
+        let display = symbol + groupedInt + (seenDot ? "." + fracPart : "")
+        let numeric = (intPart.isEmpty ? "0" : intPart) + (fracPart.isEmpty ? "" : "." + fracPart)
+        return (display, Double(numeric) ?? 0)
+    }
+}

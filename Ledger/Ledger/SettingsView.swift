@@ -28,7 +28,6 @@ struct SettingsView: View {
 
     @EnvironmentObject private var sync: SyncMonitor
 
-    @State private var incomeDraft = ""
     @State private var needsPct = 50
     @State private var savingsPct = 20
     @State private var wantsPct = 30
@@ -104,17 +103,12 @@ struct SettingsView: View {
     private var incomeSection: some View {
         Section {
             LabeledContent {
-                TextField("Monthly default", text: $incomeDraft, prompt: Text("0"))
+                MoneyField(amount: Binding(get: { settings.defaultIncome },
+                                           set: { settings.defaultIncome = $0 }))
                     .labelsHidden()
-                    #if os(iOS)
-                    .keyboardType(.decimalPad)
-                    #endif
                     .multilineTextAlignment(.trailing)
                     .font(Typography.mono(.body, weight: .medium))
                     .foregroundStyle(DS.text)
-                    .onChange(of: incomeDraft) { _, newValue in
-                        settings.defaultIncome = Double(newValue) ?? 0
-                    }
             } label: {
                 Text("Monthly default")
             }
@@ -464,7 +458,6 @@ struct SettingsView: View {
 
     private func loadDrafts() {
         let s = settings
-        incomeDraft = String(format: "%.0f", s.defaultIncome)
         needsPct = Int(s.defaultNeedsPct)
         savingsPct = Int(s.defaultSavingsPct)
         wantsPct = Int(s.defaultWantsPct)

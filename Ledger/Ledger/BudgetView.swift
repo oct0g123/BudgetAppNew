@@ -31,10 +31,6 @@ struct BudgetView: View {
     @State private var undoVisible = false
     @State private var undoToken = 0
 
-    private var currencyCode: String {
-        Locale.current.currency?.identifier ?? "USD"
-    }
-
     private var currentMonth: MonthRecord? {
         months.first { $0.key == viewedKey }
     }
@@ -198,14 +194,9 @@ struct BudgetView: View {
                     .font(Typography.mono(.caption2, weight: .semibold))
                     .tracking(2)
                     .foregroundStyle(DS.goldDim)
-                TextField("Income",
-                          value: Binding(get: { month.income },
-                                         set: { month.income = $0 }),
-                          format: .currency(code: currencyCode))
+                MoneyField(amount: Binding(get: { month.income },
+                                           set: { month.income = $0 }))
                     .labelsHidden()
-                    #if os(iOS)
-                    .keyboardType(.decimalPad)
-                    #endif
                     .font(Typography.mono(.title, weight: .medium))
                     .foregroundStyle(DS.text)
                     .disabled(month.isClosed)
@@ -565,7 +556,6 @@ struct CommandBarView: View {
     @State private var saveCount = 0
 
     private enum Stage { case input, thinking, review }
-    private var currencyCode: String { Locale.current.currency?.identifier ?? "USD" }
 
     var body: some View {
         NavigationStack {
@@ -644,11 +634,7 @@ struct CommandBarView: View {
                         TextField("Description", text: $draft.note)
                             .foregroundStyle(DS.text)
                         HStack {
-                            TextField("Amount", value: $draft.amount,
-                                      format: .currency(code: currencyCode))
-                                #if os(iOS)
-                                .keyboardType(.decimalPad)
-                                #endif
+                            MoneyField(placeholder: "Amount", amount: $draft.amount)
                                 .font(Typography.mono(.body, weight: .medium))
                                 .foregroundStyle(DS.text)
                             Spacer()

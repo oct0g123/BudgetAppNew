@@ -153,7 +153,7 @@ struct OnboardingView: View {
     @AppStorage("hasCompletedOnboarding") private var hasOnboarded = false
     @AppStorage("viewedMonthKey") private var viewedKey: String = MonthKey.current
 
-    @State private var incomeText = ""
+    @State private var incomeAmount: Double = 0
     @State private var needsPct = 50
     @State private var savingsPct = 20
     @State private var wantsPct = 30
@@ -176,10 +176,7 @@ struct OnboardingView: View {
 
                 VStack(alignment: .leading, spacing: Spacing.sm) {
                     SectionLabel("Monthly Income")
-                    TextField("0", text: $incomeText)
-                        #if os(iOS)
-                        .keyboardType(.decimalPad)
-                        #endif
+                    MoneyField(placeholder: "0", amount: $incomeAmount)
                         .font(Typography.mono(.title, weight: .medium))
                         .foregroundStyle(DS.text)
                         .padding(Spacing.md)
@@ -239,7 +236,7 @@ struct OnboardingView: View {
     }
 
     private func finish() {
-        let income = Double(incomeText.trimmingCharacters(in: .whitespaces)) ?? 0
+        let income = incomeAmount
         let settings = LedgerService.settings(in: context)
         settings.defaultIncome = income
         settings.defaultSplit = split

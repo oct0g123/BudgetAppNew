@@ -26,9 +26,6 @@ struct AddTransactionView: View {
     @State private var saveCount = 0
 
     private var isEditing: Bool { existing != nil }
-    private var currencyCode: String {
-        Locale.current.currency?.identifier ?? "USD"
-    }
     private var isValid: Bool { (amount ?? 0) > 0 }
 
     var body: some View {
@@ -37,12 +34,8 @@ struct AddTransactionView: View {
                 Section {
                     TextField("Description", text: $desc, prompt: Text("e.g. Groceries"))
                         .foregroundStyle(DS.text)
-                    TextField("Amount", value: $amount,
-                              format: .currency(code: currencyCode),
-                              prompt: Text("Amount"))
-                        #if os(iOS)
-                        .keyboardType(.decimalPad)
-                        #endif
+                    MoneyField(placeholder: "Amount",
+                               amount: Binding(get: { amount ?? 0 }, set: { amount = $0 }))
                         .font(Typography.mono(.body, weight: .medium))
                         .foregroundStyle(DS.text)
                 }

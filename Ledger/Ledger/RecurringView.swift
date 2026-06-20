@@ -119,10 +119,6 @@ struct RecurringEditor: View {
     @State private var category: BudgetCategory = .needs
     @State private var day = 1
 
-    private var currencyCode: String {
-        Locale.current.currency?.identifier ?? "USD"
-    }
-
     private var isValid: Bool { (amount ?? 0) > 0 }
 
     var body: some View {
@@ -131,12 +127,8 @@ struct RecurringEditor: View {
                 Section {
                     TextField("Description", text: $desc, prompt: Text("e.g. Rent"))
                         .foregroundStyle(DS.text)
-                    TextField("Amount", value: $amount,
-                              format: .currency(code: currencyCode),
-                              prompt: Text("Amount"))
-                        #if os(iOS)
-                        .keyboardType(.decimalPad)
-                        #endif
+                    MoneyField(placeholder: "Amount",
+                               amount: Binding(get: { amount ?? 0 }, set: { amount = $0 }))
                         .font(Typography.mono(.body, weight: .medium))
                         .foregroundStyle(DS.text)
                 }
