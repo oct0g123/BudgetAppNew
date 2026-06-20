@@ -4,13 +4,27 @@ Status: **planned, not built.** Widgets need a new Xcode target + an App Group
 capability, which must be set up in Xcode (and tested), so we'll build this in a
 guided session at the Mac. This doc is the plan to review first.
 
-## Goal (v1)
-Glanceable Home Screen + Lock Screen widgets that show, for the current month:
-- **Safe to spend** (income − total spent)
-- **Buckets remaining** (Needs / Savings / Wants left)
-- A **savings ring** (savings spent vs. goal)
+## Goal (v1) — finalized set
 
-Tapping a widget deep-links into the app. No editing from the widget in v1.
+Three widget kinds, all reading one shared snapshot of the **current month**.
+Tapping any of them deep-links into the app (Budget tab). No editing from the
+widget in v1.
+
+1. **Safe to Spend** — families: **small** (Home), **accessoryInline** +
+   **accessoryRectangular** (Lock).
+   - Hero = **safe to spend** = *remaining Needs + remaining Wants* (savings is
+     reserved — the corrected definition; never counts unmet savings as
+     spendable). Small adds a slim 3-segment bar of bucket usage; rectangular
+     adds a one-line bucket readout; inline shows "Jun · $274 left".
+2. **Buckets** — family: **medium** (Home).
+   - Mini-Budget: Needs / Savings / Wants, each with spent/budget, a progress
+     bar, and remaining. Over = red for Needs/Wants, sage when Savings exceeds
+     its goal.
+3. **Savings Goal** — families: **small** (Home), **accessoryCircular** (Lock).
+   - A ring of **savings saved vs. goal** with the amount/percentage in the
+     center. (Chosen over an "income used" ring.)
+
+StandBy / iPad ride along automatically once Home + Lock widgets exist.
 
 ## Why this needs an Xcode session (not buildable blind)
 1. **New Widget Extension target.** Created via Xcode → File → New → Target →
@@ -31,9 +45,11 @@ the **App Group `UserDefaults`** whenever data changes. The widget reads that.
 - **Pros:** simple, fast, robust; widget never touches SwiftData/CloudKit;
   **no store-location change → lowest risk** to the working app.
 - **Cons:** widget shows only what we snapshot (fine for v1's glance numbers).
-- Shape: `struct BudgetSnapshot: Codable { month, income, safeToSpend,
-  needsRemaining, savingsRemaining, wantsRemaining, savingsRate, updatedAt }`,
-  written by a small `SnapshotWriter` on save / month change / app background.
+- Shape: `struct BudgetSnapshot: Codable` with `monthKey`, `monthName`,
+  `safeToSpend`, and per-bucket `spent`/`budget` for Needs/Savings/Wants
+  (progress bars + remaining are derived), plus `savingsRate` and `updatedAt`.
+  The savings ring uses Savings `spent`/`budget`. Written by a small
+  `SnapshotWriter` on save / month change / app background.
 
 ### Option B: widget opens the shared SwiftData store directly
 Move the `ModelContainer` to the App Group container; the widget builds the same
