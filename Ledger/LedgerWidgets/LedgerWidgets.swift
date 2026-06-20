@@ -135,7 +135,7 @@ struct SafeToSpendView: View {
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 2) {
                 Text("SAFE TO SPEND").font(.caption2).widgetAccentable()
-                Text(amount).font(.title3.weight(.semibold))
+                Text(positive ? amount : "\(amount) over").font(.title3.weight(.semibold))
                 Text("\(widgetMoney(snapshot.needsRemaining)) needs · \(widgetMoney(snapshot.wantsRemaining)) wants")
                     .font(.caption2).lineLimit(1).minimumScaleFactor(0.7)
             }
@@ -194,7 +194,9 @@ struct BucketsView: View {
             HStack {
                 Text(snapshot.monthName).font(.headline).foregroundStyle(WDS.text)
                 Spacer()
-                Text("\(widgetMoney(snapshot.safeToSpend)) left")
+                Text(snapshot.safeToSpend >= 0
+                     ? "\(widgetMoney(snapshot.safeToSpend)) left"
+                     : "\(widgetMoney(abs(snapshot.safeToSpend))) over")
                     .font(.caption.weight(.medium)).foregroundStyle(WDS.textMuted)
             }
             row("Needs", WDS.needs, snapshot.needsSpent, snapshot.needsBudget, savings: false)
