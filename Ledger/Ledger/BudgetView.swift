@@ -17,6 +17,7 @@ struct BudgetView: View {
     @Query(sort: \MonthRecord.key) private var months: [MonthRecord]
 
     @AppStorage("showBucketUsage") private var showBucketUsage = true
+    @AppStorage("hasCompletedOnboarding") private var hasOnboarded = false
 
     @State private var filter: BudgetCategory? = nil
     @State private var searchText = ""
@@ -114,10 +115,11 @@ struct BudgetView: View {
         .task(id: viewedKey) {
             // Make sure the current month exists — but on a fresh install give
             // iCloud a few seconds to import an existing month first, so we
-            // don't create an empty duplicate that has to be merged away.
-            guard currentMonth == nil, viewedKey == MonthKey.current else { return }
+            // don't create an empty duplicate that has to be merged away. Skip
+            // entirely until onboarding is done (onboarding creates the month).
+            guard hasOnboarded, currentMonth == nil, viewedKey == MonthKey.current else { return }
             try? await Task.sleep(for: .seconds(4))
-            if currentMonth == nil, viewedKey == MonthKey.current {
+            if hasOnboarded, currentMonth == nil, viewedKey == MonthKey.current {
                 LedgerService.ensureMonth(forKey: viewedKey, in: context)
             }
         }

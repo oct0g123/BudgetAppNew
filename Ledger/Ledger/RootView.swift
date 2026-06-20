@@ -23,6 +23,11 @@ struct RootView: View {
     @StateObject private var navigator = AppNavigator()
     @Query private var months: [MonthRecord]
     @AppStorage("viewedMonthKey") private var viewedKey: String = MonthKey.current
+    @AppStorage("hasCompletedOnboarding") private var hasOnboarded = false
+
+    private var onboardingBinding: Binding<Bool> {
+        Binding(get: { !hasOnboarded && months.isEmpty }, set: { _ in })
+    }
 
     var body: some View {
         TabView(selection: $navigator.selectedTab) {
@@ -47,6 +52,7 @@ struct RootView: View {
         // Runs on launch and whenever the app re-activates (e.g. after a fresh
         // import has brought duplicates down from another device).
         .task {
+            if !months.isEmpty { hasOnboarded = true }   // existing users skip onboarding
             LedgerService.mergeDuplicates(in: context)
             BudgetSnapshotStore.update(from: months)
         }
@@ -69,6 +75,12 @@ struct RootView: View {
             viewedKey = MonthKey.current
             navigator.selectedTab = .budget
         }
+        // First-run onboarding (fresh installs only).
+        #if os(macOS)
+        .sheet(isPresented: onboardingBinding) { OnboardingView() }
+        #else
+        .fullScreenCover(isPresented: onboardingBinding) { OnboardingView() }
+        #endif
     }
 }
 
@@ -129,4 +141,107 @@ struct SafeToSpendBar: View {
     RootView()
         .modelContainer(for: [MonthRecord.self, Transaction.self, AppSettings.self, RecurringRule.self],
                         inMemory: true)
+}
+
+// MARK: - First-run onboarding
+
+/// Shown once on a fresh install: set monthly income + the 50/30/20 split before
+/// landing in the app. Writes the settings + the current month, then flips the
+/// `hasCompletedOnboarding` flag (which dismisses this).
+struct OnboardingView: View {
+    @Environment(\.modelContext) private var context
+    @AppStorage("hasCompletedOnboarding") private var hasOnboarded = false
+    @AppStorage("viewedMonthKey") private var viewedKey: String = MonthKey.current
+
+    @State private var incomeText = ""
+    @State private var needsPct = 50
+    @State private var savingsPct = 20
+    @State private var wantsPct = 30
+
+    private var split: BudgetSplit {
+        BudgetSplit(needs: Double(needsPct), savings: Double(savingsPct), wants: Double(wantsPct))
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
+                VStack(alignment: .leading, spacing: Spacing.sm) {
+                    Text("Welcome to Ledger")
+                        .font(Typography.serif(.largeTitle, weight: .bold))
+                        .foregroundStyle(DS.text)
+                    Text("A simple 50/30/20 budget — your income splits into Needs, Savings, and Wants.")
+                        .font(.subheadline)
+                        .foregroundStyle(DS.textMuted)
+                }
+
+                VStack(alignment: .leading, spacing: Spacing.sm) {
+                    SectionLabel("Monthly Income")
+                    TextField("0", text: $incomeText)
+                        #if os(iOS)
+                        .keyboardType(.decimalPad)
+                        #endif
+                        .font(Typography.mono(.title, weight: .medium))
+                        .foregroundStyle(DS.text)
+                        .padding(Spacing.md)
+                        .background(DS.surface, in: RoundedRectangle(cornerRadius: Radius.field, style: .continuous))
+                }
+
+                VStack(alignment: .leading, spacing: Spacing.sm) {
+                    SectionLabel("Allocation")
+                    HStack(spacing: Spacing.sm) {
+                        presetButton("50 / 30 / 20", n: 50, s: 30, w: 20)
+                        presetButton("50 / 20 / 30", n: 50, s: 20, w: 30)
+                    }
+                    Text("Needs \(needsPct)% · Savings \(savingsPct)% · Wants \(wantsPct)%")
+                        .font(Typography.mono(.footnote))
+                        .foregroundStyle(DS.textMuted)
+                }
+
+                Button { finish() } label: {
+                    Text("Get Started").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(DS.gold)
+                .controlSize(.large)
+
+                Text("You can change all of this anytime in Settings.")
+                    .font(.caption)
+                    .foregroundStyle(DS.textMuted)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .padding(Spacing.xl)
+        }
+        .background(DS.background.ignoresSafeArea())
+        .tint(DS.gold)
+        .interactiveDismissDisabled(true)
+        #if os(macOS)
+        .frame(minWidth: 460, minHeight: 520)
+        #endif
+    }
+
+    private func presetButton(_ label: String, n: Int, s: Int, w: Int) -> some View {
+        let selected = needsPct == n && savingsPct == s && wantsPct == w
+        return Button {
+            needsPct = n; savingsPct = s; wantsPct = w
+        } label: {
+            Text(label).frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .tint(selected ? DS.gold : DS.textMuted)
+    }
+
+    private func finish() {
+        let income = Double(incomeText.trimmingCharacters(in: .whitespaces)) ?? 0
+        let settings = LedgerService.settings(in: context)
+        settings.defaultIncome = income
+        settings.defaultSplit = split
+        let month = LedgerService.ensureMonth(forKey: MonthKey.current, in: context)
+        month.income = income
+        month.needsPct = split.needs
+        month.savingsPct = split.savings
+        month.wantsPct = split.wants
+        try? context.save()
+        viewedKey = MonthKey.current
+        hasOnboarded = true
+    }
 }
