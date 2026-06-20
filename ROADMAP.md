@@ -98,21 +98,11 @@ transactions ✅ · purchase-type tags (5c) = undecided (see Open decisions).
       Lesson: the small on-device model is great at *extraction* (5a) but not at
       *generating accurate financial commentary*. Revisit AI prose here only if a
       bigger model (PCC) or a future OS with relaxed guardrails makes it reliable.
-- [ ] **5c — Understanding purchase types.** Cluster transaction *descriptions*
-      into finer types (Dining, Groceries, Subscriptions, Transport, Health,
-      Shopping…). Powers "Dining up 40%" / "6 subscriptions = $94/mo". This is
-      *extraction/classification* (the model's strength), so it should be
-      reliable on-device like 5a. (Stored tags vs. narrative-only is an Open
-      decision.)
-- [ ] **5d — Ask-your-data Q&A** ("what did I overspend on?"). Conversational
-      mode via **tool calling**: expose `monthSummary(...)`, `spendByCategory(...)`
-      so Swift returns the real numbers and the model only phrases the answer
-      (never does math). Tool calling solves accuracy, **but the same finance
-      guardrail that blocked 5b will likely refuse free-form answers
-      inconsistently on-device.** So 5d's real home is **Private Cloud Compute**
-      (a larger, still-private Apple model) once that tooling ships post-WWDC26 —
-      or an external provider if privacy trade-offs are acceptable. **Gated on PCC
-      availability; effectively a 2.0-era feature.**
+
+> **5c and 5d are deferred to 1.5 / 2.0** (see Ledger 2.0). 5c (finer purchase
+> types) is held intentionally — the **three-bucket simplicity (Needs / Savings
+> / Wants) is a core part of the app's identity**. 5d (Q&A) is gated on Private
+> Cloud Compute. So Phase 5 in 1.0 is effectively **done** (5a + 5b shipped).
 
 ## Platform expansion
 
@@ -193,8 +183,17 @@ post-WWDC26 tooling ships.
 - **Sync learned merchant categories across devices** — move `CategoryMemory`
   from local UserDefaults to the iCloud store (kept local in 1.0 to avoid sync
   risk).
-- **Deeper AI via Private Cloud Compute / external providers** — for insights
-  that exceed the on-device model, when warranted.
+- **5c — Understanding purchase types.** Cluster transaction *descriptions* into
+  finer types (Dining, Groceries, Subscriptions, Transport, Health, Shopping…) to
+  power insights like "Dining up 40%". *Deferred intentionally* — we value the
+  three-bucket (Needs/Savings/Wants) simplicity, so finer types are a later,
+  optional layer (stored tags vs. narrative-only still undecided).
+- **5d — Ask-your-data Q&A** ("what did I overspend on?"). Tool-calling grounds
+  answers in real numbers, but the on-device finance guardrail blocks free-form
+  answers — so this needs **Private Cloud Compute** (still-private, larger model)
+  once its tooling ships, or an external provider if the privacy trade-off is OK.
+- **Deeper AI via Private Cloud Compute / external providers** — also the path for
+  AI prose in the Insights summary (5b) if/when a bigger private model is viable.
 - **Ambitious visionOS** — volumetric 3D charts, multi-window (Budget + Insights).
   Low ROI; only if a spatial showpiece is wanted.
 - **Round-trip export** to the original web-app JSON format (compatibility).
