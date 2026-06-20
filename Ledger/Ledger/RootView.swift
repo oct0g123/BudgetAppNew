@@ -188,9 +188,12 @@ struct OnboardingView: View {
 
                 VStack(alignment: .leading, spacing: Spacing.sm) {
                     SectionLabel("Allocation")
+                    Text("Needs / Savings / Wants")
+                        .font(Typography.mono(.caption))
+                        .foregroundStyle(DS.textMuted)
                     HStack(spacing: Spacing.sm) {
-                        presetButton("50 / 30 / 20", n: 50, s: 30, w: 20)
-                        presetButton("50 / 20 / 30", n: 50, s: 20, w: 30)
+                        presetButton("50 / 20 / 30", subtitle: "Balanced · 20% saved", n: 50, s: 20, w: 30)
+                        presetButton("50 / 30 / 20", subtitle: "Aggressive · 30% saved", n: 50, s: 30, w: 20)
                     }
                     Text("Needs \(needsPct)% · Savings \(savingsPct)% · Wants \(wantsPct)%")
                         .font(Typography.mono(.footnote))
@@ -219,12 +222,17 @@ struct OnboardingView: View {
         #endif
     }
 
-    private func presetButton(_ label: String, n: Int, s: Int, w: Int) -> some View {
+    private func presetButton(_ title: String, subtitle: String, n: Int, s: Int, w: Int) -> some View {
         let selected = needsPct == n && savingsPct == s && wantsPct == w
         return Button {
             needsPct = n; savingsPct = s; wantsPct = w
         } label: {
-            Text(label).frame(maxWidth: .infinity)
+            VStack(spacing: 2) {
+                Text(title).font(Typography.mono(.subheadline, weight: .medium))
+                Text(subtitle).font(.caption2)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Spacing.xs)
         }
         .buttonStyle(.bordered)
         .tint(selected ? DS.gold : DS.textMuted)

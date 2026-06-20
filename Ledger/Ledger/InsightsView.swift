@@ -215,27 +215,36 @@ struct MonthSummaryInsightCard: View {
 
     private var insight: MonthInsight { buildInsight() }
 
+    /// Not enough logged yet to say anything meaningful.
+    private var hasEnoughData: Bool { month.txns.count >= 3 }
+
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: Spacing.md) {
                 SectionLabel("Monthly Summary")
-                Text(insight.headline)
-                    .font(Typography.serif(.title3))
-                    .foregroundStyle(DS.text)
-                ForEach(insight.observations, id: \.self) { obs in
-                    HStack(alignment: .top, spacing: Spacing.sm) {
-                        Circle().fill(DS.gold).frame(width: 5, height: 5).padding(.top, 7)
-                        Text(obs).foregroundStyle(DS.text)
-                    }
-                }
-                if !insight.suggestion.isEmpty {
-                    Text(insight.suggestion)
-                        .font(.subheadline)
+                if hasEnoughData {
+                    Text(insight.headline)
+                        .font(Typography.serif(.title3))
                         .foregroundStyle(DS.text)
-                        .padding(Spacing.md)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(DS.surfaceHigh,
-                                    in: RoundedRectangle(cornerRadius: Radius.field, style: .continuous))
+                    ForEach(insight.observations, id: \.self) { obs in
+                        HStack(alignment: .top, spacing: Spacing.sm) {
+                            Circle().fill(DS.gold).frame(width: 5, height: 5).padding(.top, 7)
+                            Text(obs).foregroundStyle(DS.text)
+                        }
+                    }
+                    if !insight.suggestion.isEmpty {
+                        Text(insight.suggestion)
+                            .font(.subheadline)
+                            .foregroundStyle(DS.text)
+                            .padding(Spacing.md)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(DS.surfaceHigh,
+                                        in: RoundedRectangle(cornerRadius: Radius.field, style: .continuous))
+                    }
+                } else {
+                    Text("Log a few transactions and your \(MonthKey.shortMonthName(month.key)) insights will appear here.")
+                        .font(.subheadline)
+                        .foregroundStyle(DS.textMuted)
                 }
             }
         }
