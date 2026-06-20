@@ -245,3 +245,9 @@ struct OnboardingView: View {
         hasOnboarded = true
     }
 }
+
+#Preview("Onboarding") {
+    OnboardingView()
+        .modelContainer(for: [MonthRecord.self, Transaction.self, AppSettings.self, RecurringRule.self],
+                        inMemory: true)
+}
