@@ -653,30 +653,48 @@ struct AddTransactionIntent: AppIntent {
     static var title: LocalizedStringResource = "Add Transaction"
     static var description = IntentDescription("Add a transaction to the current month in Ledger.")
 
-    @Parameter(title: "Amount") var amount: Double
-    @Parameter(title: "Category") var category: BudgetCategoryAppEnum
-    @Parameter(title: "Description") var note: String?
+    // Amount is a String so Siri accepts "50", "$50", "50 dollars", "1,200.50",
+    // or even "fifty" — parsed leniently in perform().
+    @Parameter(title: "Amount", requestValueDialog: "How much?")
+    var amount: String
+    @Parameter(title: "Description", requestValueDialog: "What's it for?")
+    var note: String
+    @Parameter(title: "Category")
+    var category: BudgetCategoryAppEnum
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Add \(\.$amount) to \(\.$category)") {
-            \.$note
-        }
+        Summary("Add \(\.$amount) for \(\.$note) to \(\.$category)")
     }
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard let value = Self.parseAmount(amount), value > 0 else {
+            throw $amount.needsValueError("Sorry, how much? Try a number like 50.")
+        }
         let context = AppModelContainer.shared.mainContext
         let month = LedgerService.ensureMonth(forKey: MonthKey.current, in: context)
+        let cleanNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
         LedgerService.addTransaction(to: month,
-                                     desc: (note ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
-                                     amount: amount,
+                                     desc: cleanNote,
+                                     amount: value,
                                      category: category.budgetCategory,
                                      date: Date(),
                                      in: context)
         try? context.save()
         BudgetSnapshotStore.update(from: LedgerService.allMonths(in: context))
-        let amountText = amount.formatted(.currency(code: currencyCodeForIntents()))
-        return .result(dialog: "Added \(amountText) to \(category.budgetCategory.title).")
+        let amountText = value.formatted(.currency(code: currencyCodeForIntents()))
+        let label = cleanNote.isEmpty ? category.budgetCategory.title : cleanNote
+        return .result(dialog: "Added \(amountText) for \(label) to \(category.budgetCategory.title).")
+    }
+
+    /// Parse "50", "$50", "50 dollars", "1,200.50", or "fifty" into a Double.
+    static func parseAmount(_ s: String) -> Double? {
+        let digits = s.filter { $0.isNumber || $0 == "." }
+        if let d = Double(digits), d > 0 { return d }
+        let spell = NumberFormatter()
+        spell.numberStyle = .spellOut
+        if let n = spell.number(from: s.lowercased()) { return n.doubleValue }
+        return nil
     }
 }
 
