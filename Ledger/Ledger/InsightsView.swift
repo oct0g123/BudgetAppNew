@@ -309,12 +309,14 @@ struct MonthSummaryInsightCard: View {
             else if month.savingsRate < 0.2 { suggestion = "Consider moving a bit more toward Savings before month-end." + leftText }
             else { suggestion = "You're on track — keep it up." + leftText }
         } else {
-            if overNeeds && overWants { suggestion = "Trimming both Needs and Wants would help next month." }
-            else if overWants { suggestion = "Next month, trimming Wants would help you rebalance." }
-            else if overNeeds { suggestion = "Needs ran high — see if any essentials can come down next month." }
-            else if month.savingsRate < 0.2 { suggestion = "Consider directing a little more toward Savings next month." }
-            else { suggestion = "Nice balance — keep the momentum going next month." }
-            suggestion += " Savings rate \(rate)%."
+            var recap: String
+            if overNeeds && overWants { recap = "Trimming both Needs and Wants would help next month." }
+            else if overWants { recap = "Next month, trimming Wants would help you rebalance." }
+            else if overNeeds { recap = "Needs ran high — see if any essentials can come down next month." }
+            else if month.savingsRate < 0.2 { recap = "Consider directing a little more toward Savings next month." }
+            else { recap = "Nice balance — keep the momentum going next month." }
+            recap += " Savings rate \(rate)%."
+            suggestion = recap
         }
 
         return MonthInsight(headline: headline, observations: observations, suggestion: suggestion)
