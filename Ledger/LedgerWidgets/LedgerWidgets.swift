@@ -125,18 +125,22 @@ struct SafeToSpendWidget: Widget {
 struct SafeToSpendView: View {
     @Environment(\.widgetFamily) private var family
     let snapshot: BudgetSnapshot
-    private var positive: Bool { snapshot.safeToSpend >= 0 }
-    private var amount: String { widgetMoney(abs(snapshot.safeToSpend)) }
+    private var over: Bool { snapshot.safeToSpend < 0 }
+    /// Safe-to-spend can't sensibly be negative — floor at $0 when over.
+    private var headline: String { widgetMoney(max(snapshot.safeToSpend, 0)) }
+    private var overBy: String { widgetMoney(abs(snapshot.safeToSpend)) }
 
     var body: some View {
         switch family {
         case .accessoryInline:
-            Text("\(snapshot.shortMonthName) · \(amount) \(positive ? "left" : "over")")
+            Text(over ? "\(snapshot.shortMonthName) · \(overBy) over"
+                      : "\(snapshot.shortMonthName) · \(headline) left")
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 2) {
                 Text("SAFE TO SPEND").font(.caption2).widgetAccentable()
-                Text(positive ? amount : "\(amount) over").font(.title3.weight(.semibold))
-                Text("\(widgetMoney(snapshot.needsRemaining)) needs · \(widgetMoney(snapshot.wantsRemaining)) wants")
+                Text(headline).font(.title3.weight(.semibold))
+                Text(over ? "Over by \(overBy)"
+                          : "\(widgetMoney(snapshot.needsRemaining)) needs · \(widgetMoney(snapshot.wantsRemaining)) wants")
                     .font(.caption2).lineLimit(1).minimumScaleFactor(0.7)
             }
         default:
@@ -144,12 +148,14 @@ struct SafeToSpendView: View {
                 Text(snapshot.shortMonthName.uppercased())
                     .font(.caption2.weight(.semibold)).foregroundStyle(WDS.textMuted)
                 Spacer(minLength: 0)
-                Text(amount)
+                Text(headline)
                     .font(.system(.title, design: .rounded).weight(.bold))
-                    .foregroundStyle(positive ? WDS.text : WDS.needs)
+                    .foregroundStyle(WDS.text)
                     .minimumScaleFactor(0.5).lineLimit(1)
-                Text(positive ? "left to spend" : "over budget")
-                    .font(.caption).foregroundStyle(WDS.textMuted)
+                Text(over ? "over by \(overBy)" : "left to spend")
+                    .font(.caption)
+                    .foregroundStyle(over ? WDS.needs : WDS.textMuted)
+                    .lineLimit(1).minimumScaleFactor(0.7)
                 Spacer(minLength: 0)
                 HStack(spacing: 3) {
                     miniBar(WDS.needs, snapshot.needsSpent, snapshot.needsBudget)
@@ -196,7 +202,7 @@ struct BucketsView: View {
                 Spacer()
                 Text(snapshot.safeToSpend >= 0
                      ? "\(widgetMoney(snapshot.safeToSpend)) left"
-                     : "\(widgetMoney(abs(snapshot.safeToSpend))) over")
+                     : "over by \(widgetMoney(abs(snapshot.safeToSpend)))")
                     .font(.caption.weight(.medium)).foregroundStyle(WDS.textMuted)
             }
             row("Needs", WDS.needs, snapshot.needsSpent, snapshot.needsBudget, savings: false)
