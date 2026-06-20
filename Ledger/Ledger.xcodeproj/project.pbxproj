@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -26,9 +26,41 @@
 		100000000000000000000202 /* DMMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000402 /* DMMono-Regular.ttf */; };
 		100000000000000000000203 /* DMMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000403 /* DMMono-Medium.ttf */; };
 		100000000000000000000204 /* DMMono-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000404 /* DMMono-Light.ttf */; };
+		15766E382FE629DD001A11B3 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 15766E372FE629DD001A11B3 /* WidgetKit.framework */; };
+		15766E3A2FE629DD001A11B3 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 15766E392FE629DD001A11B3 /* SwiftUI.framework */; };
+		15766E452FE629DF001A11B3 /* LedgerWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 15766E352FE629DD001A11B3 /* LedgerWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		15766E432FE629DF001A11B3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 600000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 15766E342FE629DD001A11B3;
+			remoteInfo = LedgerWidgetsExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		15766E462FE629DF001A11B3 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				15766E452FE629DF001A11B3 /* LedgerWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		15766E352FE629DD001A11B3 /* LedgerWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LedgerWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		15766E372FE629DD001A11B3 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		15766E392FE629DD001A11B3 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		15766E4B2FE62B2F001A11B3 /* LedgerWidgetsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LedgerWidgetsExtension.entitlements; sourceTree = "<group>"; };
+		15DE1B5B2FE384B0001CC931 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		200000000000000000000001 /* LedgerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerApp.swift; sourceTree = "<group>"; };
 		200000000000000000000002 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		200000000000000000000003 /* MonthKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthKey.swift; sourceTree = "<group>"; };
@@ -44,15 +76,38 @@
 		200000000000000000000013 /* InsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsView.swift; sourceTree = "<group>"; };
 		200000000000000000000014 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		200000000000000000000100 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		200000000000000000000200 /* Ledger.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Ledger.entitlements; sourceTree = "<group>"; };
+		200000000000000000000300 /* Ledger.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ledger.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		200000000000000000000401 /* PlayfairDisplay-VF.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PlayfairDisplay-VF.ttf"; sourceTree = "<group>"; };
 		200000000000000000000402 /* DMMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMMono-Regular.ttf"; sourceTree = "<group>"; };
 		200000000000000000000403 /* DMMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMMono-Medium.ttf"; sourceTree = "<group>"; };
 		200000000000000000000404 /* DMMono-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DMMono-Light.ttf"; sourceTree = "<group>"; };
-		200000000000000000000200 /* Ledger.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Ledger.entitlements; sourceTree = "<group>"; };
-		200000000000000000000300 /* Ledger.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ledger.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		15766E492FE629DF001A11B3 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 15766E342FE629DD001A11B3 /* LedgerWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		15766E3B2FE629DD001A11B3 /* LedgerWidgets */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (15766E492FE629DF001A11B3 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = LedgerWidgets; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXFrameworksBuildPhase section */
+		15766E322FE629DD001A11B3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				15766E3A2FE629DD001A11B3 /* SwiftUI.framework in Frameworks */,
+				15766E382FE629DD001A11B3 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		400000000000000000000002 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -63,10 +118,33 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		15766E362FE629DD001A11B3 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				15766E372FE629DD001A11B3 /* WidgetKit.framework */,
+				15766E392FE629DD001A11B3 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		200000000000000000000400 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000401 /* PlayfairDisplay-VF.ttf */,
+				200000000000000000000402 /* DMMono-Regular.ttf */,
+				200000000000000000000403 /* DMMono-Medium.ttf */,
+				200000000000000000000404 /* DMMono-Light.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
 		300000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
+				15766E4B2FE62B2F001A11B3 /* LedgerWidgetsExtension.entitlements */,
 				300000000000000000000002 /* Ledger */,
+				15766E3B2FE629DD001A11B3 /* LedgerWidgets */,
+				15766E362FE629DD001A11B3 /* Frameworks */,
 				300000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -74,6 +152,7 @@
 		300000000000000000000002 /* Ledger */ = {
 			isa = PBXGroup;
 			children = (
+				15DE1B5B2FE384B0001CC931 /* Info.plist */,
 				200000000000000000000001 /* LedgerApp.swift */,
 				200000000000000000000002 /* Models.swift */,
 				200000000000000000000003 /* MonthKey.swift */,
@@ -95,21 +174,11 @@
 			path = Ledger;
 			sourceTree = "<group>";
 		};
-		200000000000000000000400 /* Fonts */ = {
-			isa = PBXGroup;
-			children = (
-				200000000000000000000401 /* PlayfairDisplay-VF.ttf */,
-				200000000000000000000402 /* DMMono-Regular.ttf */,
-				200000000000000000000403 /* DMMono-Medium.ttf */,
-				200000000000000000000404 /* DMMono-Light.ttf */,
-			);
-			path = Fonts;
-			sourceTree = "<group>";
-		};
 		300000000000000000000003 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				200000000000000000000300 /* Ledger.app */,
+				15766E352FE629DD001A11B3 /* LedgerWidgetsExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -117,6 +186,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		15766E342FE629DD001A11B3 /* LedgerWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 15766E4A2FE629DF001A11B3 /* Build configuration list for PBXNativeTarget "LedgerWidgetsExtension" */;
+			buildPhases = (
+				15766E312FE629DD001A11B3 /* Sources */,
+				15766E322FE629DD001A11B3 /* Frameworks */,
+				15766E332FE629DD001A11B3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				15766E3B2FE629DD001A11B3 /* LedgerWidgets */,
+			);
+			name = LedgerWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = LedgerWidgetsExtension;
+			productReference = 15766E352FE629DD001A11B3 /* LedgerWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		500000000000000000000001 /* Ledger */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 700000000000000000000002 /* Build configuration list for PBXNativeTarget "Ledger" */;
@@ -124,10 +215,12 @@
 				400000000000000000000001 /* Sources */,
 				400000000000000000000002 /* Frameworks */,
 				400000000000000000000003 /* Resources */,
+				15766E462FE629DF001A11B3 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				15766E442FE629DF001A11B3 /* PBXTargetDependency */,
 			);
 			name = Ledger;
 			productName = Ledger;
@@ -141,9 +234,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1530;
+				LastSwiftUpdateCheck = 2650;
 				LastUpgradeCheck = 1530;
 				TargetAttributes = {
+					15766E342FE629DD001A11B3 = {
+						CreatedOnToolsVersion = 26.5;
+					};
 					500000000000000000000001 = {
 						CreatedOnToolsVersion = 15.3;
 					};
@@ -163,11 +259,19 @@
 			projectRoot = "";
 			targets = (
 				500000000000000000000001 /* Ledger */,
+				15766E342FE629DD001A11B3 /* LedgerWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		15766E332FE629DD001A11B3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		400000000000000000000003 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -183,6 +287,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		15766E312FE629DD001A11B3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		400000000000000000000001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -206,7 +317,88 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		15766E442FE629DF001A11B3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 15766E342FE629DD001A11B3 /* LedgerWidgetsExtension */;
+			targetProxy = 15766E432FE629DF001A11B3 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		15766E472FE629DF001A11B3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = LedgerWidgetsExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N3JSU4VRGW;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LedgerWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LedgerWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.anthonystacy.Ledger.LedgerWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = xros;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				XROS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
+		};
+		15766E482FE629DF001A11B3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = LedgerWidgetsExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N3JSU4VRGW;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LedgerWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LedgerWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.anthonystacy.Ledger.LedgerWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = xros;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+				XROS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
 		800000000000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -330,8 +522,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = N3JSU4VRGW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Ledger/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Ledger;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -345,8 +539,9 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.Ledger;
+				PRODUCT_BUNDLE_IDENTIFIER = com.anthonystacy.Ledger;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -367,8 +562,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = N3JSU4VRGW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Ledger/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Ledger;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -382,8 +579,9 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.Ledger;
+				PRODUCT_BUNDLE_IDENTIFIER = com.anthonystacy.Ledger;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -398,6 +596,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		15766E4A2FE629DF001A11B3 /* Build configuration list for PBXNativeTarget "LedgerWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				15766E472FE629DF001A11B3 /* Debug */,
+				15766E482FE629DF001A11B3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		700000000000000000000001 /* Build configuration list for PBXProject "Ledger" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
