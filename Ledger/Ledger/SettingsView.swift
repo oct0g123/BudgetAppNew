@@ -24,6 +24,7 @@ struct SettingsView: View {
     @Query(sort: \RecurringRule.createdAt) private var rules: [RecurringRule]
 
     @AppStorage("showBucketUsage") private var showBucketUsage = true
+    @AppStorage("appLockEnabled") private var appLockEnabled = false
 
     @EnvironmentObject private var sync: SyncMonitor
 
@@ -57,6 +58,7 @@ struct SettingsView: View {
                 incomeSection
                 allocationSection
                 displaySection
+                privacySection
                 syncSection
                 intelligenceSection
                 recurringSection
@@ -283,6 +285,28 @@ struct SettingsView: View {
         let f = RelativeDateTimeFormatter()
         f.unitsStyle = .abbreviated
         return f.localizedString(for: date, relativeTo: Date())
+    }
+
+    // MARK: Privacy (biometric lock)
+
+    private var privacySection: some View {
+        Section {
+            Toggle(isOn: $appLockEnabled) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Require Face ID")
+                    Text(BiometricAuth.isAvailable
+                         ? "Lock Ledger when you leave the app."
+                         : "Set a device passcode or Face ID to enable this.")
+                        .font(.caption)
+                        .foregroundStyle(DS.textMuted)
+                }
+            }
+            .tint(DS.savings)
+            .disabled(!BiometricAuth.isAvailable)
+        } header: {
+            Text("Privacy")
+        }
+        .listRowBackground(DS.surface)
     }
 
     // MARK: Intelligence (AI command bar)

@@ -9,6 +9,7 @@
 import Foundation
 import SwiftData
 import WidgetKit
+import AppIntents
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -622,3 +623,104 @@ struct CommandResultAI {
     var transactions: [DraftTxnAI]
 }
 #endif
+
+// MARK: - App Intents (Siri / Shortcuts / Spotlight)
+
+/// Category choices exposed to Siri/Shortcuts.
+enum BudgetCategoryAppEnum: String, AppEnum {
+    case needs, savings, wants
+
+    static var typeDisplayRepresentation: TypeDisplayRepresentation { "Category" }
+    static var caseDisplayRepresentations: [BudgetCategoryAppEnum: DisplayRepresentation] {
+        [.needs: "Needs", .savings: "Savings", .wants: "Wants"]
+    }
+
+    var budgetCategory: BudgetCategory {
+        switch self {
+        case .needs:   return .needs
+        case .savings: return .savings
+        case .wants:   return .wants
+        }
+    }
+}
+
+private func currencyCodeForIntents() -> String {
+    Locale.current.currency?.identifier ?? "USD"
+}
+
+/// "Add $12 groceries to Wants" — adds a transaction to the current month.
+struct AddTransactionIntent: AppIntent {
+    static var title: LocalizedStringResource = "Add Transaction"
+    static var description = IntentDescription("Add a transaction to the current month in Ledger.")
+
+    @Parameter(title: "Amount") var amount: Double
+    @Parameter(title: "Category") var category: BudgetCategoryAppEnum
+    @Parameter(title: "Description") var note: String?
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Add \(\.$amount) to \(\.$category)") {
+            \.$note
+        }
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let context = AppModelContainer.shared.mainContext
+        let month = LedgerService.ensureMonth(forKey: MonthKey.current, in: context)
+        LedgerService.addTransaction(to: month,
+                                     desc: (note ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
+                                     amount: amount,
+                                     category: category.budgetCategory,
+                                     date: Date(),
+                                     in: context)
+        try? context.save()
+        BudgetSnapshotStore.update(from: LedgerService.allMonths(in: context))
+        let amountText = amount.formatted(.currency(code: currencyCodeForIntents()))
+        return .result(dialog: "Added \(amountText) to \(category.budgetCategory.title).")
+    }
+}
+
+/// "What's safe to spend in Ledger?" — read-only.
+struct SafeToSpendIntent: AppIntent {
+    static var title: LocalizedStringResource = "Safe to Spend"
+    static var description = IntentDescription("Check how much is left to spend this month in Ledger.")
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let context = AppModelContainer.shared.mainContext
+        guard let month = LedgerService.month(forKey: MonthKey.current, in: context) else {
+            return .result(dialog: "You haven't started this month in Ledger yet.")
+        }
+        let name = MonthKey.displayName(month.key)
+        if month.safeToSpend >= 0 {
+            let amt = month.safeToSpend.formatted(.currency(code: currencyCodeForIntents()))
+            return .result(dialog: "You have \(amt) left to spend in \(name).")
+        } else {
+            let amt = abs(month.safeToSpend).formatted(.currency(code: currencyCodeForIntents()))
+            return .result(dialog: "You're \(amt) over budget in \(name).")
+        }
+    }
+}
+
+struct LedgerShortcuts: AppShortcutsProvider {
+    static var appShortcuts: [AppShortcut] {
+        AppShortcut(
+            intent: AddTransactionIntent(),
+            phrases: [
+                "Add a transaction to \(.applicationName)",
+                "Log spending in \(.applicationName)"
+            ],
+            shortTitle: "Add Transaction",
+            systemImageName: "plus.circle"
+        )
+        AppShortcut(
+            intent: SafeToSpendIntent(),
+            phrases: [
+                "What's safe to spend in \(.applicationName)",
+                "How much can I spend in \(.applicationName)"
+            ],
+            shortTitle: "Safe to Spend",
+            systemImageName: "dollarsign.circle"
+        )
+    }
+}

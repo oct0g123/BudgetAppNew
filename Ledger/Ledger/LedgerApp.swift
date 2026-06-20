@@ -27,6 +27,7 @@ import UIKit
 #elseif os(macOS)
 import AppKit
 #endif
+import LocalAuthentication
 
 private let storeLog = Logger(subsystem: "com.anthonystacy.Ledger", category: "store")
 
@@ -125,22 +126,13 @@ final class SyncMonitor: ObservableObject {
 /// iCloud + CloudKit capability enabled.
 private let enableCloudKitSync = true
 
-@main
-struct LedgerApp: App {
+// MARK: - Shared model container
 
-    #if os(iOS) || os(visionOS)
-    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    #elseif os(macOS)
-    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    #endif
-
-    @StateObject private var syncMonitor = SyncMonitor()
-
-    let container: ModelContainer
-
-    init() {
-        Typography.registerBundledFonts()
-
+/// Single source of truth for the SwiftData store, shared by the app *and* the
+/// App Intents — so Siri/Shortcuts writes land in the same (CloudKit-synced)
+/// store the UI uses. Falls back to a local store if the cloud store can't init.
+enum AppModelContainer {
+    static let shared: ModelContainer = {
         let schema = Schema([
             MonthRecord.self,
             Transaction.self,
@@ -153,39 +145,146 @@ struct LedgerApp: App {
             cloudKitDatabase: enableCloudKitSync ? .automatic : .none
         )
         do {
-            container = try ModelContainer(for: schema, configurations: configuration)
+            let container = try ModelContainer(for: schema, configurations: configuration)
             if enableCloudKitSync {
                 StoreStatus.usingCloudKit = true
                 storeLog.notice("🟢 Ledger: CloudKit store ACTIVE (cloud sync enabled).")
             } else {
                 storeLog.notice("⚪️ Ledger: local store (CloudKit sync disabled in code).")
             }
+            return container
         } catch {
             StoreStatus.fallbackError = String(describing: error)
-            // If the configured store can't be created (e.g. CloudKit requested
-            // without a valid entitlement, or not signed in to iCloud), fall
-            // back to a plain local store so the app still runs.
             storeLog.error("🔴 Ledger: CloudKit store FAILED, falling back to LOCAL. Error: \(String(describing: error), privacy: .public)")
             let localConfig = ModelConfiguration(schema: schema,
                                                  isStoredInMemoryOnly: false,
                                                  cloudKitDatabase: .none)
             do {
-                container = try ModelContainer(for: schema, configurations: localConfig)
+                return try ModelContainer(for: schema, configurations: localConfig)
             } catch {
                 fatalError("Could not create ModelContainer: \(error)")
             }
         }
+    }()
+}
+
+@main
+struct LedgerApp: App {
+
+    #if os(iOS) || os(visionOS)
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    #elseif os(macOS)
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    #endif
+
+    @StateObject private var syncMonitor = SyncMonitor()
+
+    init() {
+        Typography.registerBundledFonts()
+        _ = AppModelContainer.shared   // build the store + set StoreStatus at launch
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .tint(DS.gold)
-                .environmentObject(syncMonitor)
+            LockGate {
+                RootView()
+                    .tint(DS.gold)
+                    .environmentObject(syncMonitor)
+            }
         }
-        .modelContainer(container)
+        .modelContainer(AppModelContainer.shared)
         #if os(macOS)
         .defaultSize(width: 920, height: 680)
         #endif
+    }
+}
+
+// MARK: - Biometric app lock
+
+enum BiometricAuth {
+    /// Whether the device can authenticate (Face ID / Touch ID / passcode).
+    static var isAvailable: Bool {
+        var error: NSError?
+        return LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
+    }
+
+    static func authenticate(reason: String = "Unlock Ledger") async -> Bool {
+        let context = LAContext()
+        context.localizedFallbackTitle = "Use Passcode"
+        return await withCheckedContinuation { continuation in
+            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { success, _ in
+                continuation.resume(returning: success)
+            }
+        }
+    }
+}
+
+/// Optional Face ID gate around the app. When enabled, the UI is covered
+/// whenever the app isn't active (so the App Switcher can't reveal data) and
+/// requires authentication after returning from the background.
+struct LockGate<Content: View>: View {
+    @AppStorage("appLockEnabled") private var lockEnabled = false
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var unlocked = false
+    @State private var authenticating = false
+    private let content: () -> Content
+
+    init(@ViewBuilder content: @escaping () -> Content) {
+        self.content = content
+    }
+
+    private var showCover: Bool { lockEnabled && (!unlocked || scenePhase != .active) }
+    private var showUnlock: Bool { lockEnabled && !unlocked && scenePhase == .active }
+
+    var body: some View {
+        ZStack {
+            content()
+            if showCover { cover }
+        }
+        .task {
+            if !lockEnabled { unlocked = true }
+            else if !unlocked { tryUnlock() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background, lockEnabled { unlocked = false }
+            if phase == .active, lockEnabled, !unlocked { tryUnlock() }
+        }
+        .onChange(of: lockEnabled) { _, enabled in
+            if !enabled { unlocked = true }
+        }
+    }
+
+    private var cover: some View {
+        ZStack {
+            DS.background.ignoresSafeArea()
+            VStack(spacing: Spacing.lg) {
+                Image(systemName: "lock.fill")
+                    .font(.largeTitle)
+                    .foregroundStyle(DS.gold)
+                Text("Ledger is locked")
+                    .font(Typography.serif(.title3))
+                    .foregroundStyle(DS.text)
+                if showUnlock {
+                    Button { tryUnlock() } label: {
+                        Label("Unlock", systemImage: "faceid")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(DS.gold)
+                    .disabled(authenticating)
+                }
+            }
+        }
+    }
+
+    private func tryUnlock() {
+        guard !authenticating else { return }
+        authenticating = true
+        Task {
+            let ok = await BiometricAuth.authenticate()
+            await MainActor.run {
+                unlocked = ok
+                authenticating = false
+            }
+        }
     }
 }
