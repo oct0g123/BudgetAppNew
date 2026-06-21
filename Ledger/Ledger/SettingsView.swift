@@ -44,7 +44,10 @@ struct SettingsView: View {
     enum ExportKind { case json, csv }
 
     private var settings: AppSettings {
-        LedgerService.settings(in: context)
+        // Use the reactive @Query result to avoid a fetch on every access
+        // (e.g. the income field calls this on each keystroke); create only if
+        // none exists yet.
+        allSettings.first ?? LedgerService.settings(in: context)
     }
 
     private var draftSplit: BudgetSplit {

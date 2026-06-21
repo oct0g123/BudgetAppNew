@@ -159,11 +159,17 @@ enum AppModelContainer {
             let localConfig = ModelConfiguration(schema: schema,
                                                  isStoredInMemoryOnly: false,
                                                  cloudKitDatabase: .none)
-            do {
-                return try ModelContainer(for: schema, configurations: localConfig)
-            } catch {
-                fatalError("Could not create ModelContainer: \(error)")
+            if let local = try? ModelContainer(for: schema, configurations: localConfig) {
+                return local
             }
+            // Last resort: an in-memory store so the app still launches instead
+            // of crashing (data won't persist, but it won't hard-fail).
+            storeLog.error("🔴 Ledger: local store also failed; using an in-memory store.")
+            let memConfig = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            if let mem = try? ModelContainer(for: schema, configurations: memConfig) {
+                return mem
+            }
+            fatalError("Could not create any ModelContainer")
         }
     }()
 }
