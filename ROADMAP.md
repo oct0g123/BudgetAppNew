@@ -36,6 +36,12 @@ Revisit before final polish / before building the related feature:
 - **Reset all data** (Settings → Danger Zone): one confirmed action wipes every
   month, transaction, recurring rule, and settings — clears all iCloud devices —
   and drops back into onboarding for a clean start
+- **Themes** (Settings → Appearance): switch the whole app between **Ledger**
+  (the original editorial gold/serif look), **Minimal** (quiet monochrome), and
+  **Modern** (clean, system colors). Each ships its own light + dark palette and
+  follows the system appearance. All colors resolve through `DS`/`Typography`
+  against the active `ThemePalette` (Theming.swift) — zero call-site churn,
+  cached per switch (no runtime cost)
 - **iCloud/CloudKit sync (enabled):** cross-device sync of the SwiftData store,
   an in-app **sync status panel** (last received/sent + errors), and automatic
   **merge of duplicate months/settings** created across devices before sync

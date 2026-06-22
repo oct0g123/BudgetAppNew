@@ -21,6 +21,7 @@ struct RootView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var navigator = AppNavigator()
+    @StateObject private var themeManager = ThemeManager.shared
     @Query private var months: [MonthRecord]
     @AppStorage("viewedMonthKey") private var viewedKey: String = MonthKey.current
     @AppStorage("hasCompletedOnboarding") private var hasOnboarded = false
@@ -47,6 +48,10 @@ struct RootView: View {
         .tabViewStyle(.sidebarAdaptable)
         .background(DS.background)
         .modifier(TabChrome())
+        // Re-style the whole tab tree when the theme changes. `navigator` is a
+        // RootView @StateObject (outside this id'd subtree), so the selected tab
+        // is preserved across the rebuild.
+        .id(themeManager.theme)
         .environmentObject(navigator)
         // Consolidate any duplicate months/settings that arrive via iCloud sync.
         // Runs on launch and whenever the app re-activates (e.g. after a fresh

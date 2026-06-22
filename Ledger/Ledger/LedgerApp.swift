@@ -184,6 +184,7 @@ struct LedgerApp: App {
     #endif
 
     @StateObject private var syncMonitor = SyncMonitor()
+    @StateObject private var themeManager = ThemeManager.shared
 
     init() {
         Typography.registerBundledFonts()
@@ -194,8 +195,9 @@ struct LedgerApp: App {
         WindowGroup {
             LockGate {
                 RootView()
-                    .tint(DS.gold)
+                    .tint(DS.accent)
                     .environmentObject(syncMonitor)
+                    .environmentObject(themeManager)
             }
         }
         .modelContainer(AppModelContainer.shared)

@@ -43,29 +43,38 @@ extension Color {
     }
 }
 
-// MARK: - Semantic palette (light + dark)
+// MARK: - Semantic palette (theme-aware, light + dark)
 
-/// Warm editorial palette. Dark mode keeps the existing near-black/gold mood;
-/// light mode is a warm "paper" theme with the same accent family.
+/// Semantic color tokens. Each resolves against the *active theme's* palette
+/// (see Theming.swift), which is cached, so these reads are cheap. Every color
+/// is a dynamic light/dark `Color`, so themes follow the system appearance.
+///
+/// Call sites are unchanged from when these were static constants — `DS.gold`,
+/// `DS.surface`, etc. still work. (`gold`/`goldDim` are the accent slots; the
+/// `accent`/`accentDim` aliases read the same values for clarity in new code.)
 enum DS {
+    private static var p: ThemePalette { ThemeManager.shared.palette }
+
     // Backgrounds & structure
-    static let background  = Color(light: Color(hex: 0xF6F1E6), dark: Color(hex: 0x141210))
-    static let surface     = Color(light: Color(hex: 0xFFFFFF), dark: Color(hex: 0x1E1B17))
-    static let surfaceHigh = Color(light: Color(hex: 0xEFE8D8), dark: Color(hex: 0x2A251F))
-    static let hairline    = Color(light: Color(hex: 0xE2D8C6), dark: Color(hex: 0x3A332B))
+    static var background:  Color { p.background }
+    static var surface:     Color { p.surface }
+    static var surfaceHigh: Color { p.surfaceHigh }
+    static var hairline:    Color { p.hairline }
 
     // Text
-    static let text        = Color(light: Color(hex: 0x2A211A), dark: Color(hex: 0xEDE6DA))
-    static let textMuted   = Color(light: Color(hex: 0x7C6F5C), dark: Color(hex: 0x9A8F7E))
+    static var text:        Color { p.text }
+    static var textMuted:   Color { p.textMuted }
 
     // Accent
-    static let gold        = Color(light: Color(hex: 0xA9842F), dark: Color(hex: 0xCBA85A))
-    static let goldDim     = Color(light: Color(hex: 0x8A6B25), dark: Color(hex: 0x8A7338))
+    static var gold:        Color { p.accent }
+    static var goldDim:     Color { p.accentDim }
+    static var accent:      Color { p.accent }
+    static var accentDim:   Color { p.accentDim }
 
-    // Category earth tones (tuned for contrast in both appearances)
-    static let needs       = Color(light: Color(hex: 0xA85F37), dark: Color(hex: 0xB5734A))
-    static let savings     = Color(light: Color(hex: 0x5E6E4D), dark: Color(hex: 0x7F8F6E))
-    static let wants       = Color(light: Color(hex: 0xB1872C), dark: Color(hex: 0xCBA85A))
+    // Category tones
+    static var needs:       Color { p.needs }
+    static var savings:     Color { p.savings }
+    static var wants:       Color { p.wants }
 
     static func category(_ c: BudgetCategory) -> Color {
         switch c {
@@ -103,21 +112,34 @@ enum Typography {
         }
     }
 
-    /// Serif display face (titles, headings). Playfair Display is a variable
-    /// font, so weight is applied via the weight axis.
+    /// Display face for titles/headings. In the editorial theme this is Playfair
+    /// Display (variable font, weight via the weight axis); the `system` themes
+    /// use the platform font for a clean, native feel.
     static func serif(_ style: Font.TextStyle = .title, weight: Font.Weight = .semibold) -> Font {
-        if hasSerif {
-            return .custom(serifFamily, size: baseSize(style), relativeTo: style).weight(weight)
+        switch ThemeManager.shared.fontStyle {
+        case .editorial:
+            if hasSerif {
+                return .custom(serifFamily, size: baseSize(style), relativeTo: style).weight(weight)
+            }
+            return .system(style, design: .serif, weight: weight)
+        case .system:
+            return .system(style, design: .default, weight: weight)
         }
-        return .system(style, design: .serif, weight: weight)
     }
 
-    /// Monospaced face for figures / amounts.
+    /// Face for figures / amounts. Editorial uses DM Mono; the `system` themes
+    /// use the platform font with monospaced digits so columns of numbers still
+    /// align without looking like a code editor.
     static func mono(_ style: Font.TextStyle = .body, weight: Font.Weight = .regular) -> Font {
-        if hasMono {
-            return .custom(monoName(weight), size: baseSize(style), relativeTo: style)
+        switch ThemeManager.shared.fontStyle {
+        case .editorial:
+            if hasMono {
+                return .custom(monoName(weight), size: baseSize(style), relativeTo: style)
+            }
+            return .system(style, design: .monospaced, weight: weight)
+        case .system:
+            return .system(style, weight: weight).monospacedDigit()
         }
-        return .system(style, design: .monospaced, weight: weight)
     }
 
     /// Standard body / UI text (system).

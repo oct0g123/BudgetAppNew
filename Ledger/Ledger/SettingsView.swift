@@ -27,6 +27,8 @@ struct SettingsView: View {
     @AppStorage("appLockEnabled") private var appLockEnabled = false
     @AppStorage("hasCompletedOnboarding") private var hasOnboarded = false
 
+    @StateObject private var themeManager = ThemeManager.shared
+
     @State private var confirmingReset = false
 
     @EnvironmentObject private var sync: SyncMonitor
@@ -60,6 +62,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                appearanceSection
                 incomeSection
                 allocationSection
                 displaySection
@@ -111,6 +114,67 @@ struct SettingsView: View {
         } message: {
             Text("This permanently deletes all months, transactions, recurring rules, and settings. With iCloud on, it clears every device. This can't be undone.")
         }
+    }
+
+    // MARK: Appearance (themes)
+
+    private var appearanceSection: some View {
+        Section {
+            ForEach(AppTheme.allCases) { theme in
+                Button {
+                    themeManager.setTheme(theme)
+                } label: {
+                    themeRow(theme)
+                }
+                .buttonStyle(.plain)
+            }
+        } header: {
+            Text("Appearance")
+        } footer: {
+            Text("Themes restyle the whole app. Each one follows your Light / Dark setting automatically.")
+        }
+        .listRowBackground(DS.surface)
+    }
+
+    private func themeRow(_ theme: AppTheme) -> some View {
+        let selected = theme == themeManager.theme
+        return HStack(spacing: Spacing.md) {
+            themeSwatch(theme.palette)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(theme.displayName)
+                    .font(.body)
+                    .foregroundStyle(DS.text)
+                Text(theme.subtitle)
+                    .font(.caption)
+                    .foregroundStyle(DS.textMuted)
+            }
+            Spacer()
+            Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                .font(.title3)
+                .foregroundStyle(selected ? DS.accent : DS.textMuted.opacity(0.4))
+        }
+        .contentShape(Rectangle())
+    }
+
+    /// A tiny preview of a theme's own palette (independent of the active theme),
+    /// so each row shows the look you'd get — in the current Light/Dark mode.
+    private func themeSwatch(_ p: ThemePalette) -> some View {
+        RoundedRectangle(cornerRadius: 9, style: .continuous)
+            .fill(p.background)
+            .frame(width: 48, height: 36)
+            .overlay {
+                HStack(spacing: 4) {
+                    Capsule().fill(p.needs)
+                    Capsule().fill(p.savings)
+                    Capsule().fill(p.wants)
+                    Capsule().fill(p.accent)
+                }
+                .frame(width: 30, height: 15)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .stroke(p.hairline, lineWidth: 1)
+            }
     }
 
     // MARK: Default income
