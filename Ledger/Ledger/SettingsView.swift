@@ -25,6 +25,9 @@ struct SettingsView: View {
 
     @AppStorage("showBucketUsage") private var showBucketUsage = true
     @AppStorage("appLockEnabled") private var appLockEnabled = false
+    @AppStorage("hasCompletedOnboarding") private var hasOnboarded = false
+
+    @State private var confirmingReset = false
 
     @EnvironmentObject private var sync: SyncMonitor
 
@@ -65,6 +68,7 @@ struct SettingsView: View {
                 intelligenceSection
                 recurringSection
                 dataSection
+                resetSection
                 aboutSection
             }
             .formStyle(.grouped)
@@ -99,6 +103,14 @@ struct SettingsView: View {
                       allowedContentTypes: [.json, .commaSeparatedText, .plainText],
                       allowsMultipleSelection: false) { handleImport($0) }
         .sheet(isPresented: $showingPasteSheet) { pasteSheet }
+        .confirmationDialog("Reset all data?",
+                            isPresented: $confirmingReset,
+                            titleVisibility: .visible) {
+            Button("Delete Everything", role: .destructive) { performReset() }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This permanently deletes all months, transactions, recurring rules, and settings. With iCloud on, it clears every device. This can't be undone.")
+        }
     }
 
     // MARK: Default income
@@ -391,6 +403,23 @@ struct SettingsView: View {
         .listRowBackground(DS.surface)
     }
 
+    // MARK: Reset all data
+
+    private var resetSection: some View {
+        Section {
+            Button(role: .destructive) {
+                confirmingReset = true
+            } label: {
+                Label("Reset All Data…", systemImage: "trash")
+            }
+        } header: {
+            Text("Danger Zone")
+        } footer: {
+            Text("Permanently deletes every month, transaction, recurring rule, and your settings. With iCloud on, this clears your data on all your devices. Export a backup first if you might want it back.")
+        }
+        .listRowBackground(DS.surface)
+    }
+
     private var aboutSection: some View {
         Section {
             LabeledContent("App", value: "Ledger")
@@ -554,6 +583,16 @@ struct SettingsView: View {
     private func path(_ ctx: DecodingError.Context) -> String {
         let p = ctx.codingPath.map(\.stringValue).joined(separator: ".")
         return p.isEmpty ? "top level" : p
+    }
+
+    private func performReset() {
+        LedgerService.resetAllData(in: context)
+        CategoryMemory.reset()
+        BudgetSnapshotStore.update(from: [])
+        viewedKey = MonthKey.current
+        hasOnboarded = false          // re-show onboarding for a clean start
+        loadDrafts()                  // reset the allocation steppers to defaults
+        flash("All data reset")
     }
 
     private func flash(_ message: String, isError: Bool = false) {

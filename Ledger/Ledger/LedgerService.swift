@@ -288,6 +288,19 @@ enum LedgerService {
             }
         }
     }
+
+    // MARK: Reset
+
+    /// Delete everything — months, transactions, recurring rules, and settings.
+    /// With CloudKit enabled, these deletions sync, so it clears the user's data
+    /// across all their devices. Irreversible.
+    static func resetAllData(in context: ModelContext) {
+        for txn in (try? context.fetch(FetchDescriptor<Transaction>())) ?? [] { context.delete(txn) }
+        for month in (try? context.fetch(FetchDescriptor<MonthRecord>())) ?? [] { context.delete(month) }
+        for rule in (try? context.fetch(FetchDescriptor<RecurringRule>())) ?? [] { context.delete(rule) }
+        for settings in (try? context.fetch(FetchDescriptor<AppSettings>())) ?? [] { context.delete(settings) }
+        try? context.save()
+    }
 }
 
 // MARK: - Draft transaction (command bar)

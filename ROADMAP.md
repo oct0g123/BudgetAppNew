@@ -33,6 +33,9 @@ Revisit before final polish / before building the related feature:
 - History tab: per-month summaries; **tap a month to jump to it**
 - JSON + CSV export/import, with auto-detecting import of the original web app's
   backup format
+- **Reset all data** (Settings → Danger Zone): one confirmed action wipes every
+  month, transaction, recurring rule, and settings — clears all iCloud devices —
+  and drops back into onboarding for a clean start
 - **iCloud/CloudKit sync (enabled):** cross-device sync of the SwiftData store,
   an in-app **sync status panel** (last received/sent + errors), and automatic
   **merge of duplicate months/settings** created across devices before sync
