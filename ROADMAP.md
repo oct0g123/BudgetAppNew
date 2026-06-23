@@ -133,12 +133,33 @@ complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)ar
   left?", "add $12 groceries"). WWDC26: App/Entity/Intent Schemas, View
   Annotations, Spotlight semantic index. Validate with AppIntentsTesting.
 
-**watchOS**
+**iPadOS & macOS — already native**
+- [x] **Runs natively on iPad and Mac today.** The app target is
+      `TARGETED_DEVICE_FAMILY = "1,2,7"` (iPhone/iPad/Vision Pro) +
+      `macosx`, and `RootView` uses `.tabViewStyle(.sidebarAdaptable)`, so iPad
+      and Mac get a real sidebar layout for free.
+- [x] **Themes work on iPad + Mac** — `DS`/`Typography`/`ThemeManager` are
+      platform-agnostic and `Color(light:dark:)` has an AppKit branch, so all
+      three themes (and light/dark) apply on every platform.
+- [x] **Large-screen polish — shipped.** `readableContentWidth()` caps the four
+      main screens to a centered column on iPad/Mac/Vision Pro (no-op on iPhone)
+      so lists and cards don't stretch edge-to-edge.
+- (S) Follow-up: **enable Home/Lock Screen widgets on iPad** — the widget target
+      is still `TARGETED_DEVICE_FAMILY = 1` (iPhone only); bump to `1,2`. (Touches
+      the project file, so batch it with other project-file work.)
+- (S) Optional Mac niceties: a dedicated `Settings` scene (⌘,), menu-bar
+      commands (⌘N new transaction), window min-size — all additive.
+
+**watchOS — deferred (decided to skip the watch app for v1)**
+> ⚠️ **There is no watch app or watch complication today.** The shipped widgets
+> are **iPhone Home/Lock Screen only** — they do **not** appear on Apple Watch.
+> A watch face complication requires building the watchOS target below. Parked
+> intentionally for now; revisit after TestFlight feedback.
 - (M) Watch-face **complications**: glanceable "$X left" / bucket ring — the
-  standout wrist feature
+  standout wrist feature (WidgetKit-based, reuses the `BudgetSnapshot` pattern)
 - (M–L) Companion app: quick-add (Crown amount + category), recents, glance
 - Dictation quick-add → leans on the AI parser
-- Syncs via CloudKit (shares the iCloud store)
+- Data via CloudKit (shares the iCloud store) or WatchConnectivity snapshot
 
 **visionOS (polish only in 1.0)**
 - (S) Easy wins: ornament for month nav / filter; verify materials in the

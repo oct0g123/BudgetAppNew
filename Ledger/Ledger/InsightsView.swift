@@ -49,6 +49,7 @@ struct InsightsView: View {
                             }
                         }
                         .padding(Spacing.xl)
+                        .readableContentWidth()
                     }
                 }
             }

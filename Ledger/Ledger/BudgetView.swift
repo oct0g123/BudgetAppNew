@@ -44,6 +44,7 @@ struct BudgetView: View {
                     emptyState
                 }
             }
+            .readableContentWidth()
             .scrollContentBackground(.hidden)
             .background(DS.background.ignoresSafeArea())
             #if os(iOS)

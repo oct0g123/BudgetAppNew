@@ -202,6 +202,18 @@ enum Radius {
     static let pill:  CGFloat = 980
 }
 
+// MARK: - Adaptive layout
+
+extension View {
+    /// Caps content to a comfortable reading width on large screens (iPad, Mac,
+    /// Vision Pro) and centers it, so lists and cards don't stretch edge-to-edge.
+    /// A no-op on iPhone, whose screen is already narrower than the cap — so it
+    /// never changes the phone layout.
+    func readableContentWidth(_ maxWidth: CGFloat = 720) -> some View {
+        frame(maxWidth: maxWidth).frame(maxWidth: .infinity)
+    }
+}
+
 // MARK: - Preview (verifies light + dark without touching the app)
 
 #Preview("Design System") {

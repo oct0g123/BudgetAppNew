@@ -37,6 +37,7 @@ struct HistoryView: View {
                             }
                         }
                         .padding(Spacing.xl)
+                        .readableContentWidth()
                     }
                 }
             }

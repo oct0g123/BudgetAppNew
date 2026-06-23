@@ -76,6 +76,7 @@ struct SettingsView: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
+            .readableContentWidth()
             .background(DS.background.ignoresSafeArea())
             .navigationTitle("Settings")
             #if !os(macOS)
