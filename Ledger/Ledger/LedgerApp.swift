@@ -204,6 +204,9 @@ struct LedgerApp: App {
         #if os(macOS)
         .defaultSize(width: 920, height: 680)
         #endif
+        #if os(visionOS)
+        .defaultSize(width: 720, height: 900)
+        #endif
     }
 }
 

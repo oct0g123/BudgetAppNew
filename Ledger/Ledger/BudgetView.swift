@@ -58,6 +58,8 @@ struct BudgetView: View {
             #endif
             .searchable(text: $searchText, prompt: Text("Search transactions"))
             .toolbar {
+                // On visionOS the month controls live in a bottom ornament instead.
+                #if !os(visionOS)
                 ToolbarItemGroup(placement: .navigation) {
                     Button {
                         viewedKey = MonthKey.offset(viewedKey, by: -1)
@@ -70,6 +72,7 @@ struct BudgetView: View {
                         Label("Next month", systemImage: "chevron.right")
                     }
                 }
+                #endif
                 if IntelligenceService.isAvailable {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
@@ -92,9 +95,9 @@ struct BudgetView: View {
                     }
                     .disabled(currentMonth == nil)
                 }
-                // iOS has the floating bottom-right + button, so the toolbar +
-                // is redundant there; keep it on macOS/visionOS (no floating one).
-                #if !os(iOS)
+                // iOS has the floating bottom-right + button and visionOS has the
+                // add ornament, so the toolbar + is only needed on macOS.
+                #if os(macOS)
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         showingAdd = true
@@ -107,6 +110,10 @@ struct BudgetView: View {
             }
         }
         .tint(DS.gold)
+        #if os(visionOS)
+        .ornament(attachmentAnchor: .scene(.bottom)) { monthNavOrnament }
+        .ornament(attachmentAnchor: .scene(.trailing)) { addOrnament }
+        #endif
         .sensoryFeedback(.selection, trigger: filter)
         .sensoryFeedback(.success, trigger: closeCount)
         .task(id: viewedKey) {
@@ -258,6 +265,7 @@ struct BudgetView: View {
                         TransactionRow(txn: txn)
                     }
                     .buttonStyle(.plain)
+                    .hoverHighlight()
                 }
                 .onDelete { offsets in
                     guard !month.isClosed else { return }
@@ -307,6 +315,48 @@ struct BudgetView: View {
             .accessibilityLabel("Add transaction")
         }
     }
+
+    // MARK: visionOS ornaments
+
+    #if os(visionOS)
+    /// Floating month navigation below the window — the signature visionOS way
+    /// to flip between months (replaces the top-bar chevrons there).
+    private var monthNavOrnament: some View {
+        HStack(spacing: Spacing.lg) {
+            Button {
+                viewedKey = MonthKey.offset(viewedKey, by: -1)
+            } label: {
+                Image(systemName: "chevron.left")
+            }
+            Text(MonthKey.displayName(viewedKey))
+                .font(Typography.serif(.headline))
+                .foregroundStyle(DS.text)
+                .frame(minWidth: 160)
+            Button {
+                viewedKey = MonthKey.offset(viewedKey, by: 1)
+            } label: {
+                Image(systemName: "chevron.right")
+            }
+        }
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.sm)
+        .glassBackgroundEffect()
+    }
+
+    /// Floating add button off the trailing edge — the visionOS counterpart to
+    /// the iOS bottom-right "+".
+    private var addOrnament: some View {
+        Button {
+            showingAdd = true
+        } label: {
+            Image(systemName: "plus")
+                .font(.title2.weight(.semibold))
+                .padding(Spacing.sm)
+        }
+        .disabled(currentMonth == nil || currentMonth?.isClosed == true)
+        .glassBackgroundEffect()
+    }
+    #endif
 
     // MARK: Delete with undo
 
@@ -506,6 +556,7 @@ struct TransactionFilterBar: View {
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
+                .hoverHighlight()
             }
         }
         .padding(5)

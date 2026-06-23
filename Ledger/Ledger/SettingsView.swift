@@ -128,6 +128,7 @@ struct SettingsView: View {
                     themeRow(theme)
                 }
                 .buttonStyle(.plain)
+                .hoverHighlight()
             }
         } header: {
             Text("Appearance")

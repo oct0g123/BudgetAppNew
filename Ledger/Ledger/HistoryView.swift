@@ -34,6 +34,7 @@ struct HistoryView: View {
                                     MonthSummaryCard(month: month)
                                 }
                                 .buttonStyle(.plain)
+                                .hoverHighlight()
                             }
                         }
                         .padding(Spacing.xl)

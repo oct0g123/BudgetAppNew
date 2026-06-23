@@ -162,8 +162,15 @@ complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)ar
 - Data via CloudKit (shares the iCloud store) or WatchConnectivity snapshot
 
 **visionOS (polish only in 1.0)**
-- (S) Easy wins: ornament for month nav / filter; verify materials in the
-  Shared Space
+- [x] **Native visionOS app** (device family 7 + `xros` SDK) — not "Designed for
+      iPad." Runs as a glass window with eye/pinch interaction; themes apply.
+- [x] **Spatial polish — shipped.** Bottom **ornament** for month navigation and
+      a trailing **ornament** for the add button; **hover highlights** on custom
+      rows/pills (also benefits the iPad pointer); a sensible **default window
+      size**. All gated to visionOS (hover compiles out on macOS), so no effect
+      on the iPhone/iPad/Mac build.
+- Larger spatial features (volumetric 3D charts, immersive space, multi-window)
+  remain parked in 2.0.
 
 ## Core features
 - **"Safe to spend"** / projected end-of-month number (partly in the tab bar)

@@ -212,6 +212,19 @@ extension View {
     func readableContentWidth(_ maxWidth: CGFloat = 720) -> some View {
         frame(maxWidth: maxWidth).frame(maxWidth: .infinity)
     }
+
+    /// Pointer / eye-gaze hover highlight on custom-styled interactive views
+    /// (which don't get one automatically). Lights up under the iPad pointer and
+    /// visionOS eye tracking; a no-op on iPhone, and compiled out on macOS where
+    /// the API isn't available.
+    @ViewBuilder
+    func hoverHighlight() -> some View {
+        #if os(iOS) || os(visionOS)
+        hoverEffect()
+        #else
+        self
+        #endif
+    }
 }
 
 // MARK: - Preview (verifies light + dark without touching the app)
