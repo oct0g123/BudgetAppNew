@@ -144,9 +144,9 @@ complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)ar
 - [x] **Large-screen polish — shipped.** `readableContentWidth()` caps the four
       main screens to a centered column on iPad/Mac/Vision Pro (no-op on iPhone)
       so lists and cards don't stretch edge-to-edge.
-- (S) Follow-up: **enable Home/Lock Screen widgets on iPad** — the widget target
-      is still `TARGETED_DEVICE_FAMILY = 1` (iPhone only); bump to `1,2`. (Touches
-      the project file, so batch it with other project-file work.)
+- [x] **Widgets on iPad — shipped.** Widget target bumped to
+      `TARGETED_DEVICE_FAMILY = "1,2"`, so the Home/Lock Screen widgets are now
+      available on iPad too (no widget code change needed).
 - (S) Optional Mac niceties: a dedicated `Settings` scene (⌘,), menu-bar
       commands (⌘N new transaction), window min-size — all additive.
 
