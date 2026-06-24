@@ -76,6 +76,9 @@ enum DS {
     static var savings:     Color { p.savings }
     static var wants:       Color { p.wants }
 
+    // Over-budget alarm (decoupled from the Needs color)
+    static var over:        Color { p.over }
+
     static func category(_ c: BudgetCategory) -> Color {
         switch c {
         case .needs:   return needs

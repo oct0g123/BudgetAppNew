@@ -45,6 +45,7 @@ struct ThemePalette {
     let needs: Color
     let savings: Color
     let wants: Color
+    let over: Color         // over-budget alarm — its own color, not a category's
     let fontStyle: ThemeFontStyle
 }
 
@@ -99,6 +100,7 @@ enum AppTheme: String, CaseIterable, Identifiable {
                 needs:       c(0xA85F37, 0xB5734A),
                 savings:     c(0x5E6E4D, 0x7F8F6E),
                 wants:       c(0xB1872C, 0xCBA85A),
+                over:        c(0xC0392B, 0xDA5A47),
                 fontStyle:   .editorial
             )
 
@@ -116,6 +118,7 @@ enum AppTheme: String, CaseIterable, Identifiable {
                 needs:       c(0x27272A, 0xE4E4E7),
                 savings:     c(0x71717A, 0xA1A1AA),
                 wants:       c(0xA1A1AA, 0x71717A),
+                over:        c(0xDC2626, 0xF87171),
                 fontStyle:   .system
             )
 
@@ -133,6 +136,7 @@ enum AppTheme: String, CaseIterable, Identifiable {
                 needs:       c(0xFF9500, 0xFF9F0A),
                 savings:     c(0x34C759, 0x30D158),
                 wants:       c(0x5856D6, 0x5E5CE6),
+                over:        c(0xFF3B30, 0xFF453A),
                 fontStyle:   .system
             )
         }

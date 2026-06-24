@@ -205,7 +205,7 @@ struct BudgetView: View {
                 MoneyField(amount: Binding(get: { month.income },
                                            set: { month.income = $0 }))
                     .labelsHidden()
-                    .font(Typography.mono(.title, weight: .medium))
+                    .font(Typography.mono(.title, weight: .bold))
                     .foregroundStyle(DS.text)
                     .disabled(month.isClosed)
                 Text(splitWords(month.split))
@@ -485,7 +485,7 @@ struct BucketRow: View {
 
     private var statusColor: Color {
         if over && isSavings { return DS.savings }
-        if over { return DS.needs }
+        if over { return DS.over }
         return DS.textMuted
     }
 
@@ -506,7 +506,7 @@ struct BucketRow: View {
             }
 
             ProgressView(value: fraction)
-                .tint(alarmOver ? DS.needs : DS.category(category))
+                .tint(alarmOver ? DS.over : DS.category(category))
                 .animation(.spring(duration: 0.5), value: fraction)
 
             HStack {
@@ -517,7 +517,7 @@ struct BucketRow: View {
                 if showUsage {
                     Text(Money.percent(rawFraction) + " used")
                         .font(Typography.mono(.caption))
-                        .foregroundStyle(alarmOver ? DS.needs : DS.textMuted)
+                        .foregroundStyle(alarmOver ? DS.over : DS.textMuted)
                 }
             }
         }

@@ -479,7 +479,7 @@ struct SettingsView: View {
                 Label("Reset All Data…", systemImage: "trash")
             }
         } header: {
-            Text("Danger Zone")
+            Text("Data Removal")
         } footer: {
             Text("Permanently deletes every month, transaction, recurring rule, and your settings. With iCloud on, this clears your data on all your devices. Export a backup first if you might want it back.")
         }
