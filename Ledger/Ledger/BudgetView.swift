@@ -224,7 +224,7 @@ struct BudgetView: View {
     // MARK: Buckets
 
     private func bucketsSection(_ month: MonthRecord) -> some View {
-        Section("Buckets") {
+        Section("Categories") {
             ForEach(BudgetCategory.allCases) { category in
                 BucketRow(category: category,
                           budget: month.budget(for: category),
@@ -292,6 +292,11 @@ struct BudgetView: View {
         case .dateAsc:    return a.date < b.date
         case .amountDesc: return a.amount > b.amount
         case .amountAsc:  return a.amount < b.amount
+        case .recurringFirst:
+            let aRecurring = a.recurringRuleID != nil
+            let bRecurring = b.recurringRuleID != nil
+            if aRecurring != bRecurring { return aRecurring }  // recurring first
+            return a.date > b.date                             // then newest within each group
         }
     }
 
@@ -431,14 +436,15 @@ struct BudgetView: View {
 // MARK: - Transaction sort order
 
 enum TxnSort: CaseIterable {
-    case dateDesc, dateAsc, amountDesc, amountAsc
+    case dateDesc, dateAsc, amountDesc, amountAsc, recurringFirst
 
     var label: String {
         switch self {
-        case .dateDesc:   return "Newest first"
-        case .dateAsc:    return "Oldest first"
-        case .amountDesc: return "Largest first"
-        case .amountAsc:  return "Smallest first"
+        case .dateDesc:        return "Newest first"
+        case .dateAsc:         return "Oldest first"
+        case .amountDesc:      return "Largest first"
+        case .amountAsc:       return "Smallest first"
+        case .recurringFirst:  return "Recurring first"
         }
     }
 }

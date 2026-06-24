@@ -129,6 +129,11 @@ complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)ar
       Savings Goal circular. (StandBy rides along.)
 - (S–M) Control Center control + Action Button: one-tap "Add Transaction"
   deep-link, or remaining-budget readout
+- (S) **"Add Transaction" widget** 📌 *pinned* — a one-tap Home/Lock Screen
+  button that opens the add sheet via deep link (widgets can't take text input,
+  so it launches the app rather than capturing inline). Deliberately deferred:
+  it overlaps the existing Spotlight/Siri quick-add shortcut, so it's
+  low-priority polish for whenever home-screen one-tap-add is wanted.
 - (M) **App Intents / Siri / Shortcuts / Spotlight** ← **up next** ("how much is
   left?", "add $12 groceries"). WWDC26: App/Entity/Intent Schemas, View
   Annotations, Spotlight semantic index. Validate with AppIntentsTesting.

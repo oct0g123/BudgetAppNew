@@ -160,48 +160,78 @@ struct InsightsView: View {
 
     private func budgetVsActualChart(_ month: MonthRecord) -> some View {
         Card {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Spacing.lg) {
                 SectionLabel("Budget vs Actual — \(MonthKey.displayName(month.key))")
-                Chart {
-                    ForEach(BudgetCategory.allCases) { category in
-                        BarMark(
-                            x: .value("Amount", month.budget(for: category)),
-                            y: .value("Bucket", category.title)
-                        )
-                        .foregroundStyle(DS.surfaceHigh)
-                        .cornerRadius(4)
-
-                        BarMark(
-                            x: .value("Amount", month.spent(for: category)),
-                            y: .value("Bucket", category.title)
-                        )
-                        .foregroundStyle(DS.category(category))
-                        .cornerRadius(4)
-                    }
-                }
-                .chartYAxis { monoAxisLabels() }
-                .chartXAxis {
-                    AxisMarks { _ in
-                        AxisGridLine().foregroundStyle(DS.hairline)
-                        AxisValueLabel()
-                            .font(Typography.mono(.caption2))
-                            .foregroundStyle(DS.textMuted)
-                    }
-                }
-                .frame(height: 160)
-                HStack(spacing: Spacing.lg) {
-                    legendDot(DS.surfaceHigh, "Budget")
-                    legendDot(DS.gold, "Spent")
+                ForEach(BudgetCategory.allCases) { category in
+                    BudgetProgressBar(category: category,
+                                      spent: month.spent(for: category),
+                                      budget: month.budget(for: category))
                 }
             }
         }
     }
+}
 
-    private func legendDot(_ color: Color, _ label: String) -> some View {
-        HStack(spacing: 6) {
-            RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 12, height: 12)
-            Text(label).font(Typography.mono(.caption)).foregroundStyle(DS.textMuted)
+// MARK: - Budget vs actual bar (matches the Budget page, thicker)
+
+/// One category's spend against its budget as a thick progress bar: spent fills
+/// the budget track, category-colored, red when over. Mirrors the Budget page's
+/// BucketRow so the two screens read the same — just chunkier for the Insights
+/// real estate.
+struct BudgetProgressBar: View {
+    let category: BudgetCategory
+    let spent: Double
+    let budget: Double
+
+    private var rawFraction: Double { budget > 0 ? spent / budget : 0 }
+    private var fraction: Double { min(rawFraction, 1) }
+    private var isSavings: Bool { category == .savings }
+    private var spentOver: Bool { spent > budget }
+    private var alarmOver: Bool { spentOver && !isSavings }
+
+    private var statusText: String {
+        if spentOver && isSavings { return Money.string(spent - budget) + " past goal" }
+        if spentOver { return "Over by " + Money.string(spent - budget) }
+        return Money.string(budget - spent) + " remaining"
+    }
+    private var statusColor: Color {
+        if spentOver && isSavings { return DS.savings }
+        if spentOver { return DS.over }
+        return DS.textMuted
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            HStack(spacing: Spacing.sm) {
+                Circle().fill(DS.category(category)).frame(width: 9, height: 9)
+                Text(category.title)
+                    .font(Typography.serif(.headline))
+                    .foregroundStyle(DS.text)
+                Spacer()
+                Text(Money.string(spent) + " / " + Money.string(budget))
+                    .font(Typography.mono(.footnote))
+                    .foregroundStyle(DS.textMuted)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(DS.surfaceHigh)
+                    Capsule().fill(alarmOver ? DS.over : DS.category(category))
+                        .frame(width: max(0, geo.size.width * fraction))
+                }
+            }
+            .frame(height: 18)
+            .animation(.spring(duration: 0.5), value: fraction)
+            HStack {
+                Text(statusText)
+                    .font(Typography.mono(.caption))
+                    .foregroundStyle(statusColor)
+                Spacer()
+                Text(Money.percent(rawFraction) + " used")
+                    .font(Typography.mono(.caption))
+                    .foregroundStyle(alarmOver ? DS.over : DS.textMuted)
+            }
         }
+        .padding(.vertical, Spacing.xs)
     }
 }
 
