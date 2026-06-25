@@ -146,6 +146,7 @@ struct AddTransactionView: View {
                                              in: context)
             }
         }
+        BudgetAlerts.evaluate(existing?.month ?? month)
         saveCount += 1
         dismiss()
     }

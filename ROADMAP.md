@@ -189,8 +189,15 @@ complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)ar
 - Category drill-down from the charts
 
 ## System features
-- (M) **Budget alerts** — local notifications at 80% / over a bucket (no push
-  entitlement needed)
+- [x] **Budget alerts — shipped.** On-device local notifications when **Needs or
+  Wants** reaches **80%** or goes over, for the current month (no push
+  entitlement). **Off by default**; toggle in Settings → Notifications (requests
+  iOS permission on enable). **Savings stays silent.** Fires from every spend
+  path (manual, Siri, command bar) via a hook in `LedgerService`; one ping per
+  threshold per bucket per month, re-armed on refund/edit. Banners show even in
+  the foreground (`UNUserNotificationCenterDelegate`).
+  - (S) 📌 *pinned, optional later:* user-adjustable threshold (slider, e.g.
+    75 / 80 / 90%) instead of the fixed 80%.
 - [x] **Biometric lock** (Face ID) — shipped (Settings → Privacy). ⚠️ **Felt
       sluggish in Debug** — re-evaluate on a Release/TestFlight build and **remove
       it if it degrades launch/unlock** (iOS 18's built-in per-app "Require Face

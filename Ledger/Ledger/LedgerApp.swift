@@ -28,6 +28,7 @@ import UIKit
 import AppKit
 #endif
 import LocalAuthentication
+import UserNotifications
 
 private let storeLog = Logger(subsystem: "com.anthonystacy.Ledger", category: "store")
 
@@ -41,17 +42,32 @@ private let storeLog = Logger(subsystem: "com.anthonystacy.Ledger", category: "s
 // export fine). Registering on launch via an app-delegate adaptor fixes import.
 
 #if os(iOS) || os(visionOS)
-final class AppDelegate: NSObject, UIApplicationDelegate {
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         application.registerForRemoteNotifications()
+        UNUserNotificationCenter.current().delegate = self
         return true
+    }
+
+    // Show budget-alert banners even while the app is in the foreground.
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification) async
+        -> UNNotificationPresentationOptions {
+        [.banner, .sound, .list]
     }
 }
 #elseif os(macOS)
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.registerForRemoteNotifications()
+        UNUserNotificationCenter.current().delegate = self
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification) async
+        -> UNNotificationPresentationOptions {
+        [.banner, .sound, .list]
     }
 }
 #endif

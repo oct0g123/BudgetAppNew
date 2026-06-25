@@ -25,6 +25,7 @@ struct SettingsView: View {
 
     @AppStorage("showBucketUsage") private var showBucketUsage = true
     @AppStorage("appLockEnabled") private var appLockEnabled = false
+    @AppStorage("budgetAlertsEnabled") private var budgetAlertsEnabled = false
     @AppStorage("hasCompletedOnboarding") private var hasOnboarded = false
 
     @StateObject private var themeManager = ThemeManager.shared
@@ -67,6 +68,7 @@ struct SettingsView: View {
                 allocationSection
                 displaySection
                 privacySection
+                notificationsSection
                 syncSection
                 intelligenceSection
                 recurringSection
@@ -389,6 +391,39 @@ struct SettingsView: View {
             }
         } header: {
             Text("Privacy")
+        }
+        .listRowBackground(DS.surface)
+    }
+
+    // MARK: Notifications (budget alerts)
+
+    private var notificationsSection: some View {
+        Section {
+            Toggle(isOn: $budgetAlertsEnabled) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Budget Alerts")
+                    Text("Notify me when Needs or Wants reaches 80% or goes over.")
+                        .font(.caption)
+                        .foregroundStyle(DS.textMuted)
+                }
+            }
+            .tint(DS.savings)
+            .onChange(of: budgetAlertsEnabled) { _, on in
+                guard on else { return }
+                Task {
+                    let granted = await BudgetAlerts.requestAuthorization()
+                    if !granted {
+                        await MainActor.run {
+                            budgetAlertsEnabled = false
+                            flash("Allow notifications for Ledger in Settings to use alerts.", isError: true)
+                        }
+                    }
+                }
+            }
+        } header: {
+            Text("Notifications")
+        } footer: {
+            Text("On-device only — nothing leaves your phone. Savings is never flagged for going over (that's a good thing).")
         }
         .listRowBackground(DS.surface)
     }

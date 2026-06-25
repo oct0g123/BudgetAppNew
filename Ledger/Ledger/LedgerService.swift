@@ -10,6 +10,7 @@ import Foundation
 import SwiftData
 import WidgetKit
 import AppIntents
+import UserNotifications
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -123,10 +124,13 @@ enum LedgerService {
         let txn = Transaction(desc: desc, amount: amount, category: category, date: date)
         txn.month = month
         context.insert(txn)
+        BudgetAlerts.evaluate(month)
     }
 
     static func delete(_ transaction: Transaction, in context: ModelContext) {
+        let month = transaction.month
         context.delete(transaction)
+        BudgetAlerts.evaluate(month)   // re-arm thresholds when spend drops
     }
 
     // MARK: Deduplication
@@ -370,6 +374,75 @@ enum BudgetSnapshotStore {
             defaults.set(data, forKey: key)
             WidgetCenter.shared.reloadAllTimelines()
         }
+    }
+}
+
+// MARK: - Budget alerts (local notifications)
+
+/// Local notifications when a bucket gets close to or over its limit, for the
+/// current month. Off until the user enables it in Settings; entirely on-device
+/// (no push entitlement). Savings is never flagged for going over — that's good.
+enum BudgetAlerts {
+    static let enabledKey = "budgetAlertsEnabled"
+    private static let warnThreshold = 0.80
+
+    static var isEnabled: Bool { UserDefaults.standard.bool(forKey: enabledKey) }
+
+    /// Ask iOS for permission to show alerts. Returns whether it was granted.
+    static func requestAuthorization() async -> Bool {
+        let center = UNUserNotificationCenter.current()
+        return (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+    }
+
+    /// Re-check the current month's Needs & Wants after a spend change and fire a
+    /// one-time alert when a bucket crosses 80% or goes over. Safe to call from
+    /// every mutation path; no-ops unless enabled and on the (open) current month.
+    static func evaluate(_ month: MonthRecord?) {
+        guard isEnabled,
+              let month, month.key == MonthKey.current, !month.isClosed else { return }
+        let defaults = UserDefaults.standard
+        for category in [BudgetCategory.needs, .wants] {   // Savings stays silent
+            let budget = month.budget(for: category)
+            guard budget > 0 else { continue }
+            let spent = month.spent(for: category)
+            let fraction = spent / budget
+            let warnKey = key(month.key, category, "warn")
+            let overKey = key(month.key, category, "over")
+
+            if fraction >= 1.0 {
+                if !defaults.bool(forKey: overKey) {
+                    notify("\(category.title) over budget",
+                           "\(category.title) is over by \(Money.string(spent - budget)) this month.")
+                    defaults.set(true, forKey: overKey)
+                    defaults.set(true, forKey: warnKey)   // suppress a redundant 80% ping
+                }
+            } else if fraction >= warnThreshold {
+                defaults.set(false, forKey: overKey)       // re-arm "over" (back under 100%)
+                if !defaults.bool(forKey: warnKey) {
+                    notify("\(category.title) at \(Int((fraction * 100).rounded()))%",
+                           "\(Money.string(budget - spent)) left in \(category.title) this month.")
+                    defaults.set(true, forKey: warnKey)
+                }
+            } else {
+                defaults.set(false, forKey: warnKey)       // fully re-armed below 80%
+                defaults.set(false, forKey: overKey)
+            }
+        }
+    }
+
+    private static func key(_ month: String, _ c: BudgetCategory, _ kind: String) -> String {
+        "alert.\(month).\(c.rawValue).\(kind)"
+    }
+
+    private static func notify(_ title: String, _ body: String) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        let request = UNNotificationRequest(identifier: UUID().uuidString,
+                                            content: content,
+                                            trigger: nil)   // deliver immediately
+        UNUserNotificationCenter.current().add(request)
     }
 }
 
