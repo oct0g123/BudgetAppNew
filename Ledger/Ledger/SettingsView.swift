@@ -69,11 +69,8 @@ struct SettingsView: View {
                 displaySection
                 privacySection
                 notificationsSection
-                syncSection
-                intelligenceSection
                 recurringSection
-                dataSection
-                resetSection
+                advancedSection
                 aboutSection
             }
             .formStyle(.grouped)
@@ -93,6 +90,43 @@ struct SettingsView: View {
             return bannerIsError ? .error : .success
         }
         .onAppear(perform: loadDrafts)
+    }
+
+    // MARK: Advanced (technical settings, tucked one tap deeper)
+
+    private var advancedSection: some View {
+        Section {
+            NavigationLink {
+                advancedScreen
+            } label: {
+                Label("Advanced", systemImage: "gearshape.2")
+            }
+        } footer: {
+            Text("iCloud sync, on-device AI, import / export, and data removal.")
+        }
+        .listRowBackground(DS.surface)
+    }
+
+    /// The technical / power-user sections, pushed onto their own screen so the
+    /// main page stays focused. The export/import/paste/reset presentation
+    /// modifiers live here because their triggers do, plus a toast for feedback.
+    private var advancedScreen: some View {
+        Form {
+            syncSection
+            intelligenceSection
+            dataSection
+            resetSection
+        }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .readableContentWidth()
+        .background(DS.background.ignoresSafeArea())
+        .navigationTitle("Advanced")
+        #if !os(macOS)
+        .toolbarTitleDisplayMode(.inline)
+        #endif
+        .overlay(alignment: .bottom) { toast }
+        .animation(.spring(duration: 0.3), value: banner)
         .fileExporter(isPresented: $showingExporter,
                       document: ExportDocument(data: exportKind == .json ? jsonData()
                                                                           : Data(csvText().utf8)),
