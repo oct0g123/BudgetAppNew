@@ -184,23 +184,24 @@ complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)ar
 - Tags / sub-categories within the three buckets (ties to 5c)
 - Search & sort transactions
 
-## Beta feedback — UX polish (queued)
-Captured from testing notes; mostly small wins.
-- (S) **Manual Light / Dark toggle** — a System / Light / Dark control (in
-  Appearance) that overrides the OS appearance via `.preferredColorScheme`,
-  independent of system Dark Mode.
-- (S) **Big header on the Budget tab** — Budget currently shows only an inline
-  month name; give it a large title like Insights / History. Decide: large month
-  title vs. a "Budget" title with the month as context.
-- (S) **Delete transactions without swiping (iPad / Mac / visionOS)** — add a
-  context-menu (long-press / right-click) **Delete** on each transaction row,
-  since swipe-to-delete is awkward with a pointer or eyes. (The edit sheet
-  already has a Delete button as a fallback; iPhone keeps swipe.)
-- (S) **Action Button quick-add (iPhone 15 Pro+)** — a parameterless "Add
-  Transaction" App Intent that opens the add sheet, assignable to the Action
-  Button (and Control Center). Today's `AddTransactionIntent` is already
-  assignable but expects parameters; a dedicated open-add intent is the clean
-  fit. (Pairs with the Control Center item under Platform expansion.)
+## Beta feedback — UX polish
+Captured from testing notes; the small wins below shipped together.
+- [x] **Manual Light / Dark toggle — shipped.** A System / Light / Dark control
+  in Settings → Appearance that overrides the OS appearance app-wide via
+  `.preferredColorScheme` (`AppColorScheme`), independent of system Dark Mode.
+- [x] **Budget tab header — shipped.** Large "Budget" title like Insights /
+  History, with a centered month-selector row (‹ Month Year ›) beneath it; the
+  old toolbar month chevrons are retired on iOS/macOS (visionOS keeps its
+  ornament).
+- [x] **Delete without swiping — shipped.** Context-menu (long-press /
+  right-click) **Edit + Delete** on each transaction row, so iPad / Mac /
+  visionOS don't depend on swipe (disabled on closed months; iPhone keeps swipe;
+  the edit sheet's Delete button remains).
+- [x] **Action Button quick-add — shipped.** `AddTransactionQuickIntent`
+  (parameterless, `openAppWhenRun`) opens Ledger straight to the add sheet —
+  assignable to the Action Button / Control Center / Shortcuts. Hand-off via a
+  `QuickAdd` flag → RootView → Budget tab pops the sheet. (The parameterized Siri
+  `AddTransactionIntent` is unchanged.)
 - (M) **Native 3-D Insights charts on visionOS** — feasible: Swift Charts gained
   a 3-D API (`Chart3D` / `SurfacePlot`, iOS & visionOS 26), or RealityKit for a
   custom build; gate to visionOS. This is the "ambitious visionOS" showcase —

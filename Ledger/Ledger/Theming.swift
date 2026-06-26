@@ -173,3 +173,30 @@ final class ThemeManager: ObservableObject {
         UserDefaults.standard.set(newTheme.rawValue, forKey: Self.storageKey)
     }
 }
+
+// MARK: - Light / Dark override
+
+/// The user's appearance choice, independent of the system Dark Mode setting.
+/// Applied app-wide via `.preferredColorScheme`; `system` defers to the OS.
+enum AppColorScheme: String, CaseIterable, Identifiable {
+    case system, light, dark
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .system: return "System"
+        case .light:  return "Light"
+        case .dark:   return "Dark"
+        }
+    }
+
+    /// `nil` follows the system; otherwise forces the chosen scheme.
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light:  return .light
+        case .dark:   return .dark
+        }
+    }
+}

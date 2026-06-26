@@ -806,6 +806,33 @@ struct SafeToSpendIntent: AppIntent {
     }
 }
 
+/// One-press quick add — just opens Ledger to the new-transaction sheet (no
+/// parameters), ideal for the Action Button or Control Center.
+struct AddTransactionQuickIntent: AppIntent {
+    static var title: LocalizedStringResource = "Quick Add Transaction"
+    static var description = IntentDescription("Open Ledger and start a new transaction.")
+    static var openAppWhenRun = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        QuickAdd.request()
+        return .result()
+    }
+}
+
+/// A tiny hand-off flag: the Quick Add intent only launches the app, so it leaves
+/// this for the UI to pick up and pop the add sheet once a screen is on.
+enum QuickAdd {
+    private static let key = "pendingQuickAdd"
+    static func request() { UserDefaults.standard.set(true, forKey: key) }
+    /// Returns true at most once, then clears itself.
+    static func consume() -> Bool {
+        guard UserDefaults.standard.bool(forKey: key) else { return false }
+        UserDefaults.standard.set(false, forKey: key)
+        return true
+    }
+}
+
 struct LedgerShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -816,6 +843,15 @@ struct LedgerShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Add Transaction",
             systemImageName: "plus.circle"
+        )
+        AppShortcut(
+            intent: AddTransactionQuickIntent(),
+            phrases: [
+                "Quick add in \(.applicationName)",
+                "New transaction in \(.applicationName)"
+            ],
+            shortTitle: "Quick Add",
+            systemImageName: "plus.app"
         )
         AppShortcut(
             intent: SafeToSpendIntent(),

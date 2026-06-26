@@ -26,6 +26,7 @@ struct SettingsView: View {
     @AppStorage("showBucketUsage") private var showBucketUsage = true
     @AppStorage("appLockEnabled") private var appLockEnabled = false
     @AppStorage("budgetAlertsEnabled") private var budgetAlertsEnabled = false
+    @AppStorage("appColorScheme") private var appColorScheme = AppColorScheme.system.rawValue
     @AppStorage("hasCompletedOnboarding") private var hasOnboarded = false
 
     @StateObject private var themeManager = ThemeManager.shared
@@ -157,6 +158,11 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         Section {
+            Picker("Mode", selection: $appColorScheme) {
+                ForEach(AppColorScheme.allCases) { Text($0.label).tag($0.rawValue) }
+            }
+            .pickerStyle(.segmented)
+
             ForEach(AppTheme.allCases) { theme in
                 Button {
                     themeManager.setTheme(theme)
@@ -169,7 +175,7 @@ struct SettingsView: View {
         } header: {
             Text("Appearance")
         } footer: {
-            Text("Themes restyle the whole app. Each one follows your Light / Dark setting automatically.")
+            Text("Light / Dark overrides your system setting. Themes restyle the whole app and follow that choice.")
         }
         .listRowBackground(DS.surface)
     }

@@ -201,6 +201,7 @@ struct LedgerApp: App {
 
     @StateObject private var syncMonitor = SyncMonitor()
     @StateObject private var themeManager = ThemeManager.shared
+    @AppStorage("appColorScheme") private var appColorScheme = AppColorScheme.system.rawValue
 
     init() {
         Typography.registerBundledFonts()
@@ -215,6 +216,7 @@ struct LedgerApp: App {
                     .environmentObject(syncMonitor)
                     .environmentObject(themeManager)
             }
+            .preferredColorScheme(AppColorScheme(rawValue: appColorScheme)?.colorScheme)
         }
         .modelContainer(AppModelContainer.shared)
         #if os(macOS)

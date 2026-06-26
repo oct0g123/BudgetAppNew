@@ -12,6 +12,7 @@ import SwiftData
 
 struct BudgetView: View {
     @Environment(\.modelContext) private var context
+    @EnvironmentObject private var navigator: AppNavigator
 
     @AppStorage("viewedMonthKey") private var viewedKey: String = MonthKey.current
     @Query(sort: \MonthRecord.key) private var months: [MonthRecord]
@@ -37,11 +38,17 @@ struct BudgetView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if let month = currentMonth {
-                    monthList(month)
-                } else {
-                    emptyState
+            VStack(spacing: 0) {
+                // visionOS gets month navigation from the bottom ornament instead.
+                #if !os(visionOS)
+                monthSelector
+                #endif
+                Group {
+                    if let month = currentMonth {
+                        monthList(month)
+                    } else {
+                        emptyState
+                    }
                 }
             }
             .readableContentWidth()
@@ -52,27 +59,12 @@ struct BudgetView: View {
             #endif
             .overlay(alignment: .bottom) { undoToast }
             .animation(.spring(duration: 0.3), value: undoVisible)
-            .navigationTitle(MonthKey.displayName(viewedKey))
+            .navigationTitle("Budget")
             #if !os(macOS)
-            .toolbarTitleDisplayMode(.inline)
+            .toolbarTitleDisplayMode(.large)
             #endif
             .searchable(text: $searchText, prompt: Text("Search transactions"))
             .toolbar {
-                // On visionOS the month controls live in a bottom ornament instead.
-                #if !os(visionOS)
-                ToolbarItemGroup(placement: .navigation) {
-                    Button {
-                        viewedKey = MonthKey.offset(viewedKey, by: -1)
-                    } label: {
-                        Label("Previous month", systemImage: "chevron.left")
-                    }
-                    Button {
-                        viewedKey = MonthKey.offset(viewedKey, by: 1)
-                    } label: {
-                        Label("Next month", systemImage: "chevron.right")
-                    }
-                }
-                #endif
                 if IntelligenceService.isAvailable {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
@@ -127,6 +119,13 @@ struct BudgetView: View {
                 LedgerService.ensureMonth(forKey: viewedKey, in: context)
             }
         }
+        // Quick Add intent / Action Button hand-off (set by RootView).
+        .onChange(of: navigator.requestAddTransaction) { _, req in
+            if req { handleQuickAdd() }
+        }
+        .onAppear {
+            if navigator.requestAddTransaction { handleQuickAdd() }
+        }
         .sheet(isPresented: $showingAdd) {
             if let month = currentMonth {
                 AddTransactionView(month: month)
@@ -155,6 +154,37 @@ struct BudgetView: View {
             Text("The month becomes read-only and the next month starts fresh. This can't be undone.")
         }
     }
+
+    // MARK: Month selector (header row under the "Budget" title)
+
+    #if !os(visionOS)
+    private var monthSelector: some View {
+        HStack(spacing: Spacing.xl) {
+            Button {
+                viewedKey = MonthKey.offset(viewedKey, by: -1)
+            } label: {
+                Image(systemName: "chevron.left").font(.headline)
+            }
+            .accessibilityLabel("Previous month")
+
+            Text(MonthKey.displayName(viewedKey))
+                .font(Typography.serif(.title3, weight: .semibold))
+                .foregroundStyle(DS.text)
+                .frame(minWidth: 170)
+                .contentTransition(.numericText())
+
+            Button {
+                viewedKey = MonthKey.offset(viewedKey, by: 1)
+            } label: {
+                Image(systemName: "chevron.right").font(.headline)
+            }
+            .accessibilityLabel("Next month")
+        }
+        .tint(DS.gold)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.sm)
+    }
+    #endif
 
     // MARK: Month content
 
@@ -266,6 +296,22 @@ struct BudgetView: View {
                     }
                     .buttonStyle(.plain)
                     .hoverHighlight()
+                    // Long-press (iPad/visionOS) / right-click (Mac) delete, since
+                    // swipe-to-delete is awkward off iPhone. iPhone keeps swipe too.
+                    .contextMenu {
+                        Button {
+                            editingTransaction = txn
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        .disabled(month.isClosed)
+                        Button(role: .destructive) {
+                            performDelete([txn])
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        .disabled(month.isClosed)
+                    }
                 }
                 .onDelete { offsets in
                     guard !month.isClosed else { return }
@@ -362,6 +408,14 @@ struct BudgetView: View {
         .glassBackgroundEffect()
     }
     #endif
+
+    // MARK: Quick add (Action Button / intent)
+
+    private func handleQuickAdd() {
+        guard navigator.requestAddTransaction else { return }
+        navigator.requestAddTransaction = false
+        if let month = currentMonth, !month.isClosed { showingAdd = true }
+    }
 
     // MARK: Delete with undo
 

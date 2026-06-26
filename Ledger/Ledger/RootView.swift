@@ -15,6 +15,9 @@ enum AppTab: Hashable {
 /// Lightweight app-wide navigation state injected into the environment.
 final class AppNavigator: ObservableObject {
     @Published var selectedTab: AppTab = .budget
+    /// Set by the Quick Add intent / Action Button so the Budget screen pops the
+    /// add sheet once it's on screen.
+    @Published var requestAddTransaction = false
 }
 
 struct RootView: View {
@@ -28,6 +31,15 @@ struct RootView: View {
 
     private var onboardingBinding: Binding<Bool> {
         Binding(get: { !hasOnboarded && months.isEmpty }, set: { _ in })
+    }
+
+    /// Hand-off from the Quick Add intent / Action Button: jump to the current
+    /// month's Budget tab and ask it to open the add sheet.
+    private func consumeQuickAdd() {
+        guard QuickAdd.consume() else { return }
+        viewedKey = MonthKey.current
+        navigator.selectedTab = .budget
+        navigator.requestAddTransaction = true
     }
 
     var body: some View {
@@ -60,9 +72,13 @@ struct RootView: View {
             if !months.isEmpty { hasOnboarded = true }   // existing users skip onboarding
             LedgerService.mergeDuplicates(in: context)
             BudgetSnapshotStore.update(from: months)
+            consumeQuickAdd()
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { LedgerService.mergeDuplicates(in: context) }
+            if phase == .active {
+                LedgerService.mergeDuplicates(in: context)
+                consumeQuickAdd()
+            }
             // Refresh the widget snapshot on every scene transition (covers
             // leaving the app to view a widget after an edit).
             BudgetSnapshotStore.update(from: months)
