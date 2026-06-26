@@ -184,6 +184,28 @@ complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)ar
 - Tags / sub-categories within the three buckets (ties to 5c)
 - Search & sort transactions
 
+## Beta feedback — UX polish (queued)
+Captured from testing notes; mostly small wins.
+- (S) **Manual Light / Dark toggle** — a System / Light / Dark control (in
+  Appearance) that overrides the OS appearance via `.preferredColorScheme`,
+  independent of system Dark Mode.
+- (S) **Big header on the Budget tab** — Budget currently shows only an inline
+  month name; give it a large title like Insights / History. Decide: large month
+  title vs. a "Budget" title with the month as context.
+- (S) **Delete transactions without swiping (iPad / Mac / visionOS)** — add a
+  context-menu (long-press / right-click) **Delete** on each transaction row,
+  since swipe-to-delete is awkward with a pointer or eyes. (The edit sheet
+  already has a Delete button as a fallback; iPhone keeps swipe.)
+- (S) **Action Button quick-add (iPhone 15 Pro+)** — a parameterless "Add
+  Transaction" App Intent that opens the add sheet, assignable to the Action
+  Button (and Control Center). Today's `AddTransactionIntent` is already
+  assignable but expects parameters; a dedicated open-add intent is the clean
+  fit. (Pairs with the Control Center item under Platform expansion.)
+- (M) **Native 3-D Insights charts on visionOS** — feasible: Swift Charts gained
+  a 3-D API (`Chart3D` / `SurfacePlot`, iOS & visionOS 26), or RealityKit for a
+  custom build; gate to visionOS. This is the "ambitious visionOS" showcase —
+  see Ledger 2.0.
+
 ## Reporting
 - Month-over-month comparison, category trends, average daily spend
 - Category drill-down from the charts
@@ -251,6 +273,8 @@ post-WWDC26 tooling ships.
   once its tooling ships, or an external provider if the privacy trade-off is OK.
 - **Deeper AI via Private Cloud Compute / external providers** — also the path for
   AI prose in the Insights summary (5b) if/when a bigger private model is viable.
-- **Ambitious visionOS** — volumetric 3D charts, multi-window (Budget + Insights).
-  Low ROI; only if a spatial showpiece is wanted.
+- **Ambitious visionOS** — **native 3-D Insights charts** (now feasible via Swift
+  Charts' `Chart3D` / `SurfacePlot`, iOS & visionOS 26, or RealityKit),
+  multi-window (Budget + Insights). A real spatial showpiece; medium effort,
+  gated to visionOS. Requested in beta — see "Beta feedback" in 1.0.
 - **Round-trip export** to the original web-app JSON format (compatibility).
