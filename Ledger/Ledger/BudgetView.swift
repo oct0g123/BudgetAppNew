@@ -63,7 +63,6 @@ struct BudgetView: View {
             #if !os(macOS)
             .toolbarTitleDisplayMode(.large)
             #endif
-            .searchable(text: $searchText, prompt: Text("Search transactions"))
             .toolbar {
                 if IntelligenceService.isAvailable {
                     ToolbarItem(placement: .primaryAction) {
@@ -192,9 +191,15 @@ struct BudgetView: View {
 
     // MARK: Month content
 
+    private var isSearching: Bool {
+        !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     private func monthList(_ month: MonthRecord) -> some View {
-        ScrollViewReader { proxy in
-            List {
+        List {
+            searchField
+
+            if !isSearching {
                 if month.isClosed {
                     Section {
                         Label("This month is closed and read-only.", systemImage: "lock.fill")
@@ -211,28 +216,58 @@ struct BudgetView: View {
 
                 incomeSection(month)
                 bucketsSection(month)
-                transactionsSection(month)
+            }
 
-                if !month.isClosed {
-                    Section {
-                        Button(role: .destructive) {
-                            confirmingClose = true
-                        } label: {
-                            Label("Close \(MonthKey.shortMonthName(month.key)) & Start Next Month",
-                                  systemImage: "checkmark.seal")
-                                .frame(maxWidth: .infinity)
-                        }
+            transactionsSection(month)
+
+            if !isSearching, !month.isClosed {
+                Section {
+                    Button(role: .destructive) {
+                        confirmingClose = true
+                    } label: {
+                        Label("Close \(MonthKey.shortMonthName(month.key)) & Start Next Month",
+                              systemImage: "checkmark.seal")
+                            .frame(maxWidth: .infinity)
                     }
-                    .listRowBackground(DS.surface)
+                }
+                .listRowBackground(DS.surface)
+            }
+        }
+    }
+
+    /// In-list search field — sits below the pinned month selector and scrolls
+    /// with the content. While searching, the income/category cards hide (above)
+    /// so matches show right under the field.
+    private var searchField: some View {
+        Section {
+            HStack(spacing: Spacing.sm) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(DS.textMuted)
+                TextField("Search transactions", text: $searchText)
+                    .foregroundStyle(DS.text)
+                    #if os(iOS)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    #endif
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(DS.textMuted)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
                 }
             }
-            // Snap to the transactions when a search begins (so results aren't
-            // hidden below the income/category cards).
-            .onChange(of: searchText) { oldValue, newValue in
-                if oldValue.isEmpty && !newValue.isEmpty {
-                    withAnimation { proxy.scrollTo("txns", anchor: .top) }
-                }
-            }
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, 10)
+            .background(DS.surfaceHigh,
+                        in: RoundedRectangle(cornerRadius: Radius.field, style: .continuous))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: Spacing.sm, leading: Spacing.md,
+                                      bottom: Spacing.xs, trailing: Spacing.md))
         }
     }
 
@@ -290,7 +325,6 @@ struct BudgetView: View {
                 .listRowInsets(EdgeInsets(top: Spacing.md, leading: Spacing.md,
                                           bottom: Spacing.xs, trailing: Spacing.md))
         }
-        .id("txns")
 
         Section {
             let txns = filteredTransactions(month)
