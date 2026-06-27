@@ -684,24 +684,35 @@ extension View {
     /// otherwise.
     @ViewBuilder
     func glassCapsule() -> some View {
-        if #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) {
+        // Liquid Glass exists on iOS/macOS only; visionOS uses a material.
+        #if os(iOS) || os(macOS)
+        if #available(iOS 26.0, macOS 26.0, *) {
             self.glassEffect(.regular, in: .capsule)
         } else {
             self.background(.ultraThinMaterial, in: Capsule())
                 .overlay(Capsule().stroke(DS.hairline, lineWidth: 1))
         }
+        #else
+        self.background(.ultraThinMaterial, in: Capsule())
+            .overlay(Capsule().stroke(DS.hairline, lineWidth: 1))
+        #endif
     }
 
     /// Tinted, interactive Liquid Glass circle where available; a solid tinted
     /// circle with a soft shadow otherwise.
     @ViewBuilder
     func glassCircle(tint: Color) -> some View {
-        if #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) {
+        #if os(iOS) || os(macOS)
+        if #available(iOS 26.0, macOS 26.0, *) {
             self.glassEffect(.regular.tint(tint).interactive(), in: .circle)
         } else {
             self.background(tint, in: Circle())
                 .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
         }
+        #else
+        self.background(tint, in: Circle())
+            .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
+        #endif
     }
 }
 

@@ -10,6 +10,12 @@ multi-user, or better-served-later ideas).
 ## Open decisions (1.0)
 
 Revisit before final polish / before building the related feature:
+- ⚠️ **Budget page design — re-check before release.** The header/month-selector
+  layout works (large "Budget" title + scrolling month selector + search), but
+  the overall composition "feels off" and deserves a design pass before
+  shipping. (Pinning the month selector was abandoned — `safeAreaInset` + a
+  collapsing large title is broken on this OS; revisit only if a clean approach
+  appears.)
 - **Font:** keep Playfair Display, or revert headings to the system serif
   (New York)? One-line change in `Typography.serif`. Decide near the end.
 - **Purchase types (Phase 5c):** persistent stored sub-category tags (richer:
