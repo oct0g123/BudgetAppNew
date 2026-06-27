@@ -38,22 +38,22 @@ struct BudgetView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // visionOS gets month navigation from the bottom ornament instead.
-                #if !os(visionOS)
-                monthSelector
-                #endif
-                Group {
-                    if let month = currentMonth {
-                        monthList(month)
-                    } else {
-                        emptyState
-                    }
+            Group {
+                if let month = currentMonth {
+                    monthList(month)
+                } else {
+                    emptyState
                 }
             }
             .readableContentWidth()
             .scrollContentBackground(.hidden)
             .background(DS.background.ignoresSafeArea())
+            // Pinned month selector beneath the "Budget" title. safeAreaInset
+            // keeps it from overlapping the large title on overscroll (visionOS
+            // uses its bottom ornament instead).
+            #if !os(visionOS)
+            .safeAreaInset(edge: .top, spacing: 0) { monthSelector }
+            #endif
             #if os(iOS)
             .overlay(alignment: .bottomTrailing) { addButton }
             #endif
@@ -183,42 +183,55 @@ struct BudgetView: View {
         .tint(DS.gold)
         .frame(maxWidth: .infinity)
         .padding(.vertical, Spacing.sm)
+        .background(DS.background)   // opaque so content doesn't show through on overscroll
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(DS.hairline).frame(height: 0.5)
+        }
     }
     #endif
 
     // MARK: Month content
 
     private func monthList(_ month: MonthRecord) -> some View {
-        List {
-            if month.isClosed {
-                Section {
-                    Label("This month is closed and read-only.", systemImage: "lock.fill")
-                        .font(.subheadline)
-                        .foregroundStyle(DS.textMuted)
-                    Button {
-                        LedgerService.reopenMonth(month, in: context)
-                    } label: {
-                        Label("Reopen Month", systemImage: "lock.open")
+        ScrollViewReader { proxy in
+            List {
+                if month.isClosed {
+                    Section {
+                        Label("This month is closed and read-only.", systemImage: "lock.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(DS.textMuted)
+                        Button {
+                            LedgerService.reopenMonth(month, in: context)
+                        } label: {
+                            Label("Reopen Month", systemImage: "lock.open")
+                        }
                     }
+                    .listRowBackground(DS.surfaceHigh)
                 }
-                .listRowBackground(DS.surfaceHigh)
+
+                incomeSection(month)
+                bucketsSection(month)
+                transactionsSection(month)
+
+                if !month.isClosed {
+                    Section {
+                        Button(role: .destructive) {
+                            confirmingClose = true
+                        } label: {
+                            Label("Close \(MonthKey.shortMonthName(month.key)) & Start Next Month",
+                                  systemImage: "checkmark.seal")
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .listRowBackground(DS.surface)
+                }
             }
-
-            incomeSection(month)
-            bucketsSection(month)
-            transactionsSection(month)
-
-            if !month.isClosed {
-                Section {
-                    Button(role: .destructive) {
-                        confirmingClose = true
-                    } label: {
-                        Label("Close \(MonthKey.shortMonthName(month.key)) & Start Next Month",
-                              systemImage: "checkmark.seal")
-                            .frame(maxWidth: .infinity)
-                    }
+            // Snap to the transactions when a search begins (so results aren't
+            // hidden below the income/category cards).
+            .onChange(of: searchText) { oldValue, newValue in
+                if oldValue.isEmpty && !newValue.isEmpty {
+                    withAnimation { proxy.scrollTo("txns", anchor: .top) }
                 }
-                .listRowBackground(DS.surface)
             }
         }
     }
@@ -277,6 +290,7 @@ struct BudgetView: View {
                 .listRowInsets(EdgeInsets(top: Spacing.md, leading: Spacing.md,
                                           bottom: Spacing.xs, trailing: Spacing.md))
         }
+        .id("txns")
 
         Section {
             let txns = filteredTransactions(month)

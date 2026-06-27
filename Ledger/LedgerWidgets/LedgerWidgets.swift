@@ -118,7 +118,12 @@ struct SafeToSpendWidget: Widget {
         }
         .configurationDisplayName("Safe to Spend")
         .description("What's left to spend this month, with savings set aside.")
+        // Lock Screen accessory families are iOS-only; macOS gets the small widget.
+        #if os(iOS)
         .supportedFamilies([.systemSmall, .accessoryInline, .accessoryRectangular])
+        #else
+        .supportedFamilies([.systemSmall])
+        #endif
     }
 }
 
@@ -132,6 +137,7 @@ struct SafeToSpendView: View {
 
     var body: some View {
         switch family {
+        #if os(iOS)
         case .accessoryInline:
             Text(over ? "\(snapshot.shortMonthName) · \(overBy) over"
                       : "\(snapshot.shortMonthName) · \(headline) left")
@@ -143,6 +149,7 @@ struct SafeToSpendView: View {
                           : "\(widgetMoney(snapshot.needsRemaining)) needs · \(widgetMoney(snapshot.wantsRemaining)) wants")
                     .font(.caption2).lineLimit(1).minimumScaleFactor(0.7)
             }
+        #endif
         default:
             VStack(alignment: .leading, spacing: 4) {
                 Text(snapshot.shortMonthName.uppercased())
@@ -245,7 +252,11 @@ struct SavingsGoalWidget: Widget {
         }
         .configurationDisplayName("Savings Goal")
         .description("Progress toward this month's savings goal.")
+        #if os(iOS)
         .supportedFamilies([.systemSmall, .accessoryCircular])
+        #else
+        .supportedFamilies([.systemSmall])
+        #endif
     }
 }
 
@@ -257,6 +268,7 @@ struct SavingsGoalView: View {
 
     var body: some View {
         switch family {
+        #if os(iOS)
         case .accessoryCircular:
             Gauge(value: min(progress, 1.0)) {
                 Text("Save")
@@ -266,6 +278,7 @@ struct SavingsGoalView: View {
             .gaugeStyle(.accessoryCircular)
             .tint(WDS.savings)
             .widgetAccentable()
+        #endif
         default:
             VStack(spacing: 5) {
                 Text("SAVINGS GOAL")
