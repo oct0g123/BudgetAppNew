@@ -174,11 +174,7 @@ struct BudgetView: View {
         }
         .tint(DS.gold)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, Spacing.sm)
-        .background(DS.background)   // opaque so content doesn't show through on overscroll
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(DS.hairline).frame(height: 0.5)
-        }
+        .padding(.vertical, Spacing.xs)
     }
     #endif
 
@@ -190,6 +186,14 @@ struct BudgetView: View {
 
     private func monthList(_ month: MonthRecord) -> some View {
         List {
+            #if !os(visionOS)
+            monthSelector
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: Spacing.sm, leading: Spacing.md,
+                                          bottom: 0, trailing: Spacing.md))
+            #endif
+
             searchField
 
             if !isSearching {
@@ -226,9 +230,6 @@ struct BudgetView: View {
                 .listRowBackground(DS.surface)
             }
         }
-        #if !os(visionOS)
-        .safeAreaInset(edge: .top, spacing: 0) { monthSelector }
-        #endif
     }
 
     /// In-list search field — sits below the pinned month selector and scrolls
@@ -518,19 +519,24 @@ struct BudgetView: View {
     // MARK: Empty state
 
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label(MonthKey.displayName(viewedKey), systemImage: "calendar")
-        } description: {
-            Text("Start this month to begin tracking. It will use your default income and allocation from Settings.")
-        } actions: {
-            Button("Start \(MonthKey.displayName(viewedKey))") {
-                LedgerService.ensureMonth(forKey: viewedKey, in: context)
+        VStack(spacing: 0) {
+            #if !os(visionOS)
+            monthSelector
+                .padding(.top, Spacing.sm)
+            #endif
+            Spacer(minLength: 0)
+            ContentUnavailableView {
+                Label(MonthKey.displayName(viewedKey), systemImage: "calendar")
+            } description: {
+                Text("Start this month to begin tracking. It will use your default income and allocation from Settings.")
+            } actions: {
+                Button("Start \(MonthKey.displayName(viewedKey))") {
+                    LedgerService.ensureMonth(forKey: viewedKey, in: context)
+                }
+                .buttonStyle(.borderedProminent)
             }
-            .buttonStyle(.borderedProminent)
+            Spacer(minLength: 0)
         }
-        #if !os(visionOS)
-        .safeAreaInset(edge: .top, spacing: 0) { monthSelector }
-        #endif
     }
 }
 
