@@ -45,15 +45,8 @@ struct BudgetView: View {
                     emptyState
                 }
             }
-            .readableContentWidth()
             .scrollContentBackground(.hidden)
             .background(DS.background.ignoresSafeArea())
-            // Pinned month selector beneath the "Budget" title. safeAreaInset
-            // keeps it from overlapping the large title on overscroll (visionOS
-            // uses its bottom ornament instead).
-            #if !os(visionOS)
-            .safeAreaInset(edge: .top, spacing: 0) { monthSelector }
-            #endif
             #if os(iOS)
             .overlay(alignment: .bottomTrailing) { addButton }
             #endif
@@ -233,6 +226,9 @@ struct BudgetView: View {
                 .listRowBackground(DS.surface)
             }
         }
+        #if !os(visionOS)
+        .safeAreaInset(edge: .top, spacing: 0) { monthSelector }
+        #endif
     }
 
     /// In-list search field — sits below the pinned month selector and scrolls
@@ -532,6 +528,9 @@ struct BudgetView: View {
             }
             .buttonStyle(.borderedProminent)
         }
+        #if !os(visionOS)
+        .safeAreaInset(edge: .top, spacing: 0) { monthSelector }
+        #endif
     }
 }
 
