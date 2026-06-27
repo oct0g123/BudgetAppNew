@@ -172,6 +172,7 @@ struct BudgetView: View {
             }
             .accessibilityLabel("Next month")
         }
+        .buttonStyle(.borderless)   // make each chevron tappable inside the List row
         .tint(DS.gold)
         .frame(maxWidth: .infinity)
         .padding(.vertical, Spacing.xs)
