@@ -23,6 +23,66 @@ Revisit before final polish / before building the related feature:
 
 ---
 
+## Release plan (phased launch)
+
+Shipping in stages to keep each release low-risk and scoped.
+
+### v1.0 — iOS only, US App Store  *(now → ~1–2 days)*
+First public release: **iPhone + iPad, US availability only.**
+- **Scope lock:** iOS only (Mac/visionOS deferred to 1.1) and **US-only** — the
+  US-only choice also sidesteps the locale money-input bug below at zero code risk.
+- Final **design sweep** (esp. the Budget page — see Open decisions).
+- Final **bug sweep** (triage below).
+- **1–2 more days of TestFlight feedback** on the latest build.
+- Then **submit**: privacy URL + screenshots + metadata (see
+  `appstore/release-checklist.md`).
+
+### v1.1 — macOS + visionOS
+Add the other platforms once their builds are verified and have their own assets.
+- **visionOS:** layered app icon (Icon Composer) + visionOS screenshots.
+- **macOS:** verify build/run, Mac screenshots; fix the macOS widget dark-palette
+  bug (below).
+- Each platform = its own archive + submission under the same app record.
+
+### v1.5 — advanced features
+After the platforms are out, pull a focused few from the sections below
+(reporting, budget rollover, watch complications, adjustable alert threshold,
+native 3-D visionOS charts, …).
+
+---
+
+## Pre-launch code-review findings (triage)
+
+From a full-app high-recall review. Verdicts: ✅ fixed · 🇺🇸 handled by US-only ·
+1.1 / later = deferred.
+
+- ✅ **Action-Button quick-add was dropped on cold launch** — fixed (ensures the
+  month exists before presenting).
+- ✅ **Search was narrowed by a leftover category filter** — fixed (filter ignored
+  while searching + pills hidden).
+- 🇺🇸 **Money input corrupts in comma-decimal locales** (`MoneyField`) — *not*
+  fixed in code; **avoided by shipping US-only in 1.0.** ⚠️ MUST fix before any
+  non-US release.
+- **1.0 if quick, else 1.1** — **Editing a transaction's date across months**
+  leaves it counted under the original month. Small fix; do in the 1.0 bug sweep
+  if time permits.
+- **1.1** — **macOS widgets always render the dark palette** (Mac-only cosmetic;
+  rides with the macOS release).
+- **1.1 / later** — **CSV re-import duplicates everything** (needs stable IDs;
+  JSON backup is unaffected; low frequency).
+- **later (minor/rare):** enabling Face ID doesn't lock until next background ·
+  theme switch resets other tabs' scroll/nav (`.id` rebuild trade-off) · CloudKit
+  merge edge cases (reopened month re-closed by stale dup; settings-merge
+  tiebreak) · CSV newline-in-description round-trip · stale `enableCloudKitSync`
+  comment in `LedgerApp`.
+
+**Verified clean:** budget-alert logic, bucket/over colors, Advanced-settings
+presentation, SyncMonitor (no leaks/cycles), widget snapshot mirror + App Group
+naming, division-by-zero guards, no crashes/force-unwraps. No happy-path data
+corruption.
+
+---
+
 ## Where we are
 
 **Shipped (working):**
