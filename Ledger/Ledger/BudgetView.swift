@@ -316,12 +316,16 @@ struct BudgetView: View {
     @ViewBuilder
     private func transactionsSection(_ month: MonthRecord) -> some View {
         // Floating glass filter pill, detached above the transaction rows.
-        Section {
-            TransactionFilterBar(filter: $filter)
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: Spacing.md, leading: Spacing.md,
-                                          bottom: Spacing.xs, trailing: Spacing.md))
+        // Hidden while searching — search spans all categories, so a visible
+        // (but ignored) pill would be misleading.
+        if !isSearching {
+            Section {
+                TransactionFilterBar(filter: $filter)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: Spacing.md, leading: Spacing.md,
+                                              bottom: Spacing.xs, trailing: Spacing.md))
+            }
         }
 
         Section {
@@ -372,8 +376,11 @@ struct BudgetView: View {
 
     private func filteredTransactions(_ month: MonthRecord) -> [Transaction] {
         let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        let searching = !query.isEmpty
         return month.txns
-            .filter { filter == nil || $0.category == filter }
+            // While searching, ignore the category pill so a leftover filter
+            // can't hide matches that live in other categories.
+            .filter { searching || filter == nil || $0.category == filter }
             .filter { query.isEmpty || $0.desc.lowercased().contains(query) }
             .sorted(by: sortPredicate)
     }
@@ -460,7 +467,11 @@ struct BudgetView: View {
     private func handleQuickAdd() {
         guard navigator.requestAddTransaction else { return }
         navigator.requestAddTransaction = false
-        if let month = currentMonth, !month.isClosed { showingAdd = true }
+        // Ensure the current month exists so quick-add always has a target —
+        // e.g. on a cold launch before the month has been created. (Previously
+        // the request was silently dropped when currentMonth was nil.)
+        let month = currentMonth ?? LedgerService.ensureMonth(forKey: viewedKey, in: context)
+        if !month.isClosed { showingAdd = true }
     }
 
     // MARK: Delete with undo
