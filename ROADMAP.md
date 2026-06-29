@@ -68,9 +68,10 @@ From a full-app high-recall review. Verdicts: ✅ fixed · 🇺🇸 handled by U
 - 🇺🇸 **Money input corrupts in comma-decimal locales** (`MoneyField`) — *not*
   fixed in code; **avoided by shipping US-only in 1.0.** ⚠️ MUST fix before any
   non-US release.
-- **1.0 if quick, else 1.1** — **Editing a transaction's date across months**
-  leaves it counted under the original month. Small fix; do in the 1.0 bug sweep
-  if time permits.
+- ~~**1.0 if quick** — Editing a transaction's date across months leaves it
+  counted under the original month.~~ ✅ **Fixed** — the editor now re-homes the
+  transaction to the destination month (creating it if needed) when the edited
+  date's month-key changes.
 - ~~**1.1** — macOS widgets always render the dark palette~~ ✅ **Fixed** —
   `adaptive(light:dark:)` now resolves via an AppKit dynamic NSColor on macOS
   instead of pinning to the dark hex.
