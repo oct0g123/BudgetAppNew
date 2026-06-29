@@ -3,6 +3,9 @@ import SwiftUI
 #if canImport(UIKit)
 import UIKit
 #endif
+#if canImport(AppKit)
+import AppKit
+#endif
 
 // MARK: - Shared snapshot (mirror of the app's BudgetSnapshot)
 
@@ -60,6 +63,13 @@ private extension Color {
         #if canImport(UIKit)
         return Color(uiColor: UIColor { $0.userInterfaceStyle == .dark
             ? UIColor(Color(hex: dark)) : UIColor(Color(hex: light)) })
+        #elseif canImport(AppKit)
+        // Resolve per the effective appearance so the macOS widget tracks
+        // light/dark instead of being pinned to the dark palette.
+        return Color(nsColor: NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            return NSColor(Color(hex: isDark ? dark : light))
+        })
         #else
         return Color(hex: dark)
         #endif
