@@ -39,10 +39,15 @@ First public release: **iPhone + iPad, US availability only.**
 
 ### v1.1 — macOS + visionOS
 Add the other platforms once their builds are verified and have their own assets.
-- **visionOS:** layered app icon (Icon Composer) + visionOS screenshots.
+- **visionOS:** layered app icon ✅ scaffolded (`AppIconVision.solidimagestack`,
+  3-layer parallax derived from the iOS mark; wired via
+  `ASSETCATALOG_COMPILER_APPICON_NAME[sdk=xros*]`). Refine layer art later if
+  desired. Remaining: archive for "Any visionOS Device" → upload to the visionOS
+  tab → TestFlight; visionOS screenshots.
 - **macOS:** verify build/run, Mac screenshots; fix the macOS widget dark-palette
-  bug (below).
-- Each platform = its own archive + submission under the same app record.
+  bug (below). No icon blocker (reuses flat `AppIcon`).
+- Each platform = its own archive + its own App Store Connect platform tab +
+  its own TestFlight section, under the same app record.
 
 ### v1.5 — advanced features
 After the platforms are out, pull a focused few from the sections below
