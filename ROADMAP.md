@@ -281,8 +281,24 @@ Captured from testing notes; the small wins below shipped together.
   see Ledger 2.0.
 
 ## Reporting
+*Two distinct shapes — keep them separate from each other and from the shipped
+5b Monthly Summary (which describes the live, in-progress current month):*
+
+**Browse-anytime analytics** (passive, look whenever):
 - Month-over-month comparison, category trends, average daily spend
 - Category drill-down from the charts
+
+**End-of-month analysis / recap** — *candidate: 1.x (post-launch)*
+An event-driven recap surfaced when a month is **closed** (hooks into the existing
+close-month flow), as opposed to the always-on analytics above or the live 5b
+summary. The "here's how May went" moment:
+- Final 50/30/20 actuals vs. targets; the month's savings rate.
+- Biggest categories, notable overspend vs. wins, compared to the prior month.
+- Deterministic (Swift-computed), same as 5b — **no AI prose** until a bigger/PCC
+  model proves reliable for financial commentary (see the 5b lesson above).
+- Optional later: deliver it as a notification when the month rolls over, and/or a
+  shareable recap card. This is a *ritual* moment that passive reporting doesn't
+  cover — closing a month earns you a wrap-up.
 
 ## System features
 - [x] **Budget alerts — shipped.** On-device local notifications when **Needs or
