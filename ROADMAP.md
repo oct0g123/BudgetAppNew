@@ -44,8 +44,8 @@ Add the other platforms once their builds are verified and have their own assets
   `ASSETCATALOG_COMPILER_APPICON_NAME[sdk=xros*]`). Refine layer art later if
   desired. Remaining: archive for "Any visionOS Device" → upload to the visionOS
   tab → TestFlight; visionOS screenshots.
-- **macOS:** verify build/run, Mac screenshots; fix the macOS widget dark-palette
-  bug (below). No icon blocker (reuses flat `AppIcon`).
+- **macOS:** verify build/run, Mac screenshots. Widget dark-palette bug ✅ fixed.
+  No icon blocker (reuses flat `AppIcon`).
 - Each platform = its own archive + its own App Store Connect platform tab +
   its own TestFlight section, under the same app record.
 
@@ -71,8 +71,9 @@ From a full-app high-recall review. Verdicts: ✅ fixed · 🇺🇸 handled by U
 - **1.0 if quick, else 1.1** — **Editing a transaction's date across months**
   leaves it counted under the original month. Small fix; do in the 1.0 bug sweep
   if time permits.
-- **1.1** — **macOS widgets always render the dark palette** (Mac-only cosmetic;
-  rides with the macOS release).
+- ~~**1.1** — macOS widgets always render the dark palette~~ ✅ **Fixed** —
+  `adaptive(light:dark:)` now resolves via an AppKit dynamic NSColor on macOS
+  instead of pinning to the dark hex.
 - **1.1 / later** — **CSV re-import duplicates everything** (needs stable IDs;
   JSON backup is unaffected; low frequency).
 - **later (minor/rare):** enabling Face ID doesn't lock until next background ·
