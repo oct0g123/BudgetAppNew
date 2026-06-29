@@ -119,6 +119,16 @@ struct AddTransactionView: View {
             existing.amount = value
             existing.category = category
             existing.date = date
+            // If the edited date moved into a different month, re-home the
+            // transaction so it's counted under the month it now belongs to —
+            // totals are computed per MonthRecord, so leaving the old `month`
+            // relationship intact would keep it counted under the original month.
+            let newKey = MonthKey.key(for: date)
+            if existing.month?.key != newKey {
+                let previousMonth = existing.month
+                existing.month = LedgerService.ensureMonth(forKey: newKey, in: context)
+                if let previousMonth { BudgetAlerts.evaluate(previousMonth) }
+            }
         } else if let month {
             if makeRecurring {
                 // Create the rule, then add this month's occurrence tagged with
