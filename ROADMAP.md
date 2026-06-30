@@ -43,15 +43,20 @@ First public release: **iPhone + iPad, US availability only.**
 - Carried into a later release (not blockers): Budget-page design sweep, font
   decision (see Open decisions).
 
-### v1.1 — macOS + visionOS
-Add the other platforms once their builds are verified and have their own assets.
-- **visionOS:** layered app icon ✅ scaffolded (`AppIconVision.solidimagestack`,
-  3-layer parallax derived from the iOS mark; wired via
-  `ASSETCATALOG_COMPILER_APPICON_NAME[sdk=xros*]`). Refine layer art later if
-  desired. Remaining: archive for "Any visionOS Device" → upload to the visionOS
-  tab → TestFlight; visionOS screenshots.
-- **macOS:** verify build/run, Mac screenshots. Widget dark-palette bug ✅ fixed.
-  No icon blocker (reuses flat `AppIcon`).
+### v1.1 — macOS + visionOS  🚧 **builds uploaded — metadata + submit pending** *(2026-06-30)*
+Both platform builds are archived and uploaded to App Store Connect; remaining
+work is the per-platform metadata/paperwork, then submit + simultaneous release.
+- **visionOS:** ✅ build uploaded; **layered app icon validated by App Store
+  Connect** (`AppIconVision.solidimagestack`, 3-layer parallax, wired via
+  `ASSETCATALOG_COMPILER_APPICON_NAME[sdk=xros*]`). Remaining: visionOS metadata
+  + screenshots → attach build → submit. (Layer art can be refined later.)
+- **macOS:** ✅ build uploaded; **icon fixed** — full macOS size set (16–1024px,
+  rounded-rect) added to `AppIcon` to clear upload error 90236. Widget
+  dark-palette bug ✅ fixed. Remaining: macOS metadata + screenshots → attach
+  build → submit. (Optional later polish: Apple-style drop shadow on the Mac icon.)
+- **Release together:** set all three platforms to **"Manually release this
+  version"** (incl. iOS, already in review) so they go live at the same time once
+  the last is approved.
 - Each platform = its own archive + its own App Store Connect platform tab +
   its own TestFlight section, under the same app record.
 
