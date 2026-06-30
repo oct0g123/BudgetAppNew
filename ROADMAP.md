@@ -27,15 +27,21 @@ Revisit before final polish / before building the related feature:
 
 Shipping in stages to keep each release low-risk and scoped.
 
-### v1.0 — iOS only, US App Store  *(now → ~1–2 days)*
+### v1.0 — iOS only, US App Store  ✅ **SUBMITTED — pending review** *(2026-06-30)*
 First public release: **iPhone + iPad, US availability only.**
 - **Scope lock:** iOS only (Mac/visionOS deferred to 1.1) and **US-only** — the
   US-only choice also sidesteps the locale money-input bug below at zero code risk.
-- Final **design sweep** (esp. the Budget page — see Open decisions).
-- Final **bug sweep** (triage below).
-- **1–2 more days of TestFlight feedback** on the latest build.
-- Then **submit**: privacy URL + screenshots + metadata (see
-  `appstore/release-checklist.md`).
+- ✅ Privacy policy hosted (GitHub Pages) + URL set in App Information.
+- ✅ Screenshots (6.9" iPhone + 13" iPad, from the Simulator).
+- ✅ Metadata, copyright, pricing ($0.99), App Privacy → Data Not Collected.
+- ✅ Tax/banking (Paid Apps Agreement active), CloudKit schema promoted to
+  Production (Jun 20).
+- ✅ Build 3 archived ("Any iOS Device") + uploaded; attached to the version;
+  **Submitted for Review.**
+- **Now:** await Apple review (typically 1–3 days). Watch for Metadata Rejected /
+  reviewer questions; respond via Resolution Center if any.
+- Carried into a later release (not blockers): Budget-page design sweep, font
+  decision (see Open decisions).
 
 ### v1.1 — macOS + visionOS
 Add the other platforms once their builds are verified and have their own assets.
