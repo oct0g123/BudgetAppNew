@@ -86,6 +86,12 @@ From a full-app high-recall review. Verdicts: ✅ fixed · 🇺🇸 handled by U
 - ~~**1.1** — macOS widgets always render the dark palette~~ ✅ **Fixed** —
   `adaptive(light:dark:)` now resolves via an AppKit dynamic NSColor on macOS
   instead of pinning to the dark hex.
+- ~~**Widget shows the wrong month when you close the current month early**~~
+  ✅ **Fixed** (found in TestFlight) — the widget snapshot was built strictly for
+  the real calendar month, so closing e.g. June on the 30th and advancing to July
+  left the widget frozen on closed June and ignoring July edits. It now follows
+  the current calendar month when open, else the next open month. **Not in the
+  in-review 1.0 build** — rolls into the next build (1.0.1 / the platform rebuilds).
 - **1.1 / later** — **CSV re-import duplicates everything** (needs stable IDs;
   JSON backup is unaffected; low frequency).
 - **later (minor/rare):** enabling Face ID doesn't lock until next background ·
