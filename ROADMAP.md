@@ -43,6 +43,12 @@ First public release: **iPhone + iPad, US availability only.**
 - Carried into a later release (not blockers): Budget-page design sweep, font
   decision (see Open decisions).
 
+### v1.0.1 — fast-follow (planned)
+Small bug-fix release after launch, fix already on the branch:
+- ✅ **Widget tracks the active budgeting month** (closing a month early no longer
+  freezes the widget on it) — committed, not in the launch build.
+- Sweep in any other early TestFlight/launch feedback before cutting the build.
+
 ### v1.1 — macOS + visionOS  🚧 **builds uploaded — metadata + submit pending** *(2026-06-30)*
 Both platform builds are archived and uploaded to App Store Connect; remaining
 work is the per-platform metadata/paperwork, then submit + simultaneous release.
