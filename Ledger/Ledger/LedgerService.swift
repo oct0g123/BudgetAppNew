@@ -351,12 +351,21 @@ enum BudgetSnapshotStore {
     static let appGroup = "group.com.anthonystacy.Ledger"
     static let key = "currentBudgetSnapshot"
 
-    /// Build a snapshot for the real current calendar month and write it to the
-    /// shared container, then ask WidgetKit to refresh. No-ops if the App Group
-    /// isn't available or the current month doesn't exist yet.
+    /// Build a snapshot for the month the user is actively budgeting and write it
+    /// to the shared container, then ask WidgetKit to refresh. No-ops if the App
+    /// Group isn't available or there's no suitable month yet.
+    ///
+    /// The widget should reflect the real current calendar month — but if you've
+    /// closed it early and advanced (e.g. wrapping up June on the 30th and moving
+    /// to July), it follows the next open month instead, so the widget tracks the
+    /// month you're actually budgeting rather than a frozen, closed one.
     static func update(from months: [MonthRecord]) {
-        guard let defaults = UserDefaults(suiteName: appGroup),
-              let month = months.first(where: { $0.key == MonthKey.current }) else { return }
+        guard let defaults = UserDefaults(suiteName: appGroup) else { return }
+        let current = MonthKey.current
+        let month = months.first(where: { $0.key == current && !$0.isClosed })
+            ?? months.filter { !$0.isClosed && $0.key > current }.min(by: { $0.key < $1.key })
+            ?? months.first(where: { $0.key == current })
+        guard let month else { return }
         let snapshot = BudgetSnapshot(
             monthKey: month.key,
             monthName: MonthKey.displayName(month.key),
