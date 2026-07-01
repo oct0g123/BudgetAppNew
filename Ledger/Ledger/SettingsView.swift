@@ -33,8 +33,6 @@ struct SettingsView: View {
 
     @State private var confirmingReset = false
 
-    @EnvironmentObject private var sync: SyncMonitor
-
     @State private var needsPct = 50
     @State private var savingsPct = 20
     @State private var wantsPct = 30
@@ -113,7 +111,7 @@ struct SettingsView: View {
     /// modifiers live here because their triggers do, plus a toast for feedback.
     private var advancedScreen: some View {
         Form {
-            syncSection
+            SyncStatusSection()
             intelligenceSection
             dataSection
             resetSection
@@ -330,78 +328,90 @@ struct SettingsView: View {
     }
 
     // MARK: iCloud sync status
+    //
+    // Extracted into its own view: `SyncMonitor` republishes on every
+    // NSPersistentCloudKitContainer event (export/import begin+end per zone),
+    // so observing it at the SettingsView root made a single model write —
+    // e.g. applying an allocation split — rebuild the entire Settings form,
+    // including the allocation steppers, on the main thread for every event in
+    // the burst. Scoping the observation to this small Advanced-screen section
+    // keeps those republishes from touching the rest of Settings.
 
-    private var syncSection: some View {
-        Section {
+    struct SyncStatusSection: View {
+        @EnvironmentObject private var sync: SyncMonitor
+
+        var body: some View {
+            Section {
+                LabeledContent {
+                    HStack(spacing: Spacing.sm) {
+                        Circle()
+                            .fill(StoreStatus.usingCloudKit ? DS.savings : DS.needs)
+                            .frame(width: 9, height: 9)
+                        Text(StoreStatus.usingCloudKit ? "On" : "Local only")
+                            .font(Typography.mono(.body, weight: .medium))
+                            .foregroundStyle(StoreStatus.usingCloudKit ? DS.savings : DS.needs)
+                    }
+                } label: {
+                    Text("iCloud Sync")
+                }
+
+                if StoreStatus.usingCloudKit {
+                    syncPhaseRow("Setup", phase: sync.setup)
+                    syncPhaseRow("Last received", phase: sync.imports)
+                    syncPhaseRow("Last sent", phase: sync.exports)
+                }
+            } header: {
+                Text("iCloud")
+            } footer: {
+                syncFooter
+            }
+            .listRowBackground(DS.surface)
+        }
+
+        /// One status line for a sync phase: in-progress, last success time, or a failure.
+        private func syncPhaseRow(_ label: String, phase: SyncMonitor.Phase) -> some View {
             LabeledContent {
-                HStack(spacing: Spacing.sm) {
-                    Circle()
-                        .fill(StoreStatus.usingCloudKit ? DS.savings : DS.needs)
-                        .frame(width: 9, height: 9)
-                    Text(StoreStatus.usingCloudKit ? "On" : "Local only")
-                        .font(Typography.mono(.body, weight: .medium))
-                        .foregroundStyle(StoreStatus.usingCloudKit ? DS.savings : DS.needs)
+                Group {
+                    if phase.inProgress {
+                        Text("Syncing…").foregroundStyle(DS.textMuted)
+                    } else if phase.error != nil {
+                        Text("Failed").foregroundStyle(DS.needs)
+                    } else if let end = phase.lastEnd {
+                        Text(relativeTime(end)).foregroundStyle(DS.text)
+                    } else {
+                        Text("—").foregroundStyle(DS.textMuted)
+                    }
                 }
+                .font(Typography.mono(.footnote, weight: .medium))
             } label: {
-                Text("iCloud Sync")
+                Text(label)
             }
-
-            if StoreStatus.usingCloudKit {
-                syncPhaseRow("Setup", phase: sync.setup)
-                syncPhaseRow("Last received", phase: sync.imports)
-                syncPhaseRow("Last sent", phase: sync.exports)
-            }
-        } header: {
-            Text("iCloud")
-        } footer: {
-            syncFooter
         }
-        .listRowBackground(DS.surface)
-    }
 
-    /// One status line for a sync phase: in-progress, last success time, or a failure.
-    private func syncPhaseRow(_ label: String, phase: SyncMonitor.Phase) -> some View {
-        LabeledContent {
-            Group {
-                if phase.inProgress {
-                    Text("Syncing…").foregroundStyle(DS.textMuted)
-                } else if phase.error != nil {
-                    Text("Failed").foregroundStyle(DS.needs)
-                } else if let end = phase.lastEnd {
-                    Text(relativeTime(end)).foregroundStyle(DS.text)
+        @ViewBuilder
+        private var syncFooter: some View {
+            if !StoreStatus.usingCloudKit {
+                if let err = StoreStatus.fallbackError {
+                    Text("Couldn't start iCloud sync, so data is stored only on this device. Details: \(err)")
                 } else {
-                    Text("—").foregroundStyle(DS.textMuted)
+                    Text("iCloud sync is turned off in this build; data is stored only on this device.")
                 }
-            }
-            .font(Typography.mono(.footnote, weight: .medium))
-        } label: {
-            Text(label)
-        }
-    }
-
-    @ViewBuilder
-    private var syncFooter: some View {
-        if !StoreStatus.usingCloudKit {
-            if let err = StoreStatus.fallbackError {
-                Text("Couldn't start iCloud sync, so data is stored only on this device. Details: \(err)")
+            } else if let err = sync.imports.error {
+                Text("Receive (import) error: \(err)").foregroundStyle(DS.needs)
+            } else if let err = sync.setup.error {
+                Text("Setup error: \(err)").foregroundStyle(DS.needs)
+            } else if let err = sync.exports.error {
+                Text("Send (export) error: \(err)").foregroundStyle(DS.needs)
             } else {
-                Text("iCloud sync is turned off in this build; data is stored only on this device.")
+                Text("Your data syncs across your devices via iCloud. \"Received\" is the last time changes came down from another device; \"Sent\" is the last time this device's changes went up.")
             }
-        } else if let err = sync.imports.error {
-            Text("Receive (import) error: \(err)").foregroundStyle(DS.needs)
-        } else if let err = sync.setup.error {
-            Text("Setup error: \(err)").foregroundStyle(DS.needs)
-        } else if let err = sync.exports.error {
-            Text("Send (export) error: \(err)").foregroundStyle(DS.needs)
-        } else {
-            Text("Your data syncs across your devices via iCloud. \"Received\" is the last time changes came down from another device; \"Sent\" is the last time this device's changes went up.")
         }
-    }
 
-    private func relativeTime(_ date: Date) -> String {
-        let f = RelativeDateTimeFormatter()
-        f.unitsStyle = .abbreviated
-        return f.localizedString(for: date, relativeTo: Date())
+        private func relativeTime(_ date: Date) -> String {
+            let f = RelativeDateTimeFormatter()
+            f.unitsStyle = .abbreviated
+            return f.localizedString(for: date, relativeTo: Date())
+        }
     }
 
     // MARK: Privacy (biometric lock)
