@@ -44,9 +44,19 @@ First public release: **iPhone + iPad, US availability only.**
   decision (see Open decisions).
 
 ### v1.0.1 — fast-follow (planned)
-Small bug-fix release after launch, fix already on the branch:
+Small bug-fix release after launch, fixes already on the branch:
 - ✅ **Widget tracks the active budgeting month** (closing a month early no longer
   freezes the widget on it) — committed, not in the launch build.
+- ✅ **~30s Settings hang when changing allocation %** — committed. Root cause:
+  `SettingsView` observed `SyncMonitor` at its root, so a split write's CloudKit
+  export/import event burst rebuilt the whole Settings form (steppers included)
+  on the main thread. Fixed by scoping the observation to a `SyncStatusSection`
+  subview on the Advanced screen. (Found via TestFlight + a focused code trace.)
+  - Secondary optimizations surfaced by that trace, not yet done (lower risk to
+    defer): (a) `mergeDuplicates` runs a main-thread `context.save()` on the
+    reactive `onChange(of: months.count)` path — move off/​debounce to avoid a
+    CloudKit-echo ping-pong; (b) `MonthRecord.spent(for:)` re-scans all txns on
+    every call — cache per-category spend.
 - Sweep in any other early TestFlight/launch feedback before cutting the build.
 
 ### v1.1 — macOS + visionOS  🚧 **builds uploaded — metadata + submit pending** *(2026-06-30)*
