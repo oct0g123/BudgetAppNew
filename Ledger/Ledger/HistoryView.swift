@@ -24,7 +24,9 @@ struct HistoryView: View {
                                            description: Text("Closed and active months will appear here."))
                 } else {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: Spacing.lg) {
+                        // Lazy so only visible month cards are built — each card
+                        // scans its month's transactions several times to render.
+                        LazyVStack(alignment: .leading, spacing: Spacing.lg) {
                             overallCard
                             ForEach(months) { month in
                                 Button {

@@ -223,12 +223,15 @@ enum LedgerService {
     /// key) are updated in place; transactions are matched by id to avoid
     /// duplicates on repeated imports.
     static func importArchive(_ archive: ExportData, in context: ModelContext) {
-        // Settings
-        let settings = settings(in: context)
-        settings.defaultIncome = archive.settings.defaultIncome
-        settings.defaultSplit = BudgetSplit(needs: archive.settings.needsPct,
-                                            savings: archive.settings.savingsPct,
-                                            wants: archive.settings.wantsPct)
+        // Settings — only when the file actually carried them; a partial file
+        // without a settings object must not reset income/split to defaults.
+        if archive.hadSettings {
+            let settings = settings(in: context)
+            settings.defaultIncome = archive.settings.defaultIncome
+            settings.defaultSplit = BudgetSplit(needs: archive.settings.needsPct,
+                                                savings: archive.settings.savingsPct,
+                                                wants: archive.settings.wantsPct)
+        }
 
         for monthDTO in archive.months {
             let record: MonthRecord
@@ -255,7 +258,8 @@ enum LedgerService {
                                       desc: txnDTO.desc,
                                       amount: txnDTO.amount,
                                       category: BudgetCategory(rawValue: txnDTO.category) ?? .needs,
-                                      date: txnDTO.date)
+                                      date: txnDTO.date,
+                                      recurringRuleID: txnDTO.recurringRuleID)
                 txn.month = record
                 context.insert(txn)
             }
@@ -365,7 +369,16 @@ enum BudgetSnapshotStore {
         let month = months.first(where: { $0.key == current && !$0.isClosed })
             ?? months.filter { !$0.isClosed && $0.key > current }.min(by: { $0.key < $1.key })
             ?? months.first(where: { $0.key == current })
-        guard let month else { return }
+        guard let month else {
+            // No month to show (e.g. after "reset all data") — clear the stale
+            // snapshot so widgets fall back to their placeholder instead of
+            // displaying the wiped budget indefinitely.
+            if defaults.data(forKey: key) != nil {
+                defaults.removeObject(forKey: key)
+                WidgetCenter.shared.reloadAllTimelines()
+            }
+            return
+        }
         let snapshot = BudgetSnapshot(
             monthKey: month.key,
             monthName: MonthKey.displayName(month.key),
@@ -607,7 +620,8 @@ enum IntelligenceService {
                         amount: amount, category: category)
     }
 
-    private static let amountPattern = #"\$?\s?\d+(?:\.\d{1,2})?"#
+    // Allows US thousands separators so "$1,200" parses as 1200, not 1.
+    private static let amountPattern = #"\$?\s?\d+(?:,\d{3})*(?:\.\d{1,2})?"#
 
     private static func firstAmount(in s: String) -> Double? {
         guard let range = s.range(of: amountPattern, options: .regularExpression) else { return nil }

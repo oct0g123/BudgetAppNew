@@ -22,6 +22,9 @@ struct BudgetView: View {
 
     @State private var filter: BudgetCategory? = nil
     @State private var searchText = ""
+    /// Trails `searchText` by ~250ms so the txn list isn't re-filtered + sorted
+    /// on every keystroke; UI chrome (hiding cards/pills) still reacts instantly.
+    @State private var debouncedSearch = ""
     @State private var sort: TxnSort = .dateDesc
     @State private var showingAdd = false
     @State private var showingCommandBar = false
@@ -247,6 +250,17 @@ struct BudgetView: View {
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                     #endif
+                    .task(id: searchText) {
+                        // Clearing applies immediately; typing settles for 250ms
+                        // first. Cancellation (next keystroke) skips the update.
+                        if searchText.isEmpty {
+                            debouncedSearch = ""
+                            return
+                        }
+                        try? await Task.sleep(for: .milliseconds(250))
+                        guard !Task.isCancelled else { return }
+                        debouncedSearch = searchText
+                    }
                 if !searchText.isEmpty {
                     Button {
                         searchText = ""
@@ -375,7 +389,7 @@ struct BudgetView: View {
     }
 
     private func filteredTransactions(_ month: MonthRecord) -> [Transaction] {
-        let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        let query = debouncedSearch.trimmingCharacters(in: .whitespaces).lowercased()
         let searching = !query.isEmpty
         return month.txns
             // While searching, ignore the category pill so a leftover filter

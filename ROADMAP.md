@@ -45,6 +45,14 @@ First public release: **iPhone + iPad, US availability only.**
 
 ### v1.0.1 — fast-follow (planned)
 Small bug-fix release after launch, fixes already on the branch:
+- ✅ **Audit Wave 1** (see `docs/code-review-v1.0.md`): thousands-separator
+  parse fix ("$1,200" → $1), import validation (wrong JSON no longer clobbers
+  settings), backups now round-trip `recurringRuleID`, reset clears the widget
+  snapshot, cached formatters (app + widget), lazy History list, Insights
+  compute-once, search debounce.
+- **Wave 2 (before a real multi-device install base):** the CloudKit
+  merge/dedupe integrity cluster (§A of the audit) + deterministic record
+  IDs (§F2) — unit-test the merge logic, then a two-device TestFlight soak.
 - ✅ **Widget tracks the active budgeting month** (closing a month early no longer
   freezes the widget on it) — committed, not in the launch build.
 - ✅ **~30s Settings hang when changing allocation %** — committed. Root cause:

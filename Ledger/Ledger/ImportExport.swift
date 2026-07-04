@@ -21,6 +21,14 @@ struct ExportData: Codable {
     var months: [MonthDTO] = []
     /// Optional for backward/forward compatibility with older exports.
     var rules: [RuleDTO]? = []
+    /// Whether the decoded file actually carried a `settings` object. Imports
+    /// only overwrite the user's settings when this is true — a partial file
+    /// without settings must not reset income/split to defaults. Not encoded.
+    var hadSettings: Bool = true
+
+    private enum CodingKeys: String, CodingKey {
+        case version, exportedAt, settings, months, rules
+    }
 
     init(version: Int = 1, exportedAt: Date = Date(), settings: SettingsDTO,
          months: [MonthDTO], rules: [RuleDTO]? = []) {
@@ -32,10 +40,20 @@ struct ExportData: Codable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         version = try c.decodeIfPresent(Int.self, forKey: .version) ?? 1
         exportedAt = try c.decodeIfPresent(Date.self, forKey: .exportedAt) ?? Date()
+        hadSettings = c.contains(.settings)
         settings = try c.decodeIfPresent(SettingsDTO.self, forKey: .settings)
             ?? SettingsDTO(defaultIncome: 0, needsPct: 50, savingsPct: 20, wantsPct: 30)
         months = try c.decodeIfPresent([MonthDTO].self, forKey: .months) ?? []
         rules = try c.decodeIfPresent([RuleDTO].self, forKey: .rules) ?? []
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(version, forKey: .version)
+        try c.encode(exportedAt, forKey: .exportedAt)
+        try c.encode(settings, forKey: .settings)
+        try c.encode(months, forKey: .months)
+        try c.encodeIfPresent(rules, forKey: .rules)
     }
 }
 
@@ -128,10 +146,16 @@ struct TransactionDTO: Codable {
     var amount: Double = 0
     var category: String = "needs"
     var date: Date = Date()
+    /// Link back to the recurring rule that materialized this transaction.
+    /// Round-tripped so a restore doesn't break rule dedupe (a lost link makes
+    /// a later rule edit re-materialize the charge into open months).
+    var recurringRuleID: UUID?
 
-    init(id: UUID, desc: String, amount: Double, category: String, date: Date) {
+    init(id: UUID, desc: String, amount: Double, category: String, date: Date,
+         recurringRuleID: UUID? = nil) {
         self.id = id; self.desc = desc; self.amount = amount
         self.category = category; self.date = date
+        self.recurringRuleID = recurringRuleID
     }
 
     init(from decoder: Decoder) throws {
@@ -143,6 +167,7 @@ struct TransactionDTO: Codable {
         amount = try c.decodeIfPresent(Double.self, forKey: .amount) ?? 0
         category = (try c.decodeIfPresent(String.self, forKey: .category) ?? "needs").lowercased()
         date = try c.decodeIfPresent(Date.self, forKey: .date) ?? Date()
+        recurringRuleID = try c.decodeIfPresent(UUID.self, forKey: .recurringRuleID)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -152,10 +177,11 @@ struct TransactionDTO: Codable {
         try c.encode(amount, forKey: .amount)
         try c.encode(category, forKey: .category)
         try c.encode(date, forKey: .date)
+        try c.encodeIfPresent(recurringRuleID, forKey: .recurringRuleID)
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, desc, description, amount, category, date
+        case id, desc, description, amount, category, date, recurringRuleID
     }
 }
 
@@ -222,7 +248,8 @@ enum LedgerArchive {
                     transactions: month.txns
                         .sorted { $0.date < $1.date }
                         .map { TransactionDTO(id: $0.id, desc: $0.desc, amount: $0.amount,
-                                              category: $0.categoryRaw, date: $0.date) }
+                                              category: $0.categoryRaw, date: $0.date,
+                                              recurringRuleID: $0.recurringRuleID) }
                 )
             }
         let ruleDTOs = rules.map { rule in
@@ -298,6 +325,17 @@ enum LedgerArchive {
         if let legacy = try? JSONDecoder().decode(LegacyArchive.self, from: data),
            !legacy.data.months.isEmpty {
             return convertLegacy(legacy, defaultSplit: defaultSplit)
+        }
+        // The native DTOs decode forgivingly (every field defaults), which means
+        // ANY json object would "succeed" as an empty archive — and importing it
+        // would overwrite settings with zeros. Require at least one recognized
+        // Ledger key before accepting the file as a native export.
+        let nativeKeys: Set<String> = ["version", "exportedAt", "settings", "months", "rules"]
+        guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              !nativeKeys.isDisjoint(with: object.keys) else {
+            throw DecodingError.dataCorrupted(.init(
+                codingPath: [],
+                debugDescription: "This doesn't look like a Ledger backup (no recognized fields)."))
         }
         return try decodeJSON(data)
     }

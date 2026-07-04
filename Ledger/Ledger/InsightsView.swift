@@ -28,10 +28,14 @@ struct InsightsView: View {
     }
 
     var body: some View {
+        // Evaluated once per render — recentMonths scans every month's
+        // transactions, so repeated property access here was O(months × txns)
+        // several times over per body pass.
+        let recent = recentMonths
         NavigationStack {
             ZStack {
                 DS.background.ignoresSafeArea()
-                if recentMonths.isEmpty {
+                if recent.isEmpty {
                     ContentUnavailableView("No insights yet",
                                            systemImage: "chart.bar.xaxis",
                                            description: Text("Add income and transactions to see charts."))
@@ -42,8 +46,8 @@ struct InsightsView: View {
                                 MonthSummaryInsightCard(month: month,
                                                         previousMonth: previousMonth(before: month))
                             }
-                            savingsRateChart
-                            categorySpendChart
+                            savingsRateChart(recent)
+                            categorySpendChart(recent)
                             if let month = currentMonth {
                                 budgetVsActualChart(month)
                             }
@@ -67,17 +71,18 @@ struct InsightsView: View {
 
     // MARK: Savings rate over time
 
-    private var avgSavingsRate: Double {
-        guard !recentMonths.isEmpty else { return 0 }
-        return recentMonths.reduce(0) { $0 + $1.savingsRate } / Double(recentMonths.count)
+    private func avgSavingsRate(_ recent: [MonthRecord]) -> Double {
+        guard !recent.isEmpty else { return 0 }
+        return recent.reduce(0) { $0 + $1.savingsRate } / Double(recent.count)
     }
 
-    private var savingsRateChart: some View {
-        Card {
+    private func savingsRateChart(_ recent: [MonthRecord]) -> some View {
+        let avg = avgSavingsRate(recent)
+        return Card {
             VStack(alignment: .leading, spacing: 14) {
                 SectionLabel("Savings Rate")
                 Chart {
-                    ForEach(recentMonths) { month in
+                    ForEach(recent) { month in
                         BarMark(
                             x: .value("Month", MonthKey.shortMonthName(month.key)),
                             y: .value("Rate", month.savingsRate)
@@ -85,12 +90,12 @@ struct InsightsView: View {
                         .foregroundStyle(DS.savings)
                         .cornerRadius(4)
                     }
-                    if recentMonths.count > 1 {
-                        RuleMark(y: .value("Average", avgSavingsRate))
+                    if recent.count > 1 {
+                        RuleMark(y: .value("Average", avg))
                             .foregroundStyle(DS.gold.opacity(0.7))
                             .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                             .annotation(position: .top, alignment: .trailing) {
-                                Text("avg " + Money.percent(avgSavingsRate))
+                                Text("avg " + Money.percent(avg))
                                     .font(Typography.mono(.caption2))
                                     .foregroundStyle(DS.gold)
                             }
@@ -121,12 +126,12 @@ struct InsightsView: View {
 
     // MARK: Spend by category, stacked
 
-    private var categorySpendChart: some View {
+    private func categorySpendChart(_ recent: [MonthRecord]) -> some View {
         Card {
             VStack(alignment: .leading, spacing: 14) {
                 SectionLabel("Spending by Category")
                 Chart {
-                    ForEach(recentMonths) { month in
+                    ForEach(recent) { month in
                         ForEach(BudgetCategory.allCases) { category in
                             BarMark(
                                 x: .value("Month", MonthKey.shortMonthName(month.key)),
@@ -244,12 +249,13 @@ struct MonthSummaryInsightCard: View {
     let month: MonthRecord
     var previousMonth: MonthRecord?
 
-    private var insight: MonthInsight { buildInsight() }
-
     /// Not enough logged yet to say anything meaningful.
     private var hasEnoughData: Bool { month.txns.count >= 3 }
 
     var body: some View {
+        // Built once per render — reading it via a computed property ran the
+        // full aggregation separately for headline, observations & suggestion.
+        let insight = buildInsight()
         Card {
             VStack(alignment: .leading, spacing: Spacing.md) {
                 SectionLabel("Monthly Summary")

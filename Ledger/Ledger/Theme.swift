@@ -11,13 +11,19 @@ import SwiftUI
 // MARK: - Currency formatting
 
 enum Money {
-    static func string(_ value: Double, showSign: Bool = false) -> String {
+    /// Cached: NumberFormatter init is expensive (ICU) and this runs in every
+    /// money label, once or more per list row. Main-thread only, like all UI.
+    private static let currencyFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.locale = Locale.current
         formatter.maximumFractionDigits = 2
         formatter.minimumFractionDigits = 2
-        let base = formatter.string(from: NSNumber(value: abs(value))) ?? "\(value)"
+        return formatter
+    }()
+
+    static func string(_ value: Double, showSign: Bool = false) -> String {
+        let base = currencyFormatter.string(from: NSNumber(value: abs(value))) ?? "\(value)"
         if showSign {
             return (value < 0 ? "-" : "+") + base
         }
@@ -107,12 +113,24 @@ struct MoneyField: View {
         Double(s.filter { $0.isNumber || $0 == "." }) ?? 0
     }
 
-    static func display(_ value: Double) -> String {
+    /// Cached — `display`/`reformat` run on every keystroke.
+    private static let decimalFormatter: NumberFormatter = {
         let f = NumberFormatter()
         f.numberStyle = .decimal
         f.maximumFractionDigits = 2
         f.minimumFractionDigits = 0
-        return symbol + (f.string(from: NSNumber(value: value)) ?? "0")
+        return f
+    }()
+
+    private static let groupingFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.maximumFractionDigits = 0
+        return f
+    }()
+
+    static func display(_ value: Double) -> String {
+        symbol + (decimalFormatter.string(from: NSNumber(value: value)) ?? "0")
     }
 
     /// Re-group the integer part live while preserving an in-progress decimal.
@@ -128,8 +146,7 @@ struct MoneyField: View {
         }
         if intPart.isEmpty && !seenDot { return ("", 0) }   // empty → show the placeholder
         let intValue = Int(intPart) ?? 0
-        let gf = NumberFormatter(); gf.numberStyle = .decimal; gf.maximumFractionDigits = 0
-        let groupedInt = gf.string(from: NSNumber(value: intValue)) ?? "0"
+        let groupedInt = groupingFormatter.string(from: NSNumber(value: intValue)) ?? "0"
         let display = symbol + groupedInt + (seenDot ? "." + fracPart : "")
         let numeric = (intPart.isEmpty ? "0" : intPart) + (fracPart.isEmpty ? "" : "." + fracPart)
         return (display, Double(numeric) ?? 0)

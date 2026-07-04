@@ -8,6 +8,10 @@ each group. Line numbers are approximate (they drift as the file changes).
 **Severity legend:** 🔴 data loss / correctness · 🟠 wrong behavior · 🟡 perf /
 churn · ⚪ polish / hygiene.
 
+**Status — Wave 1 applied (2026-06-30):** B1, B2, B7, C1, D3, D4, D5, D7, D8 are
+✅ fixed on the branch (low-risk mechanical set). Still open: the §A merge/dedupe
+cluster (Wave 2, with F2), B3–B6, C2, D1, D2, D6, and the §F refactors.
+
 > Context: most 🔴 items are **multi-device CloudKit races** — they need two
 > devices (or one device + a re-install restoring from iCloud) to trigger, so
 > they're invisible in single-device TestFlight but real once the app has users

@@ -41,12 +41,18 @@ struct BudgetSnapshot: Codable {
         savingsRate: 0, updatedAt: Date())
 }
 
-func widgetMoney(_ value: Double) -> String {
+/// Cached — formatter init is expensive and the widget extension is
+/// CPU/memory budgeted; BucketsView alone calls this 8× per render.
+private let widgetMoneyFormatter: NumberFormatter = {
     let f = NumberFormatter()
     f.numberStyle = .currency
     f.maximumFractionDigits = 0
     f.locale = .current
-    return f.string(from: NSNumber(value: value)) ?? "$0"
+    return f
+}()
+
+func widgetMoney(_ value: Double) -> String {
+    widgetMoneyFormatter.string(from: NSNumber(value: value)) ?? "$0"
 }
 
 // MARK: - Colors (mirror of the app's palette)

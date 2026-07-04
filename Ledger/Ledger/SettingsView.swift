@@ -407,10 +407,16 @@ struct SettingsView: View {
             }
         }
 
-        private func relativeTime(_ date: Date) -> String {
+        /// Cached — this section re-renders on every CloudKit event during a
+        /// sync, and RelativeDateTimeFormatter init is expensive (ICU).
+        private static let relativeFormatter: RelativeDateTimeFormatter = {
             let f = RelativeDateTimeFormatter()
             f.unitsStyle = .abbreviated
-            return f.localizedString(for: date, relativeTo: Date())
+            return f
+        }()
+
+        private func relativeTime(_ date: Date) -> String {
+            Self.relativeFormatter.localizedString(for: date, relativeTo: Date())
         }
     }
 
