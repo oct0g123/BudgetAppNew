@@ -293,6 +293,14 @@ complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)ar
 
 ## Core features
 - **"Safe to spend"** / projected end-of-month number (partly in the tab bar)
+- **Weekly safe-to-spend for Needs/Wants** — pace remaining budget over the days
+  left in the month instead of just showing a lump remaining total. E.g.
+  "remaining Wants budget ÷ weeks (or days) left in the month." Straightforward
+  on today's model: `remaining(for:)` already exists on `MonthRecord`; just need
+  days-remaining-in-month math (mirrors `dateForDay`'s month-length lookup in
+  `LedgerService`) to divide by. Decide: weekly or daily cadence (or both), and
+  whether it recalculates live as you spend or is fixed at the start of the
+  week/month.
 - **Budget rollover** — carry unspent buckets into the next month
 - Savings-rate definition option: money-moved vs. leftover (or show both)
 - Tags / sub-categories within the three buckets (ties to 5c)
