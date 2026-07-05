@@ -341,6 +341,26 @@ summary. The "here's how May went" moment:
   shareable recap card. This is a *ritual* moment that passive reporting doesn't
   cover — closing a month earns you a wrap-up.
 
+*Design shape (decided in discussion, pending final call on tap behavior):*
+- **One reusable `RecapView(month:)`** built on the existing `MonthInsight` /
+  `buildInsight()` engine (which already renders past-tense recap language for
+  closed months). Extract `buildInsight` out of `InsightsView` into a shared
+  spot; write the recap UI once, show it from three entry points:
+  1. **The moment** — sheet pops right after `closeMonth` succeeds.
+  2. **The archive — History** is the natural browse home for past recaps:
+     tapping a month card opens that month's recap as a sheet, with an
+     "Open in Budget →" button inside it.
+  3. **Insights stays as-is** — its Monthly Summary card already shows the
+     viewed month's recap content live.
+- ⚠️ *Open decision:* History cards currently tap-through to the Budget tab.
+  Proposal: make the recap sheet the tap destination (richer month detail;
+  keeps your place in History) and move the Budget jump inside the sheet.
+  Alternative if direct jump is preferred: context menu / small "recap"
+  affordance on the card.
+- Effort: ~a day for all three surfaces. No model changes, no CloudKit schema
+  impact. Make the recap view screenshot-worthy (big headline, bucket results,
+  savings rate, MoM delta highlight) — it's shareable-moment bait.
+
 ## System features
 - [x] **Budget alerts — shipped.** On-device local notifications when **Needs or
   Wants** reaches **80%** or goes over, for the current month (no push
