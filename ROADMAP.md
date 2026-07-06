@@ -88,6 +88,14 @@ Small bug-fix release after launch, fixes already on the branch:
     reactive `onChange(of: months.count)` path — move off/​debounce to avoid a
     CloudKit-echo ping-pong; (b) `MonthRecord.spent(for:)` re-scans all txns on
     every call — cache per-category spend.
+- **Review prompt (`requestReview`)** — small, high-leverage for App Store
+  ranking (ratings count/velocity outweighs keyword tuning). Trigger at a
+  natural success moment: after the user **closes their first month** (guard
+  with a "hasPromptedReview" flag; Apple caps prompts at 3/year and decides
+  whether to actually show it, so one well-placed call is enough). Pairs
+  naturally with the future recap sheet — prompt after the recap is dismissed.
+- **Updated keyword string** — ships with this version (keywords only change
+  via version update); paste from `appstore/app-store-metadata.md`.
 - Sweep in any other early TestFlight/launch feedback before cutting the build.
 
 ### v1.1 — macOS + visionOS  🚧 **builds uploaded — metadata + submit pending** *(2026-06-30)*

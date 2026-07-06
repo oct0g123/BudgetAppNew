@@ -19,10 +19,37 @@ choice or a value from you.
 > all on-device.
 
 ## Keywords  *(100-char limit, comma-separated, no spaces)*
+
+**v1.0.1+ (current recommendation — keywords only change with a version update):**
+```
+budget,money,manager,expense,tracker,spending,savings,goal,planner,finance,personal,paycheck,bills
+```
+*(98 chars.)* Apple combines individual keywords across name + subtitle +
+this field to match multi-word queries, so this unlocks the high-volume
+phrases: **money manager, expense tracker, spending tracker, budget planner,
+budget tracker, savings goal, personal finance, paycheck budget, bill
+tracker.** Dropped from the 1.0 string: `50/30/20` (already indexed from the
+app name — repeating wastes chars), `allowance` (low volume), `private`
+(positioning, not a search query — it lives in the subtitle/description).
+
+Rules: no competitor names (rejection risk; ignored anyway) · singular forms
+(plurals match automatically) · no spaces after commas · never repeat
+name/subtitle words.
+
+*Shipped with 1.0:*
 ```
 budget,50/30/20,money,savings,spending,expense,tracker,finance,paycheck,planner,allowance,private
 ```
-*(≈97 chars. Don't repeat words already in the name/subtitle — Apple indexes those automatically.)*
+
+**Later ASO levers (optional):**
+- **Subtitle** outweighs the keyword field. "Simple 50/30/20 budgeting" is
+  on-brand; "Budget, expenses & savings" (29) is worth more algorithmically.
+  Revisit only if downloads plateau.
+- **es-MX localization trick:** the US storefront also indexes the Spanish
+  (Mexico) localization's keyword field — adding that localization doubles
+  keyword space for US search.
+- **Ratings count/velocity beats keyword tuning** — see the review-prompt
+  item in ROADMAP.md.
 
 ## Description  *(4000-char limit)*
 ```
