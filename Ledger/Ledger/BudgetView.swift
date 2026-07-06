@@ -153,27 +153,35 @@ struct BudgetView: View {
     // MARK: Month selector (header row under the "Budget" title)
 
     #if !os(visionOS)
+    /// Month anchors the leading edge; the chevrons sit as an adjacent pair on
+    /// the trailing edge — the system date-picker / Calendar pattern, replacing
+    /// the old centered layout whose spread-apart chevrons floated unanchored.
     private var monthSelector: some View {
-        HStack(spacing: Spacing.xl) {
-            Button {
-                viewedKey = MonthKey.offset(viewedKey, by: -1)
-            } label: {
-                Image(systemName: "chevron.left").font(.headline)
-            }
-            .accessibilityLabel("Previous month")
-
+        HStack(spacing: Spacing.lg) {
             Text(MonthKey.displayName(viewedKey))
                 .font(Typography.serif(.title3, weight: .semibold))
                 .foregroundStyle(DS.text)
-                .frame(minWidth: 170)
                 .contentTransition(.numericText())
 
-            Button {
-                viewedKey = MonthKey.offset(viewedKey, by: 1)
-            } label: {
-                Image(systemName: "chevron.right").font(.headline)
+            Spacer(minLength: Spacing.lg)
+
+            HStack(spacing: Spacing.xl) {
+                Button {
+                    viewedKey = MonthKey.offset(viewedKey, by: -1)
+                } label: {
+                    Image(systemName: "chevron.left").font(.headline)
+                        .frame(width: 32, height: 32)   // comfortable tap target
+                }
+                .accessibilityLabel("Previous month")
+
+                Button {
+                    viewedKey = MonthKey.offset(viewedKey, by: 1)
+                } label: {
+                    Image(systemName: "chevron.right").font(.headline)
+                        .frame(width: 32, height: 32)
+                }
+                .accessibilityLabel("Next month")
             }
-            .accessibilityLabel("Next month")
         }
         .buttonStyle(.borderless)   // make each chevron tappable inside the List row
         .tint(DS.gold)
@@ -198,26 +206,26 @@ struct BudgetView: View {
                                           bottom: 0, trailing: Spacing.md))
             #endif
 
-            searchField
-
-            if !isSearching {
-                if month.isClosed {
-                    Section {
-                        Label("This month is closed and read-only.", systemImage: "lock.fill")
-                            .font(.subheadline)
-                            .foregroundStyle(DS.textMuted)
-                        Button {
-                            LedgerService.reopenMonth(month, in: context)
-                        } label: {
-                            Label("Reopen Month", systemImage: "lock.open")
-                        }
+            if month.isClosed {
+                Section {
+                    Label("This month is closed and read-only.", systemImage: "lock.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(DS.textMuted)
+                    Button {
+                        LedgerService.reopenMonth(month, in: context)
+                    } label: {
+                        Label("Reopen Month", systemImage: "lock.open")
                     }
-                    .listRowBackground(DS.surfaceHigh)
                 }
-
-                incomeSection(month)
-                bucketsSection(month)
+                .listRowBackground(DS.surfaceHigh)
             }
+
+            incomeSection(month)
+            bucketsSection(month)
+
+            // Search lives with the transactions it filters; results appear
+            // directly beneath it, so the cards above no longer need to hide.
+            searchField
 
             transactionsSection(month)
 
@@ -236,9 +244,10 @@ struct BudgetView: View {
         }
     }
 
-    /// In-list search field — sits below the pinned month selector and scrolls
-    /// with the content. While searching, the income/category cards hide (above)
-    /// so matches show right under the field.
+    /// In-list search field — sits directly above the transaction rows it
+    /// filters, so matches appear right beneath it. While searching, the
+    /// category filter pills hide (the filter is ignored so a leftover pill
+    /// can't mask matches).
     private var searchField: some View {
         Section {
             HStack(spacing: Spacing.sm) {

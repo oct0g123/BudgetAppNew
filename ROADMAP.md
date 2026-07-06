@@ -10,6 +10,15 @@ multi-user, or better-served-later ideas).
 ## Open decisions (1.0)
 
 Revisit before final polish / before building the related feature:
+- ✅ **Budget page header — Option A implemented (2026-07-06), verify on device.**
+  Chosen: left-aligned serif month + trailing grouped chevron pair (confirmed
+  HIG-native — it's the system date-picker / UICalendarView layout); search
+  relocated to sit directly above the transaction rows; income/category cards
+  no longer hide while searching (results now appear under the field
+  naturally). If the trailing chevrons still feel disconnected on device:
+  optional bridge = make the month label tappable (▾ jump-to-month menu), or
+  fall back to a tight-flanking `‹ July 2026 ›` cluster. Original diagnosis
+  and Option B kept below for reference.
 - ⚠️ **Budget page header — redesign options (diagnosed 2026-07-06, on hold).**
   Why it feels off: (1) *two stacked titles* — "Budget" (redundant with the tab
   bar) competes with "July 2026," so the biggest text carries the least info;
