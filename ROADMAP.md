@@ -27,7 +27,7 @@ Revisit before final polish / before building the related feature:
 
 Shipping in stages to keep each release low-risk and scoped.
 
-### v1.0 — iOS only, US App Store  ✅ **SUBMITTED — pending review** *(2026-06-30)*
+### v1.0 — iOS only, US App Store  🎉 **LIVE on the App Store** *(approved 2026-07-06)*
 First public release: **iPhone + iPad, US availability only.**
 - **Scope lock:** iOS only (Mac/visionOS deferred to 1.1) and **US-only** — the
   US-only choice also sidesteps the locale money-input bug below at zero code risk.
@@ -37,9 +37,9 @@ First public release: **iPhone + iPad, US availability only.**
 - ✅ Tax/banking (Paid Apps Agreement active), CloudKit schema promoted to
   Production (Jun 20).
 - ✅ Build 3 archived ("Any iOS Device") + uploaded; attached to the version;
-  **Submitted for Review.**
-- **Now:** await Apple review (typically 1–3 days). Watch for Metadata Rejected /
-  reviewer questions; respond via Resolution Center if any.
+  submitted Jun 30 → **approved and released Jul 6.**
+- **Now:** real-user smoke test of Wave 1 + the two TestFlight fixes (widget
+  active-month, Settings allocation hang) — see v1.0.1 below.
 - Carried into a later release (not blockers): Budget-page design sweep, font
   decision (see Open decisions).
 
