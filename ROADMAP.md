@@ -10,12 +10,26 @@ multi-user, or better-served-later ideas).
 ## Open decisions (1.0)
 
 Revisit before final polish / before building the related feature:
-- ⚠️ **Budget page design — re-check before release.** The header/month-selector
-  layout works (large "Budget" title + scrolling month selector + search), but
-  the overall composition "feels off" and deserves a design pass before
-  shipping. (Pinning the month selector was abandoned — `safeAreaInset` + a
-  collapsing large title is broken on this OS; revisit only if a clean approach
-  appears.)
+- ⚠️ **Budget page header — redesign options (diagnosed 2026-07-06, on hold).**
+  Why it feels off: (1) *two stacked titles* — "Budget" (redundant with the tab
+  bar) competes with "July 2026," so the biggest text carries the least info;
+  (2) *unanchored month row* — centered text with chevrons pushed to the far
+  edges = three small elements floating in space; spread chevrons read as
+  whole-screen page-flippers, not a month control; (3) *search squats in the
+  hero slot* between header and money, far from the transactions it searches.
+  - **Option A (recommended, conservative):** keep the "Budget" large title;
+    month row becomes left-aligned serif "July 2026" with the two chevrons
+    **grouped side-by-side at the trailing edge** (Calendar/Health pattern);
+    move search down to sit directly above the transaction rows (which also
+    makes the hide-cards-while-searching workaround mostly unnecessary);
+    tighten vertical gaps so title → month → income reads as one header block.
+    Same bare-List structure — no `safeAreaInset` risk.
+  - **Option B (bolder):** drop the "Budget" large title entirely; "July 2026"
+    *is* the large title, chevrons in the same row. Maximal cleanup but changes
+    the tab's feel; try A first.
+  - Mockup of both options was produced for comparison (see session artifact).
+  (Pinning the month selector was abandoned — `safeAreaInset` + a collapsing
+  large title is broken on this OS; revisit only if a clean approach appears.)
 - **Font:** keep Playfair Display, or revert headings to the system serif
   (New York)? One-line change in `Typography.serif`. Decide near the end.
 - **Purchase types (Phase 5c):** persistent stored sub-category tags (richer:
