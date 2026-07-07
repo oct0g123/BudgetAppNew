@@ -558,6 +558,10 @@ struct BudgetView: View {
             #if !os(visionOS)
             monthSelector
                 .padding(.top, Spacing.sm)
+                // Match the List's effective row inset (its ~20pt content
+                // margin + the Spacing.md row inset) so the month row sits at
+                // the same x-position whether or not the month has started.
+                .padding(.horizontal, Spacing.xl + Spacing.md)
             #endif
             Spacer(minLength: 0)
             ContentUnavailableView {

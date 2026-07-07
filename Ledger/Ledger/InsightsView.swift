@@ -14,6 +14,11 @@ import Charts
 struct InsightsView: View {
     @AppStorage("viewedMonthKey") private var viewedKey: String = MonthKey.current
     @Query(sort: \MonthRecord.key) private var months: [MonthRecord]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Drives the one-shot "bars fill up" entrance: charts render at zero
+    /// until the tab first appears, then animate to their real values.
+    @State private var chartsAppeared = false
 
     /// Most recent 12 months that have any income or spend.
     private var recentMonths: [MonthRecord] {
@@ -63,6 +68,14 @@ struct InsightsView: View {
             #endif
         }
         .tint(DS.gold)
+        .onAppear {
+            guard !chartsAppeared else { return }
+            if reduceMotion {
+                chartsAppeared = true      // no animation, straight to final values
+            } else {
+                withAnimation(.easeOut(duration: 0.8)) { chartsAppeared = true }
+            }
+        }
     }
 
     private func previousMonth(before month: MonthRecord) -> MonthRecord? {
@@ -85,7 +98,7 @@ struct InsightsView: View {
                     ForEach(recent) { month in
                         BarMark(
                             x: .value("Month", MonthKey.shortMonthName(month.key)),
-                            y: .value("Rate", month.savingsRate)
+                            y: .value("Rate", chartsAppeared ? month.savingsRate : 0)
                         )
                         .foregroundStyle(DS.savings)
                         .cornerRadius(4)
@@ -135,7 +148,7 @@ struct InsightsView: View {
                         ForEach(BudgetCategory.allCases) { category in
                             BarMark(
                                 x: .value("Month", MonthKey.shortMonthName(month.key)),
-                                y: .value("Spent", month.spent(for: category))
+                                y: .value("Spent", chartsAppeared ? month.spent(for: category) : 0)
                             )
                             .foregroundStyle(by: .value("Category", category.title))
                         }
@@ -168,8 +181,10 @@ struct InsightsView: View {
             VStack(alignment: .leading, spacing: Spacing.lg) {
                 SectionLabel("Budget vs Actual — \(MonthKey.displayName(month.key))")
                 ForEach(BudgetCategory.allCases) { category in
+                    // Feeding zero until appearance rides the bar's own spring
+                    // animation, so these fill in with the charts above.
                     BudgetProgressBar(category: category,
-                                      spent: month.spent(for: category),
+                                      spent: chartsAppeared ? month.spent(for: category) : 0,
                                       budget: month.budget(for: category))
                 }
             }
