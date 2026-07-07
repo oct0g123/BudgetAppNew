@@ -148,6 +148,30 @@ work is the per-platform metadata/paperwork, then submit + simultaneous release.
 - Each platform = its own archive + its own App Store Connect platform tab +
   its own TestFlight section, under the same app record.
 
+### v1.2 — "the month-close release" (planned shape, ~3–4 build days)
+Theme: make closing a month the emotional core of the app; clear the behavior
+backlog. No CloudKit schema changes anywhere in this list.
+- **End-of-month recap** (headliner, ~1 day; design done — see Reporting):
+  shared `RecapView` on the `buildInsight()` engine; close-month sheet +
+  History archive + Insights (already live). Make it screenshot/share-worthy.
+  ⚠️ decision: History card tap → recap sheet (recommended) vs. keep
+  tap-to-Budget.
+- **Review prompt moves into the recap flow** (trivial): close → recap →
+  dismiss → rating ask, at peak accomplishment.
+- **Weekly safe-to-spend pacing** (~half day; see Core features): remaining
+  Needs/Wants ÷ time left. ⚠️ decisions: weekly vs daily cadence; live vs
+  fixed-at-week-start.
+- **Adjustable alert threshold** (~30 min): 75/80/90 slider replaces the
+  constant.
+- **Wave-3 behavior fixes** (~half day, from the audit): Siri closed-month
+  redirect (B4) · rule edits update the open month's charge (B6) · MoneyField
+  commits on end-editing (C2).
+- **Conditional — monetization flip** (~1 day): if the download-data window
+  says free + tip jar, it lands here (price → $0, 3 consumable IAPs,
+  "Support Ledger" screen).
+- Filler if needed: widget snapshot skip-identical-writes (D2), predicated
+  month queries (D6).
+
 ### v1.5 — advanced features
 After the platforms are out, pull a focused few from the sections below
 (reporting, budget rollover, watch complications, adjustable alert threshold,
