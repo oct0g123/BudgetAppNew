@@ -89,8 +89,13 @@ First public release: **iPhone + iPad, US availability only.**
 - Carried into a later release (not blockers): Budget-page design sweep, font
   decision (see Open decisions).
 
-### v1.0.1 — fast-follow (planned)
-Small bug-fix release after launch, fixes already on the branch:
+### v1.0.1 — fast-follow  ✅ **SHIPPED — approved** *(2026-07-07)*
+Contents: audit Wave 1 + widget active-month fix + Settings hang fix + Budget
+header redesign (Option A). ⚠️ *Not included (on the branch, ship with the next
+release):* empty-state month alignment, Insights entrance animation, Settings
+version row. ⚠️ *Verify:* was the new keyword string pasted into 1.0.1? If not,
+it rides the next version.
+Original punch list:
 - ✅ **Audit Wave 1** (see `docs/code-review-v1.0.md`): thousands-separator
   parse fix ("$1,200" → $1), import validation (wrong JSON no longer clobbers
   settings), backups now round-trip `recurringRuleID`, reset clears the widget
