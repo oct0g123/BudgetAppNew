@@ -577,12 +577,10 @@ struct SettingsView: View {
         .listRowBackground(DS.surface)
     }
 
-    /// "1.0 (3)" — marketing version + build number from the bundle, so this
-    /// always matches what's actually installed (App Store, TestFlight, or Xcode).
+    /// Marketing version from the bundle (e.g. "1.0"), so it always matches
+    /// what's actually installed (App Store, TestFlight, or Xcode).
     private var appVersion: String {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
-        return "\(version) (\(build))"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
     }
 
     private var aboutSection: some View {
