@@ -426,10 +426,12 @@ struct SettingsView: View {
         Section {
             Toggle(isOn: $appLockEnabled) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Require Face ID")
+                    // Names the device's actual biometry: Face ID on iPhone,
+                    // Touch ID on Macs, Optic ID on Vision Pro.
+                    Text("Require \(BiometricAuth.kindName)")
                     Text(BiometricAuth.isAvailable
                          ? "Lock Ledger when you leave the app."
-                         : "Set a device passcode or Face ID to enable this.")
+                         : "Set a device passcode or biometric unlock to enable this.")
                         .font(.caption)
                         .foregroundStyle(DS.textMuted)
                 }
@@ -441,7 +443,7 @@ struct SettingsView: View {
                 // switch is turned on; revert if the user cancels or it fails.
                 guard enabled else { return }
                 Task {
-                    let ok = await BiometricAuth.authenticate(reason: "Confirm Face ID to lock Ledger")
+                    let ok = await BiometricAuth.authenticate(reason: "Confirm \(BiometricAuth.kindName) to lock Ledger")
                     if !ok { await MainActor.run { appLockEnabled = false } }
                 }
             }

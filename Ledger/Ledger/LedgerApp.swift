@@ -231,10 +231,40 @@ struct LedgerApp: App {
 // MARK: - Biometric app lock
 
 enum BiometricAuth {
-    /// Whether the device can authenticate (Face ID / Touch ID / passcode).
+    /// Whether the device can authenticate (Face ID / Touch ID / Optic ID / passcode).
     static var isAvailable: Bool {
         var error: NSError?
         return LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
+    }
+
+    /// The device's actual biometry, for UI copy — "Face ID" on iPhone,
+    /// "Touch ID" on Macs, "Optic ID" on Vision Pro. Falls back to "Passcode"
+    /// when no biometry is enrolled (the policy still allows the passcode).
+    static var kindName: String {
+        switch biometryType {
+        case .faceID:  return "Face ID"
+        case .touchID: return "Touch ID"
+        case .opticID: return "Optic ID"
+        default:       return "Passcode"
+        }
+    }
+
+    /// Matching SF Symbol for `kindName`.
+    static var kindSymbol: String {
+        switch biometryType {
+        case .faceID:  return "faceid"
+        case .touchID: return "touchid"
+        case .opticID: return "opticid"
+        default:       return "lock"
+        }
+    }
+
+    private static var biometryType: LABiometryType {
+        let ctx = LAContext()
+        var error: NSError?
+        // biometryType is only populated after canEvaluatePolicy runs.
+        _ = ctx.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
+        return ctx.biometryType
     }
 
     static func authenticate(reason: String = "Unlock Ledger") async -> Bool {
@@ -295,7 +325,7 @@ struct LockGate<Content: View>: View {
                     .foregroundStyle(DS.text)
                 if showUnlock {
                     Button { tryUnlock() } label: {
-                        Label("Unlock", systemImage: "faceid")
+                        Label("Unlock", systemImage: BiometricAuth.kindSymbol)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(DS.gold)
