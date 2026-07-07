@@ -388,9 +388,11 @@ enum LedgerArchive {
         return cal.date(from: c) ?? Date()
     }
 
-    /// Stable UUID derived from a seed string, so re-importing the same legacy
-    /// file doesn't create duplicate transactions.
-    private static func deterministicUUID(_ seed: String) -> UUID {
+    /// Stable UUID derived from a seed string, so the same logical record gets
+    /// the same id everywhere it's created — re-importing a legacy file doesn't
+    /// duplicate transactions, and two devices materializing the same recurring
+    /// rule into the same month produce colliding ids that dedupe collapses.
+    static func deterministicUUID(_ seed: String) -> UUID {
         let digest = Insecure.MD5.hash(data: Data(seed.utf8))
         let b = Array(digest) // exactly 16 bytes
         let bytes: uuid_t = (b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],

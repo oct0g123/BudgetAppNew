@@ -9,9 +9,11 @@
 
 import SwiftUI
 import SwiftData
+import StoreKit
 
 struct BudgetView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.requestReview) private var requestReview
     @EnvironmentObject private var navigator: AppNavigator
 
     @AppStorage("viewedMonthKey") private var viewedKey: String = MonthKey.current
@@ -19,6 +21,7 @@ struct BudgetView: View {
 
     @AppStorage("showBucketUsage") private var showBucketUsage = true
     @AppStorage("hasCompletedOnboarding") private var hasOnboarded = false
+    @AppStorage("hasRequestedReview") private var hasRequestedReview = false
 
     @State private var filter: BudgetCategory? = nil
     @State private var searchText = ""
@@ -36,7 +39,9 @@ struct BudgetView: View {
     @State private var undoToken = 0
 
     private var currentMonth: MonthRecord? {
-        months.first { $0.key == viewedKey }
+        // Canonical pick: a duplicate month waiting out its delete-grace
+        // period (see LedgerService merge notes) must never be the one shown.
+        LedgerService.canonical(months, key: viewedKey)
     }
 
     var body: some View {
@@ -142,6 +147,7 @@ struct BudgetView: View {
                     LedgerService.closeMonth(month, in: context)
                     viewedKey = MonthKey.offset(month.key, by: 1)
                     closeCount += 1
+                    maybeRequestReview()
                 }
             }
             Button("Cancel", role: .cancel) {}
@@ -194,6 +200,22 @@ struct BudgetView: View {
 
     private var isSearching: Bool {
         !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    // MARK: Review prompt
+
+    /// Ask for a rating once, right after the user closes their first month —
+    /// a natural "this app worked for me" moment. The system decides whether
+    /// the prompt actually appears (Apple caps it at ~3/year), so one
+    /// well-placed request is all we ever make. Delayed slightly so the
+    /// close-month transition settles first.
+    private func maybeRequestReview() {
+        guard !hasRequestedReview else { return }
+        hasRequestedReview = true
+        Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            requestReview()
+        }
     }
 
     private func monthList(_ month: MonthRecord) -> some View {

@@ -85,8 +85,15 @@ struct RootView: View {
         }
         // Re-run when months arrive/change — catches duplicates that import
         // from iCloud a few seconds *after* a cold launch, and keeps the widget
-        // snapshot current.
-        .onChange(of: months.count) { _, _ in
+        // snapshot current. Debounced: CloudKit delivers imports in bursts of
+        // batches, each changing the count — the sleep coalesces a burst into
+        // ONE merge pass after it settles (task(id:) cancels the pending pass
+        // whenever the count changes again). This also avoids merging in the
+        // middle of an import, which is exactly where duplicate-resolution
+        // races live.
+        .task(id: months.count) {
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
             LedgerService.mergeDuplicates(in: context)
             BudgetSnapshotStore.update(from: months)
         }
@@ -131,7 +138,7 @@ struct SafeToSpendBar: View {
     @Query(sort: \MonthRecord.key) private var months: [MonthRecord]
 
     private var month: MonthRecord? {
-        months.first { $0.key == viewedKey }
+        LedgerService.canonical(months, key: viewedKey)
     }
 
     var body: some View {

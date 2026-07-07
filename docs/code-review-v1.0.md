@@ -9,8 +9,17 @@ each group. Line numbers are approximate (they drift as the file changes).
 churn · ⚪ polish / hygiene.
 
 **Status — Wave 1 applied (2026-06-30):** B1, B2, B7, C1, D3, D4, D5, D7, D8 are
-✅ fixed on the branch (low-risk mechanical set). Still open: the §A merge/dedupe
-cluster (Wave 2, with F2), B3–B6, C2, D1, D2, D6, and the §F refactors.
+✅ fixed (shipped in 1.0.1). 
+**Wave 2 applied (2026-07-07):** the §A cluster + F2 are ✅ fixed on the branch —
+deterministic recurring-txn ids (`ruleID+monthKey`), deterministic survivor
+selection for txn/settings dedupe, canonical month = earliest `createdAt`,
+duplicate months deleted only after a 5-minute empty-grace period (deletes
+cascade — never race one), settings content-merge + local cache restore,
+ids-only merge precheck, and a 2s debounce on the reactive merge path (also
+resolves most of D1). Views/widget always select the canonical month record.
+Requires a **two-device TestFlight soak** before release (airplane-mode
+conflict recipes in the session notes). Still open: B3–B6, C2, D2, D6, rest of
+D1 (background context, likely unnecessary now), and the §F1 chokepoint.
 
 > Context: most 🔴 items are **multi-device CloudKit races** — they need two
 > devices (or one device + a re-install restoring from iCloud) to trigger, so

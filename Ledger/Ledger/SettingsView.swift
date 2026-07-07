@@ -273,7 +273,7 @@ struct SettingsView: View {
             .disabled(!draftSplit.isValid)
 
             Button("Apply to \(MonthKey.displayName(viewedKey))") {
-                if let month = months.first(where: { $0.key == viewedKey }), !month.isClosed {
+                if let month = LedgerService.canonical(months, key: viewedKey), !month.isClosed {
                     month.needsPct = draftSplit.needs
                     month.savingsPct = draftSplit.savings
                     month.wantsPct = draftSplit.wants

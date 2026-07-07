@@ -101,9 +101,14 @@ Original punch list:
   settings), backups now round-trip `recurringRuleID`, reset clears the widget
   snapshot, cached formatters (app + widget), lazy History list, Insights
   compute-once, search debounce.
-- **Wave 2 (before a real multi-device install base):** the CloudKit
-  merge/dedupe integrity cluster (§A of the audit) + deterministic record
-  IDs (§F2) — unit-test the merge logic, then a two-device TestFlight soak.
+- ✅ **Wave 2 built (2026-07-07, on branch — needs two-device TestFlight soak
+  before release):** CloudKit merge/dedupe integrity cluster (§A) +
+  deterministic record IDs (§F2). See `docs/code-review-v1.0.md` status for
+  the full mechanism list. Test recipe: airplane-mode both devices → make the
+  conflicting change on each (both start the same month / both edit income) →
+  reconnect → verify convergence with no loss and no doubles on both devices.
+- ✅ **Review prompt built (2026-07-07, on branch):** one-time `requestReview()`
+  1.5s after the user closes their first month; flag-guarded; ships next release.
 - ✅ **Widget tracks the active budgeting month** (closing a month early no longer
   freezes the widget on it) — committed, not in the launch build.
 - ✅ **~30s Settings hang when changing allocation %** — committed. Root cause:

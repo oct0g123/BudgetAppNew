@@ -10,9 +10,16 @@ import SwiftUI
 import SwiftData
 
 struct HistoryView: View {
-    @Query(sort: \MonthRecord.key, order: .reverse) private var months: [MonthRecord]
+    @Query(sort: \MonthRecord.key, order: .reverse) private var allMonths: [MonthRecord]
     @EnvironmentObject private var navigator: AppNavigator
     @AppStorage("viewedMonthKey") private var viewedKey: String = MonthKey.current
+
+    /// One canonical record per key, newest first — a duplicate month waiting
+    /// out its delete-grace period must not appear as an extra card or skew
+    /// the overall totals.
+    private var months: [MonthRecord] {
+        Array(LedgerService.canonicalMonths(allMonths).reversed())
+    }
 
     var body: some View {
         NavigationStack {

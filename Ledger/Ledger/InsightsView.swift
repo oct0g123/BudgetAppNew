@@ -20,16 +20,17 @@ struct InsightsView: View {
     /// until the tab first appears, then animate to their real values.
     @State private var chartsAppeared = false
 
-    /// Most recent 12 months that have any income or spend.
+    /// Most recent 12 months that have any income or spend (one canonical
+    /// record per key — a merge-pending duplicate must not skew the charts).
     private var recentMonths: [MonthRecord] {
-        months
+        LedgerService.canonicalMonths(months)
             .filter { $0.income > 0 || $0.totalSpent > 0 }
             .suffix(12)
             .map { $0 }
     }
 
     private var currentMonth: MonthRecord? {
-        months.first { $0.key == viewedKey } ?? months.last
+        LedgerService.canonical(months, key: viewedKey) ?? LedgerService.canonicalMonths(months).last
     }
 
     var body: some View {

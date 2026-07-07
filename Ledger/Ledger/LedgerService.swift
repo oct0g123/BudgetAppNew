@@ -27,6 +27,9 @@ enum LedgerService {
             return first
         }
         let created = AppSettings()
+        // If a sync race ever deleted every settings row, restore the user's
+        // income/split from the local cache rather than resetting to zeros.
+        SettingsBackup.restore(into: created)
         context.insert(created)
         return created
     }
@@ -82,7 +85,13 @@ enum LedgerService {
         for rule in allRecurringRules(in: context) where rule.isActive {
             guard rule.startKey <= month.key else { continue }
             guard !existingRuleIDs.contains(rule.id) else { continue }
-            let txn = Transaction(desc: rule.desc,
+            // Deterministic id: two devices that each materialize this rule into
+            // this month (e.g. both open the app on the 1st before syncing)
+            // produce the SAME transaction id, so id-dedupe collapses the pair
+            // instead of leaving a permanent double charge.
+            let txn = Transaction(id: LedgerArchive.deterministicUUID(
+                                      "recurring|\(rule.id.uuidString)|\(month.key)"),
+                                  desc: rule.desc,
                                   amount: rule.amount,
                                   category: rule.category,
                                   date: dateForDay(rule.dayOfMonth, inMonthKey: month.key),
@@ -137,15 +146,33 @@ enum LedgerService {
     //
     // With iCloud sync, two devices can independently create "singleton-ish"
     // records before they've synced — most commonly the current month (each
-    // device makes its own on first launch) and the settings row. After they
-    // sync you end up with duplicates: e.g. two "2026-06" months, one of which
-    // holds the transactions while the other (empty) one is what the UI happens
-    // to show. This consolidates them. It's safe to run repeatedly and on every
-    // device — the canonical record is chosen the same way everywhere (the copy
-    // with the most transactions, tie-broken by earliest creation), so devices
-    // converge on deleting the same duplicates rather than fighting.
+    // device makes its own on first launch) and the settings row. This
+    // consolidates the duplicates. Design rules, learned the hard way:
+    //
+    //  1. Every choice is DETERMINISTIC from synced fields only, so all
+    //     devices converge on the same survivor instead of each deleting the
+    //     other's copy (which syncs both deletions and loses the record).
+    //  2. Duplicate MONTHS are never deleted immediately. Deleting a month
+    //     cascades to its transactions — and a deletion that syncs to a device
+    //     whose transactions haven't uploaded yet would cascade-wipe them.
+    //     Instead: reparent transactions to the canonical month every pass,
+    //     and only delete a duplicate after it has been observed empty for a
+    //     grace period (late-arriving remote transactions get reparented on a
+    //     later pass and reset the clock). Views always display the canonical
+    //     copy (see `canonical(_:key:)`), so a lingering empty duplicate is
+    //     invisible while it waits.
+    //  3. A cheap precheck (ids only, no relationship faulting) skips the
+    //     whole pass when there's nothing to merge — this runs on every
+    //     activation, so the common case must cost ~nothing.
 
     static func mergeDuplicates(in context: ModelContext) {
+        guard needsMerge(in: context) else {
+            // Keep the local settings cache warm even when nothing merges.
+            if let s = try? context.fetch(FetchDescriptor<AppSettings>()).first {
+                SettingsBackup.save(s)
+            }
+            return
+        }
         mergeDuplicateSettings(in: context)
         mergeDuplicateMonths(in: context)
         for month in allMonths(in: context) {
@@ -155,25 +182,102 @@ enum LedgerService {
         try? context.save()
     }
 
+    /// Ids-only duplicate scan — no relationship faulting, so it's cheap enough
+    /// to run on every scene activation and CloudKit import batch.
+    private static func needsMerge(in context: ModelContext) -> Bool {
+        let settingsCount = (try? context.fetchCount(FetchDescriptor<AppSettings>())) ?? 0
+        if settingsCount > 1 { return true }
+
+        var monthDesc = FetchDescriptor<MonthRecord>()
+        monthDesc.propertiesToFetch = [\.key]
+        let monthKeys = ((try? context.fetch(monthDesc)) ?? []).map(\.key)
+        if Set(monthKeys).count != monthKeys.count { return true }
+
+        var txnDesc = FetchDescriptor<Transaction>()
+        txnDesc.propertiesToFetch = [\.id]
+        let txnIDs = ((try? context.fetch(txnDesc)) ?? []).map(\.id)
+        if Set(txnIDs).count != txnIDs.count { return true }
+
+        var ruleDesc = FetchDescriptor<RecurringRule>()
+        ruleDesc.propertiesToFetch = [\.id]
+        let ruleIDs = ((try? context.fetch(ruleDesc)) ?? []).map(\.id)
+        if Set(ruleIDs).count != ruleIDs.count { return true }
+
+        // A month-delete grace period pending? Finish the job.
+        return !MonthDeleteGrace.load().isEmpty
+    }
+
+    // MARK: Canonical month selection
+
+    /// Deterministic cross-device ordering for months sharing a key: earliest
+    /// createdAt wins (set once at creation and synced, so every device agrees;
+    /// sub-second Dates make cross-device ties effectively impossible).
+    static func monthPrecedes(_ a: MonthRecord, _ b: MonthRecord) -> Bool {
+        if a.createdAt != b.createdAt { return a.createdAt < b.createdAt }
+        if a.txns.count != b.txns.count { return a.txns.count > b.txns.count }
+        return a.income > b.income
+    }
+
+    /// The canonical record for a month key — what views should display, so a
+    /// duplicate lingering through its delete-grace period is never visible.
+    static func canonical(_ months: [MonthRecord], key: String) -> MonthRecord? {
+        months.lazy.filter { $0.key == key }.min(by: monthPrecedes)
+    }
+
+    /// All months, one canonical record per key, sorted by key.
+    static func canonicalMonths(_ months: [MonthRecord]) -> [MonthRecord] {
+        Dictionary(grouping: months, by: \.key)
+            .values
+            .compactMap { $0.min(by: monthPrecedes) }
+            .sorted { $0.key < $1.key }
+    }
+
     private static func mergeDuplicateSettings(in context: ModelContext) {
         let all = (try? context.fetch(FetchDescriptor<AppSettings>())) ?? []
-        guard all.count > 1 else { return }
-        // Prefer a row that actually has data over a freshly-defaulted one.
-        let keep = all.first(where: { $0.defaultIncome != 0 }) ?? all[0]
-        for s in all where s !== keep { context.delete(s) }
+        guard let first = all.first else { return }
+        if all.count > 1 {
+            // Merge CONTENT deterministically (same result on every device):
+            // income = the largest configured income; the split rides with the
+            // row that carried it. Even if two devices keep different records
+            // momentarily, both records hold identical merged values — and if
+            // a mutual delete empties the table entirely, `settings(in:)`
+            // recreates the row from the local cache instead of zeros.
+            let keep = all.min(by: { settingsKey($0) < settingsKey($1) }) ?? first
+            let richest = all.max(by: { settingsKey($0) < settingsKey($1) }) ?? first
+            if keep !== richest {
+                keep.defaultIncome = max(keep.defaultIncome, richest.defaultIncome)
+                if keep.defaultIncome == richest.defaultIncome {
+                    keep.defaultNeedsPct = richest.defaultNeedsPct
+                    keep.defaultSavingsPct = richest.defaultSavingsPct
+                    keep.defaultWantsPct = richest.defaultWantsPct
+                }
+            }
+            for s in all where s !== keep { context.delete(s) }
+            SettingsBackup.save(keep)
+        } else {
+            SettingsBackup.save(first)
+        }
+    }
+
+    /// Deterministic content ordering for settings rows (higher income sorts
+    /// later, so `max` = the configured row and `min` = a stable keep-choice).
+    private static func settingsKey(_ s: AppSettings) -> String {
+        String(format: "%015.2f|%05.1f|%05.1f|%05.1f",
+               s.defaultIncome, s.defaultNeedsPct, s.defaultSavingsPct, s.defaultWantsPct)
     }
 
     private static func mergeDuplicateMonths(in context: ModelContext) {
         let groups = Dictionary(grouping: allMonths(in: context), by: { $0.key })
-        for (_, group) in groups where group.count > 1 {
-            // Canonical = most transactions, then earliest createdAt (deterministic).
-            let canonical = group.sorted { a, b in
-                if a.txns.count != b.txns.count { return a.txns.count > b.txns.count }
-                return a.createdAt < b.createdAt
-            }.first!
+        var pending = MonthDeleteGrace.load()
+        var active: Set<String> = []
+        let now = Date().timeIntervalSince1970
 
+        for (_, group) in groups where group.count > 1 {
+            let canonical = group.min(by: monthPrecedes)!
             for dup in group where dup !== canonical {
-                // If the canonical copy is the empty one, carry over real metadata.
+                // Late-arriving remote transactions reset the delete clock.
+                if !dup.txns.isEmpty { pending[MonthDeleteGrace.signature(dup)] = now }
+
                 if canonical.income == 0, dup.income != 0 {
                     canonical.income = dup.income
                     canonical.needsPct = dup.needsPct
@@ -182,25 +286,116 @@ enum LedgerService {
                 }
                 if dup.isClosed { canonical.isClosed = true }
                 for txn in dup.txns { txn.month = canonical }
-                context.delete(dup)
+
+                let sig = MonthDeleteGrace.signature(dup)
+                if let firstSeenEmpty = pending[sig] {
+                    if now - firstSeenEmpty >= MonthDeleteGrace.period {
+                        context.delete(dup)
+                        pending.removeValue(forKey: sig)
+                    } else {
+                        active.insert(sig)
+                    }
+                } else {
+                    pending[sig] = now
+                    active.insert(sig)
+                }
             }
+        }
+
+        // Drop grace entries whose duplicates no longer exist.
+        pending = pending.filter { active.contains($0.key) }
+        MonthDeleteGrace.save(pending)
+    }
+
+    /// Collapse duplicate transactions within a month, deterministically.
+    /// Pass 1: copies sharing an id (imports preserve ids; deterministic
+    /// recurring ids collide across devices on purpose). Pass 2: rows
+    /// materialized from the same recurring rule under different ids — the
+    /// legacy of the pre-deterministic-id race (the permanent "double rent").
+    private static func dedupeTransactions(in month: MonthRecord, context: ModelContext) {
+        var byID: [UUID: [Transaction]] = [:]
+        for txn in month.txns { byID[txn.id, default: []].append(txn) }
+        var deleted = Set<ObjectIdentifier>()
+        for (_, copies) in byID where copies.count > 1 {
+            let survivor = copies.min(by: { survivorKey($0) < survivorKey($1) })!
+            for txn in copies where txn !== survivor {
+                deleted.insert(ObjectIdentifier(txn))
+                context.delete(txn)
+            }
+        }
+
+        var byRule: [UUID: [Transaction]] = [:]
+        for txn in month.txns where !deleted.contains(ObjectIdentifier(txn)) {
+            if let ruleID = txn.recurringRuleID {
+                byRule[ruleID, default: []].append(txn)
+            }
+        }
+        for (_, copies) in byRule where copies.count > 1 {
+            let survivor = copies.min(by: { survivorKey($0) < survivorKey($1) })!
+            for txn in copies where txn !== survivor { context.delete(txn) }
         }
     }
 
-    /// Remove transactions that share an id within a month (can happen when the
-    /// same data was imported on two devices, since imports preserve ids).
-    private static func dedupeTransactions(in month: MonthRecord, context: ModelContext) {
-        var seen = Set<UUID>()
-        for txn in month.txns {
-            if seen.contains(txn.id) { context.delete(txn) } else { seen.insert(txn.id) }
-        }
+    /// Deterministic, synced-content-only ordering for duplicate transactions —
+    /// every device picks the same survivor. Rule-linked rows sort first so a
+    /// dedupe between a tagged and an untagged copy keeps the rule link.
+    private static func survivorKey(_ t: Transaction) -> String {
+        let tagged = t.recurringRuleID == nil ? "1" : "0"
+        let stamp = String(format: "%017.3f", t.date.timeIntervalSince1970)
+        let amount = String(format: "%015.2f", t.amount)
+        return "\(tagged)|\(stamp)|\(amount)|\(t.desc)|\(t.categoryRaw)|\(t.id.uuidString)"
     }
 
     private static func dedupeRecurringRules(in context: ModelContext) {
+        // Fetch is sorted by createdAt, so first-seen is deterministic.
         var seen = Set<UUID>()
         for rule in allRecurringRules(in: context) {
             if seen.contains(rule.id) { context.delete(rule) } else { seen.insert(rule.id) }
         }
+    }
+
+    // MARK: Merge support stores (local, not synced)
+
+    /// Grace-period bookkeeping for duplicate-month deletion. Signature is
+    /// key + createdAt so a re-created month never inherits an old timer.
+    enum MonthDeleteGrace {
+        static let storageKey = "pendingMonthDeletes"
+        /// How long a duplicate must stay empty before it's deleted (seconds).
+        static let period: Double = 300
+
+        static func signature(_ m: MonthRecord) -> String {
+            "\(m.key)|\(m.createdAt.timeIntervalSince1970)"
+        }
+        static func load() -> [String: Double] {
+            UserDefaults.standard.dictionary(forKey: storageKey) as? [String: Double] ?? [:]
+        }
+        static func save(_ dict: [String: Double]) {
+            if dict.isEmpty { UserDefaults.standard.removeObject(forKey: storageKey) }
+            else { UserDefaults.standard.set(dict, forKey: storageKey) }
+        }
+        static func clear() { UserDefaults.standard.removeObject(forKey: storageKey) }
+    }
+
+    /// Local cache of the last-known settings, so if a cross-device merge race
+    /// ever deletes every settings row, recreation restores the user's income
+    /// and split instead of silently resetting to zeros.
+    enum SettingsBackup {
+        private static let key = "settingsBackupV1"
+
+        static func save(_ s: AppSettings) {
+            UserDefaults.standard.set(
+                [s.defaultIncome, s.defaultNeedsPct, s.defaultSavingsPct, s.defaultWantsPct],
+                forKey: key)
+        }
+        static func restore(into s: AppSettings) {
+            guard let values = UserDefaults.standard.array(forKey: key) as? [Double],
+                  values.count == 4 else { return }
+            s.defaultIncome = values[0]
+            s.defaultNeedsPct = values[1]
+            s.defaultSavingsPct = values[2]
+            s.defaultWantsPct = values[3]
+        }
+        static func clear() { UserDefaults.standard.removeObject(forKey: key) }
     }
 
     // MARK: Close month
@@ -307,6 +502,9 @@ enum LedgerService {
         for month in (try? context.fetch(FetchDescriptor<MonthRecord>())) ?? [] { context.delete(month) }
         for rule in (try? context.fetch(FetchDescriptor<RecurringRule>())) ?? [] { context.delete(rule) }
         for settings in (try? context.fetch(FetchDescriptor<AppSettings>())) ?? [] { context.delete(settings) }
+        // A reset must not resurrect cached settings or finish stale merges.
+        SettingsBackup.clear()
+        MonthDeleteGrace.clear()
         try? context.save()
     }
 }
@@ -366,9 +564,12 @@ enum BudgetSnapshotStore {
     static func update(from months: [MonthRecord]) {
         guard let defaults = UserDefaults(suiteName: appGroup) else { return }
         let current = MonthKey.current
-        let month = months.first(where: { $0.key == current && !$0.isClosed })
-            ?? months.filter { !$0.isClosed && $0.key > current }.min(by: { $0.key < $1.key })
-            ?? months.first(where: { $0.key == current })
+        // Collapse to one canonical record per key first, so a duplicate month
+        // waiting out its delete-grace period can't feed the widget bad data.
+        let unique = LedgerService.canonicalMonths(months)
+        let month = unique.first(where: { $0.key == current && !$0.isClosed })
+            ?? unique.filter { !$0.isClosed && $0.key > current }.min(by: { $0.key < $1.key })
+            ?? unique.first(where: { $0.key == current })
         guard let month else {
             // No month to show (e.g. after "reset all data") — clear the stale
             // snapshot so widgets fall back to their placeholder instead of
