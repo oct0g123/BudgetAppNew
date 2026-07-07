@@ -41,6 +41,29 @@ Revisit before final polish / before building the related feature:
   large title is broken on this OS; revisit only if a clean approach appears.)
 - **Font:** keep Playfair Display, or revert headings to the system serif
   (New York)? One-line change in `Typography.serif`. Decide near the end.
+- 💰 **Monetization: $0.99 paid vs. free + tip jar** *(decided 2026-07-06:
+  wait for data, lean tip-jar)*. Revenue is coffee money either way at this
+  scale, so decide on distribution + brand, not income:
+  - **The plan:** keep **$0.99 for the first 2–4 weeks** post-launch and watch
+    real download numbers. Paid→free is instant (no review) and one-way in
+    practice (free→paid angers people), so walk through it with data.
+  - **Flip criteria:** if downloads are anemic without marketing (likely),
+    go **free + tip jar** in v1.1/v1.2. Free supercharges the ratings→rank
+    flywheel, softens reviews, and especially helps the Mac/visionOS launches
+    (Vision Pro owners try any free app in a thin catalog).
+  - **Why tip jar fits the brand:** "no ads, no tracking, not trying to sell
+    you anything" — the Overcast patronage model is the monetization that
+    matches the pitch. A subscription would contradict it outright.
+  - **Tip-jar design sketch (~a day):** three *consumable* IAPs in ASC
+    ($1.99 / $4.99 / $9.99 — "Nice / Generous / Lavish tip"), StoreKit 2
+    (consumables = simplest IAP, no restore needed), a warm "Support Ledger"
+    screen in Settings: *"Ledger has no ads, no subscriptions, and never
+    will. If it's helped you, a tip keeps it that way."*
+  - **Expectations check:** tip conversion is ~0.5–2% of users, mostly
+    once — it's a goodwill channel, not a business model.
+  - ✅ Verify enrollment in the **App Store Small Business Program** (15%
+    commission instead of 30%) — applies to paid and tips alike.
+  - Early $0.99 buyers won't mind a later switch to free at this price point.
 - **Purchase types (Phase 5c):** persistent stored sub-category tags (richer:
   filter/chart/trend by type) vs. AI narrative-only (lighter, nothing stored).
 
