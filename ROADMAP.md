@@ -132,9 +132,14 @@ Original punch list:
   via version update); paste from `appstore/app-store-metadata.md`.
 - Sweep in any other early TestFlight/launch feedback before cutting the build.
 
-### v1.1 — macOS + visionOS  🚧 **builds uploaded — metadata + submit pending** *(2026-06-30)*
-Both platform builds are archived and uploaded to App Store Connect; remaining
-work is the per-platform metadata/paperwork, then submit + simultaneous release.
+### v1.1 — macOS + visionOS  🚧 *(updated 2026-07-08)*
+**Status:** 🥽 **visionOS is LIVE** (1.0 — approved + auto-released, but it's
+STALE build 3: pre-Wave-1/2, has the Settings-hang bug, old merge logic, says
+"Face ID" instead of Optic ID). iOS 1.1 is on TestFlight. Mac not yet submitted.
+**Priority: ship the visionOS 1.1 parity update ASAP** — a mixed fleet (Vision
+Pro on old merge logic + iPhone on Wave 2) still allows the old sync races from
+the visionOS side. Lesson learned: use **manual release** when coordinating.
+Remaining work:
 - **visionOS:** ✅ build uploaded; **layered app icon validated by App Store
   Connect** (`AppIconVision.solidimagestack`, 3-layer parallax, wired via
   `ASSETCATALOG_COMPILER_APPICON_NAME[sdk=xros*]`). Remaining: visionOS metadata
