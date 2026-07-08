@@ -101,12 +101,13 @@ Original punch list:
   settings), backups now round-trip `recurringRuleID`, reset clears the widget
   snapshot, cached formatters (app + widget), lazy History list, Insights
   compute-once, search debounce.
-- ✅ **Wave 2 built (2026-07-07, on branch — needs two-device TestFlight soak
-  before release):** CloudKit merge/dedupe integrity cluster (§A) +
-  deterministic record IDs (§F2). See `docs/code-review-v1.0.md` status for
-  the full mechanism list. Test recipe: airplane-mode both devices → make the
-  conflicting change on each (both start the same month / both edit income) →
-  reconnect → verify convergence with no loss and no doubles on both devices.
+- ✅ **Wave 2 built AND soak-tested (2026-07-08, two-device TestFlight,
+  airplane-mode conflict recipes):** CloudKit merge/dedupe integrity cluster
+  (§A) + deterministic record IDs (§F2). Results: duplicate-transaction race
+  → **no dupes after the update** (dupes reproduced on the pre-update build,
+  confirming both the bug and the fix); income-change conflict → the offline
+  device **converged to the change on reconnect**. Shipping in 1.1 (build 1,
+  on TestFlight). See `docs/code-review-v1.0.md` for mechanisms.
 - ✅ **Review prompt built (2026-07-07, on branch):** one-time `requestReview()`
   1.5s after the user closes their first month; flag-guarded; ships next release.
 - ✅ **Widget tracks the active budgeting month** (closing a month early no longer
