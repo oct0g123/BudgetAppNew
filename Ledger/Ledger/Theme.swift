@@ -91,7 +91,10 @@ struct MoneyField: View {
     private static var symbol: String { Locale.current.currencySymbol ?? "$" }
 
     var body: some View {
-        TextField(placeholder, text: $text)
+        // Title + prompt: callers that show the title as a macOS form label
+        // keep it; callers that hide labels still get a real placeholder
+        // (on macOS a title alone renders as a label, not placeholder text).
+        TextField(placeholder, text: $text, prompt: Text(placeholder))
             #if os(iOS)
             .keyboardType(.decimalPad)
             #endif

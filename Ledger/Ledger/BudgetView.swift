@@ -711,6 +711,16 @@ struct TransactionFilterBar: View {
         [("All", nil)] + BudgetCategory.allCases.map { ($0.title, Optional($0)) }
     }
 
+    // Full-width, thumb-sized segments are right on iPhone/iPad; on a wide Mac
+    // window they balloon, so the bar compacts and caps its width there.
+    #if os(macOS)
+    private let pillVerticalPadding: CGFloat = 5
+    private let barMaxWidth: CGFloat = 420
+    #else
+    private let pillVerticalPadding: CGFloat = 9
+    private let barMaxWidth: CGFloat = .infinity
+    #endif
+
     var body: some View {
         HStack(spacing: 4) {
             ForEach(options, id: \.title) { option in
@@ -721,7 +731,7 @@ struct TransactionFilterBar: View {
                         .font(Typography.mono(.subheadline, weight: .medium))
                         .foregroundStyle(filter == option.value ? DS.background : DS.text)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
+                        .padding(.vertical, pillVerticalPadding)
                         .background {
                             if filter == option.value {
                                 Capsule().fill(option.value.map { DS.category($0) } ?? DS.gold)
@@ -735,7 +745,8 @@ struct TransactionFilterBar: View {
         }
         .padding(5)
         .glassCapsule()
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: barMaxWidth)
+        .frame(maxWidth: .infinity)   // center the capped bar in the row
     }
 }
 
@@ -832,8 +843,16 @@ struct CommandBarView: View {
     private var inputForm: some View {
         Form {
             Section {
-                TextField("e.g. spent $80 on groceries and $25 on a movie",
-                          text: $text, axis: .vertical)
+                // Title via `prompt` + labelsHidden: on macOS a TextField's
+                // title renders as a leading LABEL with the input right-aligned
+                // like a form value — which made the example text look like a
+                // real entry. A prompt is a true placeholder on every platform.
+                TextField("Describe your spending",
+                          text: $text,
+                          prompt: Text("e.g. spent $80 on groceries and $25 on a movie"),
+                          axis: .vertical)
+                    .labelsHidden()
+                    .multilineTextAlignment(.leading)
                     .lineLimit(2...5)
                     .foregroundStyle(DS.text)
             } footer: {
@@ -868,10 +887,14 @@ struct CommandBarView: View {
             Section {
                 ForEach($drafts) { $draft in
                     VStack(alignment: .leading, spacing: Spacing.sm) {
-                        TextField("Description", text: $draft.note)
+                        TextField("Description", text: $draft.note,
+                                  prompt: Text("Description"))
+                            .labelsHidden()
+                            .multilineTextAlignment(.leading)
                             .foregroundStyle(DS.text)
                         HStack {
                             MoneyField(placeholder: "Amount", amount: $draft.amount)
+                                .labelsHidden()
                                 .font(Typography.mono(.body, weight: .medium))
                                 .foregroundStyle(DS.text)
                             Spacer()

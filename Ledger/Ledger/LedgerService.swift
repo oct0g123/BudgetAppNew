@@ -822,7 +822,10 @@ enum IntelligenceService {
     }
 
     // Allows US thousands separators so "$1,200" parses as 1200, not 1.
-    private static let amountPattern = #"\$?\s?\d+(?:,\d{3})*(?:\.\d{1,2})?"#
+    // The lookbehind stops digits glued to letters from reading as amounts —
+    // without it, "PS5 $1,000" parses the "5" in PS5 as the amount and mangles
+    // the note.
+    private static let amountPattern = #"(?<![A-Za-z0-9])\$?\s?\d+(?:,\d{3})*(?:\.\d{1,2})?"#
 
     private static func firstAmount(in s: String) -> Double? {
         guard let range = s.range(of: amountPattern, options: .regularExpression) else { return nil }

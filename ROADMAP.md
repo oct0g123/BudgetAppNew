@@ -143,6 +143,16 @@ work is the per-platform metadata/paperwork, then submit + simultaneous release.
   rounded-rect) added to `AppIcon` to clear upload error 90236. Widget
   dark-palette bug ✅ fixed. Remaining: macOS metadata + screenshots → attach
   build → submit. (Optional later polish: Apple-style drop shadow on the Mac icon.)
+  - ⏰ **REMINDER — Mac screenshots:** raw window captures need exact-size
+    conversion (accepted: 2880×1800 / 2560×1600 / 1440×900 / 1280×800, 16:10,
+    **no alpha channel**). Either the `sips` pad-don't-stretch recipe
+    (`--resampleWidth 2880` then `-p 1800 2880 --padColor 12100D`), or upload
+    the raw captures to the assistant to convert.
+  - ✅ **Mac UX fixes (2026-07-08, on branch — rebuild to verify):** command-bar
+    text fields rendered macOS-style (title-as-label + right-aligned input,
+    making the placeholder look like a real entry) → prompt-based fields;
+    heuristic parser no longer reads digits glued to letters ("PS5") as
+    amounts; transaction filter bar compacts + caps width on macOS only.
 - **Release together:** set all three platforms to **"Manually release this
   version"** (incl. iOS, already in review) so they go live at the same time once
   the last is approved.
