@@ -133,12 +133,13 @@ Original punch list:
 - Sweep in any other early TestFlight/launch feedback before cutting the build.
 
 ### v1.1 — macOS + visionOS  🚧 *(updated 2026-07-08)*
-**Status:** 🥽 **visionOS is LIVE** (1.0 — approved + auto-released, but it's
-STALE build 3: pre-Wave-1/2, has the Settings-hang bug, old merge logic, says
-"Face ID" instead of Optic ID). iOS 1.1 is on TestFlight. Mac not yet submitted.
-**Priority: ship the visionOS 1.1 parity update ASAP** — a mixed fleet (Vision
-Pro on old merge logic + iPhone on Wave 2) still allows the old sync races from
-the visionOS side. Lesson learned: use **manual release** when coordinating.
+**Status (2026-07-08):** 🥽 visionOS 1.0 live → **1.1 parity update submitted
+for review** ✅. iOS 1.1: submitting (⚠️ paste the new keyword string into the
+unlocked field + a real "What's New"). macOS 1.1: archive build 2 (includes the
+Mac command-bar/filter fixes) → upload → sips screenshot conversion → metadata
+(keyword string here too) → submit. When all three are live → ⏰ featuring
+nomination (accessibility pass first). Lesson learned: use **manual release**
+when coordinating.
 Remaining work:
 - **visionOS:** ✅ build uploaded; **layered app icon validated by App Store
   Connect** (`AppIconVision.solidimagestack`, 3-layer parallax, wired via
