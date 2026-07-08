@@ -71,14 +71,26 @@ struct BudgetView: View {
                 if IntelligenceService.isAvailable,
                    let m = currentMonth, !m.isClosed {
                     ToolbarItem(placement: .primaryAction) {
+                        // visionOS stomps custom glyph colors in toolbars (the
+                        // label always renders in the standard glass style), so
+                        // gold has to come from a prominent button tint there —
+                        // which also matches the gold sort button beside it.
+                        #if os(visionOS)
                         Button {
                             showingCommandBar = true
                         } label: {
                             Label("Tell Ledger", systemImage: "sparkles")
-                                // Explicit: visionOS toolbar glyphs don't
-                                // reliably inherit the NavigationStack tint.
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(DS.gold)
+                        #else
+                        Button {
+                            showingCommandBar = true
+                        } label: {
+                            Label("Tell Ledger", systemImage: "sparkles")
                                 .foregroundStyle(DS.gold)
                         }
+                        #endif
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
