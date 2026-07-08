@@ -65,14 +65,20 @@ struct BudgetView: View {
             .toolbarTitleDisplayMode(.large)
             #endif
             .toolbar {
-                if IntelligenceService.isAvailable {
+                // Hidden (not grayed) when the month is closed or missing —
+                // matching the + button's behavior. A permanently-gray toolbar
+                // icon reads as broken, especially on visionOS.
+                if IntelligenceService.isAvailable,
+                   let m = currentMonth, !m.isClosed {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
                             showingCommandBar = true
                         } label: {
                             Label("Tell Ledger", systemImage: "sparkles")
+                                // Explicit: visionOS toolbar glyphs don't
+                                // reliably inherit the NavigationStack tint.
+                                .foregroundStyle(DS.gold)
                         }
-                        .disabled(currentMonth == nil || currentMonth?.isClosed == true)
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
