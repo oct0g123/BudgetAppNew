@@ -253,6 +253,8 @@ struct BudgetProgressBar: View {
             }
         }
         .padding(.vertical, Spacing.xs)
+        // One VoiceOver element per category bar instead of four fragments.
+        .accessibilityElement(children: .combine)
     }
 }
 

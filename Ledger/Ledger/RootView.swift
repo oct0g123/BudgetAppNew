@@ -157,6 +157,8 @@ struct SafeToSpendBar: View {
                     .foregroundStyle(left >= 0 ? DS.text : DS.needs)
             }
             .padding(.horizontal, Spacing.lg)
+            // Single VoiceOver element: "Jul, $2,750.00 left to spend".
+            .accessibilityElement(children: .combine)
         } else {
             Text("Ledger")
                 .font(Typography.serif(.footnote, weight: .semibold))

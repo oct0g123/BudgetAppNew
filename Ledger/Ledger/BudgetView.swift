@@ -495,6 +495,7 @@ struct BudgetView: View {
             } label: {
                 Image(systemName: "chevron.left")
             }
+            .accessibilityLabel("Previous month")
             Text(MonthKey.displayName(viewedKey))
                 .font(Typography.serif(.headline))
                 .foregroundStyle(DS.text)
@@ -504,6 +505,7 @@ struct BudgetView: View {
             } label: {
                 Image(systemName: "chevron.right")
             }
+            .accessibilityLabel("Next month")
         }
         .padding(.horizontal, Spacing.md)
         .padding(.vertical, Spacing.sm)
@@ -520,6 +522,7 @@ struct BudgetView: View {
                 .font(.title2.weight(.semibold))
                 .padding(Spacing.sm)
         }
+        .accessibilityLabel("Add transaction")
         .disabled(currentMonth == nil || currentMonth?.isClosed == true)
         .glassBackgroundEffect()
     }
@@ -715,6 +718,9 @@ struct BucketRow: View {
         }
         .padding(.vertical, Spacing.xs)
         .animation(.snappy(duration: 0.3), value: spent)
+        // One VoiceOver element per bucket ("Needs, $2,500 of $5,000, $2,500
+        // remaining, 50% used") instead of four fragments + a decorative dot.
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -759,6 +765,8 @@ struct TransactionFilterBar: View {
                 }
                 .buttonStyle(.plain)
                 .hoverHighlight()
+                // VoiceOver announces which filter is active.
+                .accessibilityAddTraits(filter == option.value ? .isSelected : [])
             }
         }
         .padding(5)
@@ -996,5 +1004,10 @@ struct TransactionRow: View {
                 .font(Typography.mono(.body, weight: .medium))
                 .foregroundStyle(DS.text)
         }
+        // The category is conveyed only by the dot's color, so VoiceOver gets
+        // it spoken explicitly alongside the description, amount, and date.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(txn.desc.isEmpty ? txn.category.title : txn.desc), \(Money.string(txn.amount)), \(txn.category.title), \(txn.date.formatted(.dateTime.month().day()))")
     }
 }

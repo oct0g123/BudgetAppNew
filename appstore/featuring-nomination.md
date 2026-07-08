@@ -55,10 +55,16 @@ data collection at all.
   Mode** + three hand-tuned themes
 
 ## Accessibility
-*(Complete the accessibility pass before submitting — then list:)*
-- Dynamic Type throughout · VoiceOver labels on all controls & charts ·
-  Reduce Motion respected (chart entrance animations disable) · WCAG-checked
-  contrast in all three themes · no time-limited interactions
+*(Pass completed 2026-07-08 — ships in the release after 1.1. True as of then:)*
+- **Dynamic Type throughout**, including the custom editorial fonts (built
+  with `relativeTo:` text styles, so Playfair/DM Mono scale with user settings)
+- **VoiceOver:** grouped, meaningful elements — bucket rows, month cards, and
+  the safe-to-spend bar each read as one coherent utterance; transaction rows
+  speak their category explicitly (not conveyed by color alone); all
+  image-only controls (ornaments, chevrons) carry labels; the category filter
+  announces its selected state
+- **Reduce Motion respected** — chart entrance animations disable
+- No time-limited interactions; standard controls everywhere else
 
 ## Privacy & business model
 - App Privacy: **Data Not Collected** (no analytics, no third-party SDKs,

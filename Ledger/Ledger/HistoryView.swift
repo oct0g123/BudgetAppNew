@@ -131,6 +131,10 @@ struct MonthSummaryCard: View {
                 }
             }
         }
+        // One VoiceOver element per month card ("July 2026, 10% saved,
+        // Income $10,000, Spent $5,250, Split 50/30/20") — the proportion
+        // bar is decorative and folds away.
+        .accessibilityElement(children: .combine)
     }
 
     private func detail(_ label: String, _ value: String) -> some View {
