@@ -156,6 +156,15 @@ work is the per-platform metadata/paperwork, then submit + simultaneous release.
 - **Release together:** set all three platforms to **"Manually release this
   version"** (incl. iOS, already in review) so they go live at the same time once
   the last is approved.
+- ⏰ **DO NOT FORGET — the moment 1.1 is live on all platforms: submit the App
+  Store featuring nomination** (App Store Connect → Featuring → Nominations;
+  full paste-ready draft in `appstore/featuring-nomination.md`). Primary target:
+  "New on Vision Pro" collections — the thin visionOS catalog is the best
+  featuring odds the app will ever have. **Prerequisite: the accessibility pass**
+  (Dynamic Type / VoiceOver / Reduce Motion / contrast — pulled forward from
+  Polish & correctness; editors check it). Second nomination fires at v1.5 with
+  the 3-D visionOS charts as a "significant update" — nominate at BOTH moments
+  (launches get featured more readily than updates; a decline costs nothing).
 - Each platform = its own archive + its own App Store Connect platform tab +
   its own TestFlight section, under the same app record.
 
@@ -187,6 +196,10 @@ backlog. No CloudKit schema changes anywhere in this list.
 After the platforms are out, pull a focused few from the sections below
 (reporting, budget rollover, watch complications, adjustable alert threshold,
 native 3-D visionOS charts, …).
+- 🎯 **Featuring nomination #2 rides this release:** the ambitious visionOS
+  features (3-D Insights charts via Chart3D/RealityKit, spatial polish) are
+  the editor-bait for a second, stronger "New on Vision Pro" nomination as a
+  significant update. See `appstore/featuring-nomination.md` timing strategy.
 
 ---
 
