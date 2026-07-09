@@ -40,7 +40,9 @@ struct InsightsView: View {
         let recent = recentMonths
         NavigationStack {
             ZStack {
-                DS.background.ignoresSafeArea()
+                #if !os(visionOS)
+                DS.background.ignoresSafeArea()   // glass shows through on visionOS
+                #endif
                 if recent.isEmpty {
                     ContentUnavailableView("No insights yet",
                                            systemImage: "chart.bar.xaxis",

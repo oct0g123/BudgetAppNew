@@ -75,7 +75,7 @@ struct SettingsView: View {
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
             .readableContentWidth()
-            .background(DS.background.ignoresSafeArea())
+            .screenBackground()
             .navigationTitle("Settings")
             #if !os(macOS)
             .toolbarTitleDisplayMode(.large)
@@ -119,7 +119,7 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .readableContentWidth()
-        .background(DS.background.ignoresSafeArea())
+        .screenBackground()
         .navigationTitle("Advanced")
         #if !os(macOS)
         .toolbarTitleDisplayMode(.inline)
@@ -634,7 +634,7 @@ struct SettingsView: View {
             }
             .padding(Spacing.xl)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .background(DS.background.ignoresSafeArea())
+            .screenBackground()
             .navigationTitle("Paste Data")
             .toolbarTitleDisplayMode(.inline)
             .toolbar {

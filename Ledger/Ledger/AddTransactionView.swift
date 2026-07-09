@@ -77,7 +77,7 @@ struct AddTransactionView: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
-            .background(DS.background.ignoresSafeArea())
+            .screenBackground()
             .navigationTitle(isEditing ? "Edit Transaction" : "New Transaction")
             #if !os(macOS)
             .toolbarTitleDisplayMode(.inline)

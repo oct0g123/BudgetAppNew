@@ -54,7 +54,7 @@ struct BudgetView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(DS.background.ignoresSafeArea())
+            .screenBackground()
             #if os(iOS)
             .overlay(alignment: .bottomTrailing) { addButton }
             #endif
@@ -838,7 +838,7 @@ struct CommandBarView: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
-            .background(DS.background.ignoresSafeArea())
+            .screenBackground()
             .navigationTitle("Tell Ledger")
             #if !os(macOS)
             .toolbarTitleDisplayMode(.inline)

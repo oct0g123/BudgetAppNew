@@ -44,7 +44,7 @@ struct RecurringView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(DS.background.ignoresSafeArea())
+        .screenBackground()
         .navigationTitle("Recurring")
         #if !os(macOS)
         .toolbarTitleDisplayMode(.inline)
@@ -166,7 +166,7 @@ struct RecurringEditor: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
-            .background(DS.background.ignoresSafeArea())
+            .screenBackground()
             .navigationTitle(rule == nil ? "New Recurring" : "Edit Recurring")
             #if !os(macOS)
             .toolbarTitleDisplayMode(.inline)

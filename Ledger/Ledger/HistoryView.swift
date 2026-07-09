@@ -24,7 +24,9 @@ struct HistoryView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                DS.background.ignoresSafeArea()
+                #if !os(visionOS)
+                DS.background.ignoresSafeArea()   // glass shows through on visionOS
+                #endif
                 if months.isEmpty {
                     ContentUnavailableView("No months yet",
                                            systemImage: "clock.arrow.circlepath",

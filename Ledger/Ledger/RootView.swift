@@ -58,7 +58,12 @@ struct RootView: View {
             }
         }
         .tabViewStyle(.sidebarAdaptable)
-        .background(DS.background)
+        // visionOS: no opaque fill so the system glass window shows through.
+        .background {
+            #if !os(visionOS)
+            DS.background
+            #endif
+        }
         .modifier(TabChrome())
         // Re-style the whole tab tree when the theme changes. `navigator` is a
         // RootView @StateObject (outside this id'd subtree), so the selected tab
@@ -241,7 +246,7 @@ struct OnboardingView: View {
             }
             .padding(Spacing.xl)
         }
-        .background(DS.background.ignoresSafeArea())
+        .screenBackground()
         .tint(DS.gold)
         .interactiveDismissDisabled(true)
         #if os(macOS)

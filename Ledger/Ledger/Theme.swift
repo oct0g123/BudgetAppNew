@@ -35,6 +35,23 @@ enum Money {
     }
 }
 
+// MARK: - Screen background
+
+extension View {
+    /// The app's full-screen themed background — EXCEPT on visionOS, where it's
+    /// intentionally omitted so the system glass window shows through for a
+    /// native panel look (opaque `DS.surface` cards still provide content
+    /// contrast). iOS/iPadOS/macOS are unchanged.
+    @ViewBuilder
+    func screenBackground() -> some View {
+        #if os(visionOS)
+        self
+        #else
+        self.background(DS.background.ignoresSafeArea())
+        #endif
+    }
+}
+
 // MARK: - Color hex helper
 
 extension Color {
