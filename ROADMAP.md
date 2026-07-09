@@ -504,10 +504,63 @@ summary. The "here's how May went" moment:
 
 ## Polish & correctness
 - First-run onboarding (income + split)
-- Accessibility pass (Dynamic Type everywhere, VoiceOver labels, contrast)
+- ✅ **Accessibility pass — VoiceOver + Dynamic Type + Reduce Motion done**
+  (2026-07-08; grouped elements, spoken categories on txns, labels on
+  image-only visionOS buttons, filter selected-state). **Still open (before
+  claiming everything on the ASC accessibility form):**
+  - **Differentiate Without Color Alone** — category is conveyed by dot COLOR
+    only; sighted color-blind users need a shape/icon per bucket (small glyph
+    in the dot, or distinct shapes). NOT done — don't check that ASC box yet.
+  - **Sufficient Contrast** — never ran a real contrast-ratio audit across the
+    three themes; verify (esp. muted text + Minimal/Modern) before claiming.
+  - **Larger Text** — fonts use `relativeTo:` so they scale, but layout at the
+    largest Dynamic Type sizes is untested (clipping/truncation in tight
+    HStacks). Verify on-device.
+  - Voice Control likely works (standard controls) but untested.
 - Currency picker (today follows device locale only)
 - Final palette tuning + font decision
 - Optional: live **"Syncing…"** state on the sync status panel
+
+## Growth & marketing (post-launch levers — logged 2026-07-08)
+Ranked by effort-to-impact for a solo $0.99 app. None done yet.
+- **Product Page Optimization** (ASC → Growth & Marketing) — free built-in A/B
+  test of icon/screenshots. Turn on now; needs traffic to get a signal.
+- **Custom Product Pages** — alternate screenshot sets per traffic source
+  (e.g. a Vision-Pro-first page for a r/VisionPro link). Free, per-URL trackable.
+- **The recap / share-card feature (v1.2)** — the only *compounding* channel:
+  a shareable "closed my month, saved 10%" card spreads without per-user effort.
+  Treat as the real growth investment, not just a feature.
+- **Reddit** (r/personalfinance, r/visionpro — thin catalog, r/sideproject,
+  r/iOSProgramming build-in-public), **Product Hunt** launch — free, time only;
+  "I built X, here's why" beats "check out my app."
+- **Apple Search Ads Basic** — small capped test to boost chart velocity +
+  earn more organic reviews; thin margin at $0.99, not a profit play.
+- Not worth it now: press outreach, paid influencers (don't pencil at $0.99).
+- Verify **Small Business Program** enrollment (15% vs 30% commission).
+
+## visionOS design — native glass treatment (logged 2026-07-08)
+Observed other visionOS budget apps (MoneyCoach, Expenses/Blue Comet) using the
+**system glass window** — a translucent frosted panel the room shows through —
+where Ledger currently paints an **opaque dark fill** over the glass, so it reads
+as a solid black slab floating in the room instead of a native panel.
+- **Root cause:** every main view applies `.background(DS.background
+  .ignoresSafeArea())` (RootView, BudgetView, SettingsView, RecurringView,
+  AddTransactionView — 5 files), which covers the default `WindowGroup` glass.
+- **First pass (low-risk, visionOS-gated):** on visionOS only, drop the opaque
+  window fill so system glass shows; keep opaque `DS.surface` cards for content
+  contrast. Gives the floating-glass look with zero change to iOS/Mac.
+- **Fuller pass:** convert primary surfaces to a material (`.regular` glass) so
+  the panels themselves are translucent like the reference apps — needs
+  **on-device iteration** (glass reads totally differently in the headset).
+- ⚠️ **Theme interaction:** glass pairs with **light content (dark) themes** —
+  white/primary text on a frosted panel. The **Light** theme (dark text) would
+  be low-contrast on glass showing a bright room. Options: (a) keep opaque
+  cards so theme text-contrast is preserved and only the window backdrop is
+  glass; (b) on visionOS pin to the glass/light-content treatment and let the
+  theme picker drive accent/category/personality only, de-emphasizing the
+  Light/Dark override there. Decide during the on-device pass.
+- Candidate for a v1.5 visionOS-polish release (pairs with the 3-D charts +
+  featuring nomination #2).
 
 ## Reliability & performance
 - **Deploy CloudKit schema to Production** before any TestFlight/App Store build
