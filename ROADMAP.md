@@ -64,6 +64,16 @@ Revisit before final polish / before building the related feature:
   - ✅ Verify enrollment in the **App Store Small Business Program** (15%
     commission instead of 30%) — applies to paid and tips alike.
   - Early $0.99 buyers won't mind a later switch to free at this price point.
+  - **📊 Data snapshots (for the flip decision):**
+    - *Jul 7:* 9 first-time downloads · 2 redownloads · 1.3K impressions ·
+      64 page views (~14% view→buy) · $7 proceeds · 1 organic 5★ review ·
+      #8 Top Paid Finance.
+    - *Jul 8:* 11 first-time · 4 redownloads · 2.52K impressions · 145 page
+      views (~7.6% view→buy — more cold/stranger traffic in the mix) · $9
+      proceeds · 9 updates (1.1 reaching users) · Day-1 retention ~1.7%
+      (opt-in-only, tiny sample — not meaningful yet) · zero crash reports.
+    - Reading so far: chart placement still feeding impressions; conversion
+      holding at a healthy paid-app rate. No flip signal yet — keep watching.
 - **Purchase types (Phase 5c):** persistent stored sub-category tags (richer:
   filter/chart/trend by type) vs. AI narrative-only (lighter, nothing stored).
 
