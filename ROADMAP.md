@@ -197,11 +197,12 @@ backlog. No CloudKit schema changes anywhere in this list.
 - **Weekly safe-to-spend pacing** (~half day; see Core features): remaining
   Needs/Wants ÷ time left. ⚠️ decisions: weekly vs daily cadence; live vs
   fixed-at-week-start.
-- **Adjustable alert threshold** (~30 min): 75/80/90 slider replaces the
-  constant.
-- **Wave-3 behavior fixes** (~half day, from the audit): Siri closed-month
-  redirect (B4) · rule edits update the open month's charge (B6) · MoneyField
-  commits on end-editing (C2).
+- ✅ **Adjustable alert threshold** (built 2026-07-09): 70–90% segmented picker
+  in Settings → Notifications; caption reflects the chosen value.
+- **Wave-3 behavior fixes:** ✅ Siri closed-month redirect (B4, built) ·
+  ✅ rule edits update the open month's charge (B6, built; Recurring footer
+  updated) · ⏳ MoneyField commits on end-editing (C2 — deferred, needs careful
+  FocusState wiring across platforms).
 - **Conditional — monetization flip** (~1 day): if the download-data window
   says free + tip jar, it lands here (price → $0, 3 consumable IAPs,
   "Support Ledger" screen).
