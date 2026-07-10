@@ -68,14 +68,16 @@ enum DS {
     // step up to .thin / .regular if cards wash out against bright rooms.
     static var surfaceStyle: AnyShapeStyle {
         #if os(visionOS)
-        AnyShapeStyle(.ultraThinMaterial)
+        // .regular (not .ultraThin): enough dimming that text keeps contrast
+        // over a bright room — ultraThin washed out the muted/gold text.
+        AnyShapeStyle(.regularMaterial)
         #else
         AnyShapeStyle(surface)
         #endif
     }
     static var surfaceHighStyle: AnyShapeStyle {
         #if os(visionOS)
-        AnyShapeStyle(.thinMaterial)
+        AnyShapeStyle(.thickMaterial)
         #else
         AnyShapeStyle(surfaceHigh)
         #endif
@@ -86,7 +88,17 @@ enum DS {
 
     // Text
     static var text:        Color { p.text }
-    static var textMuted:   Color { p.textMuted }
+    static var textMuted:   Color {
+        #if os(visionOS)
+        // On glass, the theme's warm-gray muted tone sits too close to the
+        // material itself and washes out over bright rooms. Derive muted from
+        // the PRIMARY text color instead (like the system's secondary style),
+        // so it tracks whatever room is behind the panel.
+        p.text.opacity(0.72)
+        #else
+        p.textMuted
+        #endif
+    }
 
     // Accent
     static var gold:        Color { p.accent }
