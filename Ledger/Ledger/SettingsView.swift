@@ -157,10 +157,14 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         Section {
+            // No Light/Dark override on visionOS — the app pins to each
+            // theme's dark palette there so text stays legible on glass.
+            #if !os(visionOS)
             Picker("Mode", selection: $appColorScheme) {
                 ForEach(AppColorScheme.allCases) { Text($0.label).tag($0.rawValue) }
             }
             .pickerStyle(.segmented)
+            #endif
 
             ForEach(AppTheme.allCases) { theme in
                 Button {
@@ -174,7 +178,11 @@ struct SettingsView: View {
         } header: {
             Text("Appearance")
         } footer: {
+            #if os(visionOS)
+            Text("Themes restyle the whole app. On Vision Pro, Ledger always uses each theme's dark palette so text stays crisp on glass.")
+            #else
             Text("Light / Dark overrides your system setting. Themes restyle the whole app and follow that choice.")
+            #endif
         }
         .listRowBackground(DS.rowBackground())
     }

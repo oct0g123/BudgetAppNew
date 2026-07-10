@@ -296,6 +296,12 @@ struct RecapView: View {
         #if os(macOS)
         .frame(minWidth: 460, minHeight: 560)
         #endif
+        // visionOS sheets size to a compact panel by default, which cut the
+        // recap off after the observations and looked complete — deceiving.
+        // A taller panel fits the whole recap (or clearly shows the scroll).
+        #if os(visionOS)
+        .frame(minWidth: 640, minHeight: 820)
+        #endif
     }
 
     private func recapStat(_ label: String, _ value: String) -> some View {

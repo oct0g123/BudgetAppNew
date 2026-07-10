@@ -197,12 +197,27 @@ backlog. No CloudKit schema changes anywhere in this list.
 - ✅ **Weekly safe-to-spend pacing** (built; decisions made: live-recalculating,
   weekly, auto-switching to per-day in the final week): "$X/wk" appended to
   Needs/Wants status on the live month.
+  - 👁 **Watch item:** the math is remaining ÷ days-left × 7 (a live pace),
+    NOT remaining ÷ 4 — correct but initially surprising (user expected 750,
+    saw 954.55). If it keeps reading as "wrong," options: label it as a pace
+    ("~$954/wk pace", whole dollars, no false-precision cents) or switch to
+    fixed weekly buckets (remaining ÷ whole-weeks-left). Decided 2026-07-09
+    to keep live pace and observe.
 - ✅ **Adjustable alert threshold** (built 2026-07-09): 70–90% segmented picker
   in Settings → Notifications; caption reflects the chosen value.
 - **Wave-3 behavior fixes:** ✅ Siri closed-month redirect (B4, built) ·
   ✅ rule edits update the open month's charge (B6, built; Recurring footer
   updated) · ⏳ MoneyField commits on end-editing (C2 — deferred, needs careful
   FocusState wiring across platforms).
+- ⬆️ **B5 priority bump (observed in the wild 2026-07-09):** new transactions
+  pin to the sheet's month regardless of the picked date — user's Vision Pro
+  showed June holding Jul-7-dated txns. Apply the edit path's re-home logic to
+  the create path (same `MonthKey.key(for: date)` check).
+- ✅ **visionOS theme decision (2026-07-09):** Light/Dark override pinned to
+  dark on visionOS (Light's near-black text vanished on glass — predicted in
+  the glass-design note); Mode picker hidden there, themes still drive
+  palette/accent. Recap sheet gets an explicit larger visionOS frame (default
+  compact panel cut content invisibly).
 - **Conditional — monetization flip** (~1 day): if the download-data window
   says free + tip jar, it lands here (price → $0, 3 consumable IAPs,
   "Support Ledger" screen).

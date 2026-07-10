@@ -221,7 +221,14 @@ struct LedgerApp: App {
                     .environmentObject(syncMonitor)
                     .environmentObject(themeManager)
             }
+            // visionOS pins to dark: the glass surfaces need light-content
+            // text — the Light palette's near-black text disappears against
+            // the material (the theme picker still drives palette/accent).
+            #if os(visionOS)
+            .preferredColorScheme(.dark)
+            #else
             .preferredColorScheme(AppColorScheme(rawValue: appColorScheme)?.colorScheme)
+            #endif
         }
         .modelContainer(AppModelContainer.shared)
         #if os(macOS)
