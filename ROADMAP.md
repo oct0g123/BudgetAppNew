@@ -209,10 +209,10 @@ backlog. No CloudKit schema changes anywhere in this list.
   ✅ rule edits update the open month's charge (B6, built; Recurring footer
   updated) · ⏳ MoneyField commits on end-editing (C2 — deferred, needs careful
   FocusState wiring across platforms).
-- ⬆️ **B5 priority bump (observed in the wild 2026-07-09):** new transactions
-  pin to the sheet's month regardless of the picked date — user's Vision Pro
-  showed June holding Jul-7-dated txns. Apply the edit path's re-home logic to
-  the create path (same `MonthKey.key(for: date)` check).
+- ✅ **B5 fixed (2026-07-09, observed in the wild same day):** new transactions
+  now land in the month their date belongs to (create path mirrors the edit
+  path's re-home; falls back to the sheet's open month if the date's month is
+  closed).
 - ✅ **visionOS theme decision (2026-07-09):** Light/Dark override pinned to
   dark on visionOS (Light's near-black text vanished on glass — predicted in
   the glass-design note); Mode picker hidden there, themes still drive
