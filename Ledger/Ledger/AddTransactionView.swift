@@ -39,7 +39,7 @@ struct AddTransactionView: View {
                         .font(Typography.mono(.body, weight: .medium))
                         .foregroundStyle(DS.text)
                 }
-                .listRowBackground(DS.surface)
+                .listRowBackground(DS.rowBackground())
 
                 Section {
                     Picker("Category", selection: $category) {
@@ -65,14 +65,14 @@ struct AddTransactionView: View {
                         .tint(DS.savings)
                     }
                 }
-                .listRowBackground(DS.surface)
+                .listRowBackground(DS.rowBackground())
 
                 if isEditing {
                     Section {
                         Button("Delete Transaction", role: .destructive) { delete() }
                             .frame(maxWidth: .infinity)
                     }
-                    .listRowBackground(DS.surface)
+                    .listRowBackground(DS.rowBackground())
                 }
             }
             .formStyle(.grouped)

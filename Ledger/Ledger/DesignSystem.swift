@@ -61,6 +61,29 @@ enum DS {
     static var surfaceHigh: Color { p.surfaceHigh }
     static var hairline:    Color { p.hairline }
 
+    // Card/row surfaces as ShapeStyles: the opaque theme color everywhere
+    // EXCEPT visionOS, where they're translucent materials so cards read as
+    // lighter tints of the window glass instead of opaque slabs ("Option B"
+    // of the glass treatment). Tune the weights here: .ultraThin is subtlest;
+    // step up to .thin / .regular if cards wash out against bright rooms.
+    static var surfaceStyle: AnyShapeStyle {
+        #if os(visionOS)
+        AnyShapeStyle(.ultraThinMaterial)
+        #else
+        AnyShapeStyle(surface)
+        #endif
+    }
+    static var surfaceHighStyle: AnyShapeStyle {
+        #if os(visionOS)
+        AnyShapeStyle(.thinMaterial)
+        #else
+        AnyShapeStyle(surfaceHigh)
+        #endif
+    }
+    /// `listRowBackground` needs a View, not a ShapeStyle.
+    static func rowBackground() -> some View { Rectangle().fill(surfaceStyle) }
+    static func rowBackgroundHigh() -> some View { Rectangle().fill(surfaceHighStyle) }
+
     // Text
     static var text:        Color { p.text }
     static var textMuted:   Color { p.textMuted }

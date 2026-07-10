@@ -237,7 +237,7 @@ struct BudgetProgressBar: View {
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(DS.surfaceHigh)
+                    Capsule().fill(DS.surfaceHighStyle)   // material track on visionOS
                     Capsule().fill(alarmOver ? DS.over : DS.category(category))
                         .frame(width: max(0, geo.size.width * fraction))
                 }
@@ -295,7 +295,7 @@ struct MonthSummaryInsightCard: View {
                             .foregroundStyle(DS.text)
                             .padding(Spacing.md)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(DS.surfaceHigh,
+                            .background(DS.surfaceHighStyle,
                                         in: RoundedRectangle(cornerRadius: Radius.field, style: .continuous))
                     }
                 } else {

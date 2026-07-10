@@ -39,7 +39,7 @@ struct RecurringView: View {
                     } footer: {
                         Text("Active rules are added to each new month automatically. Editing or removing a rule never changes closed months.")
                     }
-                    .listRowBackground(DS.surface)
+                    .listRowBackground(DS.rowBackground())
                 }
             }
         }
@@ -132,7 +132,7 @@ struct RecurringEditor: View {
                         .font(Typography.mono(.body, weight: .medium))
                         .foregroundStyle(DS.text)
                 }
-                .listRowBackground(DS.surface)
+                .listRowBackground(DS.rowBackground())
 
                 Section {
                     Picker("Category", selection: $category) {
@@ -162,7 +162,7 @@ struct RecurringEditor: View {
                 } footer: {
                     Text("The transaction is dated this day in each month (capped at 28 so it exists in every month).")
                 }
-                .listRowBackground(DS.surface)
+                .listRowBackground(DS.rowBackground())
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)

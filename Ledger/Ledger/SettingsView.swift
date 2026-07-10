@@ -103,7 +103,7 @@ struct SettingsView: View {
         } footer: {
             Text("iCloud sync, on-device AI, import / export, and data removal.")
         }
-        .listRowBackground(DS.surface)
+        .listRowBackground(DS.rowBackground())
     }
 
     /// The technical / power-user sections, pushed onto their own screen so the
@@ -175,7 +175,7 @@ struct SettingsView: View {
         } footer: {
             Text("Light / Dark overrides your system setting. Themes restyle the whole app and follow that choice.")
         }
-        .listRowBackground(DS.surface)
+        .listRowBackground(DS.rowBackground())
     }
 
     private func themeRow(_ theme: AppTheme) -> some View {
@@ -238,7 +238,7 @@ struct SettingsView: View {
         } footer: {
             Text("Carried forward to each new month.")
         }
-        .listRowBackground(DS.surface)
+        .listRowBackground(DS.rowBackground())
     }
 
     // MARK: Allocation model
@@ -288,7 +288,7 @@ struct SettingsView: View {
         } footer: {
             Text("Set your default split for new months. Past months keep the split they were created with.")
         }
-        .listRowBackground(DS.surface)
+        .listRowBackground(DS.rowBackground())
     }
 
     private func splitStepper(_ label: String, value: Binding<Int>, color: Color) -> some View {
@@ -324,7 +324,7 @@ struct SettingsView: View {
         } header: {
             Text("Display")
         }
-        .listRowBackground(DS.surface)
+        .listRowBackground(DS.rowBackground())
     }
 
     // MARK: iCloud sync status
@@ -365,7 +365,7 @@ struct SettingsView: View {
             } footer: {
                 syncFooter
             }
-            .listRowBackground(DS.surface)
+            .listRowBackground(DS.rowBackground())
         }
 
         /// One status line for a sync phase: in-progress, last success time, or a failure.
@@ -450,7 +450,7 @@ struct SettingsView: View {
         } header: {
             Text("Privacy")
         }
-        .listRowBackground(DS.surface)
+        .listRowBackground(DS.rowBackground())
     }
 
     // MARK: Notifications (budget alerts)
@@ -483,7 +483,7 @@ struct SettingsView: View {
         } footer: {
             Text("On-device only — nothing leaves your phone. Savings is never flagged for going over (that's a good thing).")
         }
-        .listRowBackground(DS.surface)
+        .listRowBackground(DS.rowBackground())
     }
 
     // MARK: Intelligence (AI command bar)
@@ -517,7 +517,7 @@ struct SettingsView: View {
                  ? " The command bar remembers the categories you pick for each merchant."
                  : ""))
         }
-        .listRowBackground(DS.surface)
+        .listRowBackground(DS.rowBackground())
     }
 
     // MARK: Recurring
@@ -532,7 +532,7 @@ struct SettingsView: View {
         } header: {
             Text("Recurring")
         }
-        .listRowBackground(DS.surface)
+        .listRowBackground(DS.rowBackground())
     }
 
     // MARK: Data (export / import)
@@ -559,7 +559,7 @@ struct SettingsView: View {
         } footer: {
             Text("Export a backup or move data between devices. JSON includes everything; CSV is transactions only.")
         }
-        .listRowBackground(DS.surface)
+        .listRowBackground(DS.rowBackground())
     }
 
     // MARK: Reset all data
@@ -576,7 +576,7 @@ struct SettingsView: View {
         } footer: {
             Text("Permanently deletes every month, transaction, recurring rule, and your settings. With iCloud on, this clears your data on all your devices. Export a backup first if you might want it back.")
         }
-        .listRowBackground(DS.surface)
+        .listRowBackground(DS.rowBackground())
     }
 
     /// Marketing version from the bundle (e.g. "1.0"), so it always matches
@@ -595,7 +595,7 @@ struct SettingsView: View {
         } footer: {
             Text("A 50/30/20 budget tracker for iPhone, iPad, Mac and Vision Pro.")
         }
-        .listRowBackground(DS.surface)
+        .listRowBackground(DS.rowBackground())
     }
 
     // MARK: Toast
@@ -628,7 +628,7 @@ struct SettingsView: View {
                     .foregroundStyle(DS.text)
                     .scrollContentBackground(.hidden)
                     .padding(Spacing.sm)
-                    .background(DS.surface)
+                    .background(DS.surfaceStyle)
                     .clipShape(RoundedRectangle(cornerRadius: Radius.field, style: .continuous))
                     .frame(minHeight: 240)
             }

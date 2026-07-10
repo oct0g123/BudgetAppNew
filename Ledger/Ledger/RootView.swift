@@ -215,7 +215,7 @@ struct OnboardingView: View {
                         .font(Typography.mono(.title, weight: .medium))
                         .foregroundStyle(DS.text)
                         .padding(Spacing.md)
-                        .background(DS.surface, in: RoundedRectangle(cornerRadius: Radius.field, style: .continuous))
+                        .background(DS.surfaceStyle, in: RoundedRectangle(cornerRadius: Radius.field, style: .continuous))
                 }
 
                 VStack(alignment: .leading, spacing: Spacing.sm) {

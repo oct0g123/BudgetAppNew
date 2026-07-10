@@ -257,7 +257,7 @@ struct BudgetView: View {
                         Label("Reopen Month", systemImage: "lock.open")
                     }
                 }
-                .listRowBackground(DS.surfaceHigh)
+                .listRowBackground(DS.rowBackgroundHigh())
             }
 
             incomeSection(month)
@@ -279,7 +279,7 @@ struct BudgetView: View {
                             .frame(maxWidth: .infinity)
                     }
                 }
-                .listRowBackground(DS.surface)
+                .listRowBackground(DS.rowBackground())
             }
         }
         // Pull-to-refresh: wait out any in-flight iCloud import, then merge
@@ -328,7 +328,7 @@ struct BudgetView: View {
             }
             .padding(.horizontal, Spacing.md)
             .padding(.vertical, 10)
-            .background(DS.surfaceHigh,
+            .background(DS.surfaceHighStyle,
                         in: RoundedRectangle(cornerRadius: Radius.field, style: .continuous))
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
@@ -358,7 +358,7 @@ struct BudgetView: View {
             }
             .padding(.vertical, Spacing.xs)
         }
-        .listRowBackground(DS.surface)
+        .listRowBackground(DS.rowBackground())
     }
 
     private func splitWords(_ split: BudgetSplit) -> String {
@@ -376,7 +376,7 @@ struct BudgetView: View {
                           showUsage: showBucketUsage)
             }
         }
-        .listRowBackground(DS.surface)
+        .listRowBackground(DS.rowBackground())
     }
 
     // MARK: Transactions
@@ -439,7 +439,7 @@ struct BudgetView: View {
                 .deleteDisabled(month.isClosed)
             }
         }
-        .listRowBackground(DS.surface)
+        .listRowBackground(DS.rowBackground())
     }
 
     private func filteredTransactions(_ month: MonthRecord) -> [Transaction] {
@@ -889,11 +889,11 @@ struct CommandBarView: View {
             } footer: {
                 Text("Describe what you spent or saved in plain English. You'll review everything before it's added. Processed entirely on your device.")
             }
-            .listRowBackground(DS.surface)
+            .listRowBackground(DS.rowBackground())
 
             if let notice {
                 Section { Text(notice).foregroundStyle(DS.needs).font(.subheadline) }
-                    .listRowBackground(DS.surface)
+                    .listRowBackground(DS.rowBackground())
             }
 
             Section {
@@ -909,7 +909,7 @@ struct CommandBarView: View {
                 }
                 .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty || stage == .thinking)
             }
-            .listRowBackground(DS.surface)
+            .listRowBackground(DS.rowBackground())
         }
     }
 
@@ -947,7 +947,7 @@ struct CommandBarView: View {
             } footer: {
                 Text("Review and edit, then Add. Nothing is saved until you tap Add. Added to \(MonthKey.displayName(month?.key ?? MonthKey.current)).")
             }
-            .listRowBackground(DS.surface)
+            .listRowBackground(DS.rowBackground())
         }
     }
 

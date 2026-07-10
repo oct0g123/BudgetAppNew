@@ -575,6 +575,17 @@ struct BudgetSnapshot: Codable {
     var wantsBudget: Double
     var savingsRate: Double
     var updatedAt: Date
+
+    /// Field-wise equality ignoring `updatedAt`, so "did anything change?"
+    /// checks don't false-positive on the timestamp.
+    func contentEquals(_ o: BudgetSnapshot) -> Bool {
+        monthKey == o.monthKey && monthName == o.monthName
+            && shortMonthName == o.shortMonthName && safeToSpend == o.safeToSpend
+            && needsSpent == o.needsSpent && needsBudget == o.needsBudget
+            && savingsSpent == o.savingsSpent && savingsBudget == o.savingsBudget
+            && wantsSpent == o.wantsSpent && wantsBudget == o.wantsBudget
+            && savingsRate == o.savingsRate
+    }
 }
 
 enum BudgetSnapshotStore {
@@ -621,6 +632,15 @@ enum BudgetSnapshotStore {
             wantsBudget: month.budget(for: .wants),
             savingsRate: month.savingsRate,
             updatedAt: Date())
+        // Skip the write AND the timeline reload when nothing changed —
+        // WidgetKit budgets reloads, and this runs from several reactive
+        // hooks plus pull-to-refresh; unconditional reloads get widgets
+        // throttled right when a real change needs to show.
+        if let existing = defaults.data(forKey: key),
+           let old = try? JSONDecoder().decode(BudgetSnapshot.self, from: existing),
+           old.contentEquals(snapshot) {
+            return
+        }
         if let data = try? JSONEncoder().encode(snapshot) {
             defaults.set(data, forKey: key)
             WidgetCenter.shared.reloadAllTimelines()
