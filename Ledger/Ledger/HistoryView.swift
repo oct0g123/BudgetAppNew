@@ -13,6 +13,7 @@ struct HistoryView: View {
     @Query(sort: \MonthRecord.key, order: .reverse) private var allMonths: [MonthRecord]
     @EnvironmentObject private var navigator: AppNavigator
     @AppStorage("viewedMonthKey") private var viewedKey: String = MonthKey.current
+    @State private var recapMonth: MonthRecord?
 
     /// One canonical record per key, newest first — a duplicate month waiting
     /// out its delete-grace period must not appear as an extra card or skew
@@ -38,9 +39,12 @@ struct HistoryView: View {
                         LazyVStack(alignment: .leading, spacing: Spacing.lg) {
                             overallCard
                             ForEach(months) { month in
+                                // Tap opens the month's RECAP (its natural
+                                // detail view); jumping to the Budget tab
+                                // lives inside the recap as a button, so you
+                                // never lose your place in History.
                                 Button {
-                                    viewedKey = month.key
-                                    navigator.selectedTab = .budget
+                                    recapMonth = month
                                 } label: {
                                     MonthSummaryCard(month: month)
                                 }
@@ -57,6 +61,16 @@ struct HistoryView: View {
             #if !os(macOS)
             .toolbarTitleDisplayMode(.large)
             #endif
+            .sheet(item: $recapMonth) { month in
+                // `months` is newest-first, so the immediately-previous month
+                // is the FIRST entry with a smaller key.
+                RecapView(month: month,
+                          previousMonth: months.first(where: { $0.key < month.key }),
+                          onOpenBudget: {
+                              viewedKey = month.key
+                              navigator.selectedTab = .budget
+                          })
+            }
         }
         .tint(DS.gold)
     }
@@ -170,5 +184,129 @@ struct ProportionBar: View {
         .frame(height: 6)
         .clipShape(Capsule())
         .opacity(month.totalSpent > 0 ? 0.9 : 0.25)
+    }
+}
+
+// MARK: - Month recap
+
+/// The "here's how the month went" wrap-up: shown as a sheet right after
+/// closing a month (the ritual moment) and from any History card (the
+/// archive). Built on the same deterministic `buildInsight` engine as the
+/// Insights summary — no AI prose, figures always correct.
+struct RecapView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let month: MonthRecord
+    var previousMonth: MonthRecord? = nil
+    /// Present when opened from History: jumps to this month on the Budget tab.
+    var onOpenBudget: (() -> Void)? = nil
+
+    var body: some View {
+        let insight = LedgerService.buildInsight(for: month, previous: previousMonth)
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Spacing.xl) {
+
+                    // Headline block
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        SectionLabel(MonthKey.displayName(month.key)
+                                     + (month.isClosed ? "  ·  CLOSED" : ""))
+                        Text(insight.headline)
+                            .font(Typography.serif(.largeTitle, weight: .semibold))
+                            .foregroundStyle(DS.text)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    // The month in three numbers
+                    HStack {
+                        recapStat("Income", Money.string(month.income))
+                        Spacer()
+                        recapStat("Spent", Money.string(month.totalSpent))
+                        Spacer()
+                        recapStat("Saved", Money.percent(month.savingsRate))
+                    }
+                    .padding(Spacing.lg)
+                    .background(DS.surfaceStyle)
+                    .clipShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+                    .accessibilityElement(children: .combine)
+
+                    // Bucket results (same thick bars as Insights)
+                    VStack(spacing: Spacing.md) {
+                        ForEach(BudgetCategory.allCases) { category in
+                            BudgetProgressBar(category: category,
+                                              spent: month.spent(for: category),
+                                              budget: month.budget(for: category))
+                        }
+                    }
+                    .padding(Spacing.lg)
+                    .background(DS.surfaceStyle)
+                    .clipShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+
+                    // Observations
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        ForEach(insight.observations, id: \.self) { obs in
+                            HStack(alignment: .top, spacing: Spacing.sm) {
+                                Circle().fill(DS.gold)
+                                    .frame(width: 5, height: 5)
+                                    .padding(.top, 7)
+                                Text(obs).foregroundStyle(DS.text)
+                            }
+                        }
+                    }
+
+                    if !insight.suggestion.isEmpty {
+                        Text(insight.suggestion)
+                            .font(.subheadline)
+                            .foregroundStyle(DS.text)
+                            .padding(Spacing.md)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(DS.surfaceHighStyle,
+                                        in: RoundedRectangle(cornerRadius: Radius.field,
+                                                             style: .continuous))
+                    }
+
+                    if let onOpenBudget {
+                        Button {
+                            onOpenBudget()
+                            dismiss()
+                        } label: {
+                            Label("Open in Budget", systemImage: "chart.pie")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(DS.gold)
+                    }
+                }
+                .padding(Spacing.xl)
+                .readableContentWidth()
+            }
+            .scrollContentBackground(.hidden)
+            .screenBackground()
+            .navigationTitle("Month Recap")
+            #if !os(macOS)
+            .toolbarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .tint(DS.gold)
+        #if os(macOS)
+        .frame(minWidth: 460, minHeight: 560)
+        #endif
+    }
+
+    private func recapStat(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label.uppercased())
+                .font(Typography.mono(.caption2, weight: .medium))
+                .tracking(1.5)
+                .foregroundStyle(DS.goldDim)
+            Text(value)
+                .font(Typography.mono(.headline, weight: .semibold))
+                .foregroundStyle(DS.text)
+        }
     }
 }

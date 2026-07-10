@@ -37,6 +37,9 @@ struct BudgetView: View {
     @State private var pendingUndo: [DeletedTxn] = []
     @State private var undoVisible = false
     @State private var undoToken = 0
+    /// The just-closed month, presented as a RecapView sheet (the "ritual"
+    /// wrap-up moment). Review prompt fires after this dismisses.
+    @State private var recapMonth: MonthRecord?
 
     private var currentMonth: MonthRecord? {
         // Canonical pick: a duplicate month waiting out its delete-grace
@@ -165,12 +168,19 @@ struct BudgetView: View {
                     LedgerService.closeMonth(month, in: context)
                     viewedKey = MonthKey.offset(month.key, by: 1)
                     closeCount += 1
-                    maybeRequestReview()
+                    recapMonth = month   // pop the wrap-up sheet
                 }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("The month becomes read-only and the next month starts fresh. This can't be undone.")
+        }
+        // The month-close recap — and the best-timed moment to ask for a
+        // rating: right after the user reviews a finished month.
+        .sheet(item: $recapMonth, onDismiss: { maybeRequestReview() }) { month in
+            RecapView(month: month,
+                      previousMonth: LedgerService.canonicalMonths(months)
+                          .last(where: { $0.key < month.key }))
         }
     }
 
@@ -373,10 +383,27 @@ struct BudgetView: View {
                 BucketRow(category: category,
                           budget: month.budget(for: category),
                           spent: month.spent(for: category),
-                          showUsage: showBucketUsage)
+                          showUsage: showBucketUsage,
+                          pace: paceText(for: month, category: category))
             }
         }
         .listRowBackground(DS.rowBackground())
+    }
+
+    /// "$625/wk" pacing for Needs/Wants on the LIVE month: what's left spread
+    /// over the time remaining. Switches to "/day" inside the final week.
+    /// Savings is excluded (it's a goal, not a spending allowance), as are
+    /// past/future/closed months where pacing has no meaning.
+    private func paceText(for month: MonthRecord, category: BudgetCategory) -> String? {
+        guard category != .savings,
+              month.key == MonthKey.current, !month.isClosed else { return nil }
+        let remaining = month.remaining(for: category)
+        guard remaining > 0 else { return nil }
+        let daysLeft = MonthKey.daysRemainingInCurrentMonth()
+        if daysLeft <= 7 {
+            return Money.string(remaining / Double(daysLeft)) + "/day"
+        }
+        return Money.string(remaining * 7 / Double(daysLeft)) + "/wk"
     }
 
     // MARK: Transactions
@@ -662,6 +689,8 @@ struct BucketRow: View {
     let budget: Double
     let spent: Double
     var showUsage: Bool = true
+    /// Optional live-month pacing ("$625/wk"), appended to the status line.
+    var pace: String? = nil
 
     private var remaining: Double { budget - spent }
     /// Uncapped ratio for the label (can exceed 100%).
@@ -678,6 +707,8 @@ struct BucketRow: View {
             return Money.string(-remaining) + " past goal"
         } else if over {
             return "Over by " + Money.string(-remaining)
+        } else if let pace {
+            return Money.string(remaining) + " remaining · " + pace
         } else {
             return Money.string(remaining) + " remaining"
         }

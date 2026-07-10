@@ -52,6 +52,14 @@ enum MonthKey {
         return MonthKey.key(year: newYear, month: newMonth)
     }
 
+    /// Days left in the real current calendar month, INCLUDING today (min 1).
+    /// Used to pace remaining budget ("$X/wk left").
+    static func daysRemainingInCurrentMonth(from date: Date = Date()) -> Int {
+        let day = calendar.component(.day, from: date)
+        let length = calendar.range(of: .day, in: .month, for: date)?.count ?? 30
+        return max(length - day + 1, 1)
+    }
+
     /// "May 2026" for display.
     static func displayName(_ key: String) -> String {
         guard let (y, m) = components(key) else { return key }
