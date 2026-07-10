@@ -91,6 +91,11 @@ enum StoreStatus {
 
 final class SyncMonitor: ObservableObject {
 
+    /// Shared instance so non-UI code (e.g. pull-to-refresh) can READ sync
+    /// state without SwiftUI observation — observing this object from a big
+    /// view rebuilds it on every CloudKit event (the old Settings-hang bug).
+    static let shared = SyncMonitor()
+
     struct Phase {
         var inProgress = false
         var lastEnd: Date?
@@ -199,7 +204,7 @@ struct LedgerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     #endif
 
-    @StateObject private var syncMonitor = SyncMonitor()
+    @StateObject private var syncMonitor = SyncMonitor.shared
     @StateObject private var themeManager = ThemeManager.shared
     @AppStorage("appColorScheme") private var appColorScheme = AppColorScheme.system.rawValue
 

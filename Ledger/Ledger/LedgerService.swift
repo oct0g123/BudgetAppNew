@@ -492,6 +492,32 @@ enum LedgerService {
         }
     }
 
+    // MARK: Pull-to-refresh
+
+    /// Pull-to-refresh: give any in-flight iCloud import a moment to land,
+    /// then merge duplicates and republish the widget snapshot so whatever
+    /// arrived becomes visible immediately.
+    ///
+    /// Honest limitation: CloudKit exposes no "fetch now" API — imports are
+    /// pushed by the system — so this can't FORCE a sync. It waits on live
+    /// sync activity (read from SyncMonitor.shared without SwiftUI
+    /// observation) and surfaces the results, which is what the gesture
+    /// practically means: "show me the latest that's made it to this device."
+    @MainActor
+    static func refreshFromCloud(in context: ModelContext) async {
+        let monitor = SyncMonitor.shared
+        // Brief grace so an import kicked off by the app foregrounding (or by
+        // the pull itself waking the scene) has a chance to register.
+        try? await Task.sleep(for: .milliseconds(600))
+        let deadline = Date().addingTimeInterval(4)
+        while (monitor.imports.inProgress || monitor.setup.inProgress),
+              Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(250))
+        }
+        mergeDuplicates(in: context)
+        BudgetSnapshotStore.update(from: allMonths(in: context))
+    }
+
     // MARK: Reset
 
     /// Delete everything — months, transactions, recurring rules, and settings.

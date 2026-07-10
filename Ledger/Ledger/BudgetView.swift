@@ -282,6 +282,11 @@ struct BudgetView: View {
                 .listRowBackground(DS.surface)
             }
         }
+        // Pull-to-refresh: wait out any in-flight iCloud import, then merge
+        // and republish so newly synced changes appear right away.
+        .refreshable {
+            await LedgerService.refreshFromCloud(in: context)
+        }
     }
 
     /// In-list search field — sits directly above the transaction rows it
