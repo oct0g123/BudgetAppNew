@@ -26,6 +26,7 @@ struct SettingsView: View {
     @AppStorage("showBucketUsage") private var showBucketUsage = true
     @AppStorage("appLockEnabled") private var appLockEnabled = false
     @AppStorage("budgetAlertsEnabled") private var budgetAlertsEnabled = false
+    @AppStorage(BudgetAlerts.warnPercentKey) private var alertWarnPercent = 80
     @AppStorage("appColorScheme") private var appColorScheme = AppColorScheme.system.rawValue
     @AppStorage("hasCompletedOnboarding") private var hasOnboarded = false
 
@@ -460,7 +461,7 @@ struct SettingsView: View {
             Toggle(isOn: $budgetAlertsEnabled) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Budget Alerts")
-                    Text("Notify me when Needs or Wants reaches 80% or goes over.")
+                    Text("Notify me when Needs or Wants reaches \(alertWarnPercent)% or goes over.")
                         .font(.caption)
                         .foregroundStyle(DS.textMuted)
                 }
@@ -477,6 +478,15 @@ struct SettingsView: View {
                         }
                     }
                 }
+            }
+
+            if budgetAlertsEnabled {
+                Picker("Notify at", selection: $alertWarnPercent) {
+                    ForEach([70, 75, 80, 85, 90], id: \.self) { pct in
+                        Text("\(pct)%").tag(pct)
+                    }
+                }
+                .pickerStyle(.segmented)
             }
         } header: {
             Text("Notifications")

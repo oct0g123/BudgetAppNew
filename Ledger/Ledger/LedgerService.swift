@@ -102,10 +102,20 @@ enum LedgerService {
     }
 
     /// Apply a rule to every existing open month it covers (used right after a
-    /// rule is created or re-activated).
+    /// rule is created or re-activated). Also UPDATES any already-materialized
+    /// transaction to match the rule's current amount/category/day, so editing
+    /// a rule (e.g. rent $1800 → $2000) is reflected in the current open month
+    /// — not just future ones (open months only; closed months stay frozen).
     static func applyRule(_ rule: RecurringRule, in context: ModelContext) {
         for month in allMonths(in: context) where !month.isClosed && rule.startKey <= month.key {
-            applyRecurringRules(to: month, in: context)
+            if let existing = month.txns.first(where: { $0.recurringRuleID == rule.id }) {
+                existing.desc = rule.desc
+                existing.amount = rule.amount
+                existing.category = rule.category
+                existing.date = dateForDay(rule.dayOfMonth, inMonthKey: month.key)
+            } else {
+                applyRecurringRules(to: month, in: context)
+            }
         }
     }
 
@@ -655,7 +665,13 @@ enum BudgetSnapshotStore {
 /// (no push entitlement). Savings is never flagged for going over — that's good.
 enum BudgetAlerts {
     static let enabledKey = "budgetAlertsEnabled"
-    private static let warnThreshold = 0.80
+    static let warnPercentKey = "budgetAlertWarnPercent"
+
+    /// User-adjustable warn threshold (Settings → Notifications), default 80%.
+    static var warnThreshold: Double {
+        let pct = UserDefaults.standard.integer(forKey: warnPercentKey)
+        return pct == 0 ? 0.80 : Double(pct) / 100
+    }
 
     static var isEnabled: Bool { UserDefaults.standard.bool(forKey: enabledKey) }
 
@@ -1033,7 +1049,14 @@ struct AddTransactionIntent: AppIntent {
             throw $amount.needsValueError("Sorry, how much? Try a number like 50.")
         }
         let context = AppModelContainer.shared.mainContext
-        let month = LedgerService.ensureMonth(forKey: MonthKey.current, in: context)
+        // If the current calendar month has been closed early, file into the
+        // next open month instead of silently writing into a closed month the
+        // Budget UI hides (mirrors the widget's active-month logic).
+        var month = LedgerService.ensureMonth(forKey: MonthKey.current, in: context)
+        if month.isClosed {
+            let nextKey = MonthKey.offset(month.key, by: 1)
+            month = LedgerService.ensureMonth(forKey: nextKey, in: context)
+        }
         let cleanNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
         LedgerService.addTransaction(to: month,
                                      desc: cleanNote,

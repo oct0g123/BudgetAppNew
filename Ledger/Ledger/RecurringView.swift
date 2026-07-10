@@ -37,7 +37,7 @@ struct RecurringView: View {
                             for index in offsets { context.delete(rules[index]) }
                         }
                     } footer: {
-                        Text("Active rules are added to each new month automatically. Editing or removing a rule never changes closed months.")
+                        Text("Active rules are added to each new month automatically. Edits update this month's copy too; closed months are never changed.")
                     }
                     .listRowBackground(DS.rowBackground())
                 }
