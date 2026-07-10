@@ -187,16 +187,16 @@ Remaining work:
 ### v1.2 — "the month-close release" (planned shape, ~3–4 build days)
 Theme: make closing a month the emotional core of the app; clear the behavior
 backlog. No CloudKit schema changes anywhere in this list.
-- **End-of-month recap** (headliner, ~1 day; design done — see Reporting):
-  shared `RecapView` on the `buildInsight()` engine; close-month sheet +
-  History archive + Insights (already live). Make it screenshot/share-worthy.
-  ⚠️ decision: History card tap → recap sheet (recommended) vs. keep
-  tap-to-Budget.
-- **Review prompt moves into the recap flow** (trivial): close → recap →
-  dismiss → rating ask, at peak accomplishment.
-- **Weekly safe-to-spend pacing** (~half day; see Core features): remaining
-  Needs/Wants ÷ time left. ⚠️ decisions: weekly vs daily cadence; live vs
-  fixed-at-week-start.
+- ✅ **End-of-month recap** (built 2026-07-09): `RecapView` on the shared
+  `buildInsight` engine (moved to LedgerService); close-month sheet + History
+  cards open their month's recap (decision made: tap → recap, with "Open in
+  Budget" inside). Later polish idea: shareable recap card (ShareLink +
+  ImageRenderer).
+- ✅ **Review prompt moved into the recap flow** (built): close → recap →
+  dismiss → rating ask.
+- ✅ **Weekly safe-to-spend pacing** (built; decisions made: live-recalculating,
+  weekly, auto-switching to per-day in the final week): "$X/wk" appended to
+  Needs/Wants status on the live month.
 - ✅ **Adjustable alert threshold** (built 2026-07-09): 70–90% segmented picker
   in Settings → Notifications; caption reflects the chosen value.
 - **Wave-3 behavior fixes:** ✅ Siri closed-month redirect (B4, built) ·
