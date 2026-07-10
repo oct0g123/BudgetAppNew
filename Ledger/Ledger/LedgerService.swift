@@ -511,7 +511,9 @@ enum LedgerService {
         try? await Task.sleep(for: .milliseconds(600))
         let deadline = Date().addingTimeInterval(4)
         while (monitor.imports.inProgress || monitor.setup.inProgress),
-              Date() < deadline {
+              Date() < deadline,
+              !Task.isCancelled {   // cancelled sleeps return instantly — without
+                                    // this check the loop would spin-burn CPU
             try? await Task.sleep(for: .milliseconds(250))
         }
         mergeDuplicates(in: context)
