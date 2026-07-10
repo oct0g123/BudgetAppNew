@@ -130,6 +130,16 @@ struct AddTransactionView: View {
                 if let previousMonth { BudgetAlerts.evaluate(previousMonth) }
             }
         } else if let month {
+            // Place the transaction in the month its DATE belongs to, not
+            // blindly in the sheet's month (mirrors the edit path's re-home).
+            // If the date's month is closed, fall back to the sheet's open
+            // month rather than filing into a closed month the UI hides.
+            let dateKey = MonthKey.key(for: date)
+            var target = month
+            if dateKey != month.key {
+                let dated = LedgerService.ensureMonth(forKey: dateKey, in: context)
+                if !dated.isClosed { target = dated }
+            }
             if makeRecurring {
                 // Create the rule, then add this month's occurrence tagged with
                 // the rule id so applyRule won't double-add it for this month.
@@ -137,26 +147,27 @@ struct AddTransactionView: View {
                                          amount: value,
                                          category: category,
                                          dayOfMonth: dayOfMonth(from: date),
-                                         startKey: month.key)
+                                         startKey: target.key)
                 context.insert(rule)
                 let txn = Transaction(desc: trimmed,
                                       amount: value,
                                       category: category,
                                       date: date,
                                       recurringRuleID: rule.id)
-                txn.month = month
+                txn.month = target
                 context.insert(txn)
                 LedgerService.applyRule(rule, in: context)
             } else {
-                LedgerService.addTransaction(to: month,
+                LedgerService.addTransaction(to: target,
                                              desc: trimmed,
                                              amount: value,
                                              category: category,
                                              date: date,
                                              in: context)
             }
+            BudgetAlerts.evaluate(target)
         }
-        BudgetAlerts.evaluate(existing?.month ?? month)
+        if let existing { BudgetAlerts.evaluate(existing.month) }
         saveCount += 1
         dismiss()
     }
