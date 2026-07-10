@@ -629,7 +629,7 @@ extension LedgerService {
             if month.savingsRate >= 0.2 { headline = "Strong savings in \(monthName)" }
             else if overNeeds && overWants { headline = "Over budget in Needs and Wants" }
             else if overNeeds || overWants { headline = "Spending ran over budget" }
-            else { headline = "\(monthName) is on track" }
+            else { headline = "\(monthName) finished on track" }
         }
 
         let suggestion: String
