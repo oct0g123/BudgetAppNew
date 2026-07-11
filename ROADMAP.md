@@ -224,6 +224,38 @@ backlog. No CloudKit schema changes anywhere in this list.
 - Filler if needed: widget snapshot skip-identical-writes (D2), predicated
   month queries (D6).
 
+### 📋 Code review round 2 (2026-07-11) — findings pinned, fixes NOT yet applied
+Full review of everything since Wave 1 (39 commits). 8 verified findings +
+cleanup/perf batches. **Sequencing plan (agreed risk tiers):**
+- **Batch 1 (low risk, do first):** #1 applyRule must not rewrite a
+  just-created txn's date / must not mutate on bare isActive toggle / must
+  evaluate alerts + refresh snapshot (policy: only explicit rule EDITS update
+  open months; date moves only if dayOfMonth changed) · #5 command bar gets
+  the B5 date-based month targeting (behavior change: files to current month,
+  not viewed month) · #6 edit-path re-home gets the closed-month guard (show
+  "month is closed" message, no silent fallback) · #7 RootView merge hooks
+  re-fetch months after merging before feeding the widget snapshot ·
+  #8 threshold change triggers immediate BudgetAlerts.evaluate.
+- **Batch 2 (medium, needs two-device airplane retest):** #2 month(forKey:)/
+  ensureMonth return the canonical duplicate (min by monthPrecedes) so writers
+  can't target hidden grace-window dups (also: applyRule iterates canonical
+  months only) · #3 one-time full merge pass per app-version upgrade to heal
+  legacy same-rule/different-id double-rent (needsMerge can't detect it).
+- **Batch 3:** #4 reset-resurrection mitigation — only restore SettingsBackup
+  when the store still contains months/txns (proper fix = synced reset
+  tombstone → CloudKit schema addition; deferred).
+- **Below-cut batches (whenever):** perf (needsMerge full-table scans;
+  MonthKey.calendar → static let; HistoryView.months computed 5×/render;
+  refresh redundant fetches; RecapView per-render buildInsight) · cleanup
+  (RecapView uses Card + shared stat/bullet/suggestion views; one
+  previousMonth helper — Insights copy skips canonicalization; tuple sort
+  keys replace %-format strings; contentEquals → synthesized Equatable;
+  sparkle-button #if collapse; mergeDuplicateSettings simplification;
+  grace-check first in needsMerge) · a11y/UX (History card chevron implies
+  push but opens sheet; VoiceOver hint) · altitude: **F1 targetMonth
+  chokepoint** (5 divergent month-targeting shapes) retires findings
+  #2/#5/#6/#8's class — best done as its own focused refactor.
+
 ### v1.5 — advanced features
 After the platforms are out, pull a focused few from the sections below
 (reporting, budget rollover, watch complications, adjustable alert threshold,
