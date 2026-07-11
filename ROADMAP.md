@@ -424,7 +424,7 @@ complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)ar
 - Dictation quick-add → leans on the AI parser
 - Data via CloudKit (shares the iCloud store) or WatchConnectivity snapshot
 
-**visionOS (polish only in 1.0)**
+**visionOS (polish shipped; spatial showcase planned for 1.x)**
 - [x] **Native visionOS app** (device family 7 + `xros` SDK) — not "Designed for
       iPad." Runs as a glass window with eye/pinch interaction; themes apply.
 - [x] **Spatial polish — shipped.** Bottom **ornament** for month navigation and
@@ -432,8 +432,43 @@ complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)ar
       rows/pills (also benefits the iPad pointer); a sensible **default window
       size**. All gated to visionOS (hover compiles out on macOS), so no effect
       on the iPhone/iPad/Mac build.
-- Larger spatial features (volumetric 3D charts, immersive space, multi-window)
-  remain parked in 2.0.
+- **Goal for the next visionOS-focused release:** add a small amount of genuine
+  spatial utility plus one memorable, screenshot-worthy showcase. Ledger should
+  still feel like a calm budgeting tool, not a technology demo.
+- (M) **Native spatial widget — highest utility.** Adapt the existing budget
+  snapshot widgets for placement on a wall or desk. At a distance show the
+  month + safe-to-spend amount; nearby reveal Needs / Savings / Wants progress
+  and savings rate. Support visionOS proximity-aware detail and recessed /
+  elevated mounting styles. This is the feature most likely to be useful every
+  day even when the main app is closed.
+- (S-M) **Consolidated Budget ornament.** Evaluate replacing the separate bottom
+  month control and trailing add button with one intentional bottom rail:
+  `‹  July 2026  ›    $1,284 safe    +`. This reduces eye travel, makes the
+  controls read as one system, and puts Ledger's most valuable number outside
+  the scrolling content. Verify in-headset before removing the current pair.
+- (M) **Detachable Insights window.** Let the user open Insights beside Budget,
+  synchronized to the selected month. Selecting a chart mark can filter or
+  reveal the matching transactions in the main window. Windows open only on
+  request; Ledger never scatters multiple windows automatically.
+- (M) **Spatial month-close recap.** Give the existing recap a restrained
+  visionOS presentation: the three bucket results settle at shallowly different
+  depths, budget markers reveal the final variance, then savings rate and the
+  month-over-month change appear. Keep ordinary controls for Open in Budget and
+  Share Recap; support Reduce Motion and avoid a Full Space.
+- (M-L) **Signature feature — Spatial Budget Board.** An optional volume or
+  dedicated spatial Insights view with three data-driven columns for Needs,
+  Savings, and Wants. Column height represents actual spending; a translucent
+  budget marker shows the limit; remaining / overspent space is immediately
+  legible. Look to highlight, pinch to inspect transactions, and animate between
+  months. Prefer Swift Charts `Chart3D` / 3D `RectangleMark` on visionOS 26;
+  use RealityKit only if Chart3D cannot deliver the interaction or finish.
+- **Recommended sequence:** spatial widget -> consolidated ornament ->
+  detachable Insights -> Spatial Budget Board -> recap depth polish. The widget
+  supplies lasting utility; the Budget Board supplies the App Store / featuring
+  story.
+- **Restraint:** no immersive budgeting room, floating currency or coin stacks,
+  constant particles, decorative depth on text, or automatic window spawning.
+  Use depth only to communicate budget, actual, variance, selection, or hierarchy.
 
 ## Core features
 - **"Safe to spend"** / projected end-of-month number (partly in the tab bar)
@@ -468,10 +503,9 @@ Captured from testing notes; the small wins below shipped together.
   assignable to the Action Button / Control Center / Shortcuts. Hand-off via a
   `QuickAdd` flag → RootView → Budget tab pops the sheet. (The parameterized Siri
   `AddTransactionIntent` is unchanged.)
-- (M) **Native 3-D Insights charts on visionOS** — feasible: Swift Charts gained
-  a 3-D API (`Chart3D` / `SurfacePlot`, iOS & visionOS 26), or RealityKit for a
-  custom build; gate to visionOS. This is the "ambitious visionOS" showcase —
-  see Ledger 2.0.
+- (M-L) **Native 3-D Insights on visionOS** — tracked as the Spatial Budget
+  Board in the visionOS plan above. Gate to visionOS 26 and keep the existing
+  2-D charts as the accessible, cross-platform presentation.
 
 ## Reporting
 *Two distinct shapes — keep them separate from each other and from the shipped
@@ -629,8 +663,7 @@ post-WWDC26 tooling ships.
   once its tooling ships, or an external provider if the privacy trade-off is OK.
 - **Deeper AI via Private Cloud Compute / external providers** — also the path for
   AI prose in the Insights summary (5b) if/when a bigger private model is viable.
-- **Ambitious visionOS** — **native 3-D Insights charts** (now feasible via Swift
-  Charts' `Chart3D` / `SurfacePlot`, iOS & visionOS 26, or RealityKit),
-  multi-window (Budget + Insights). A real spatial showpiece; medium effort,
-  gated to visionOS. Requested in beta — see "Beta feedback" in 1.0.
+- **Ambitious visionOS** — see the focused 1.x visionOS plan above: spatial
+  widget, detachable Insights, and the Spatial Budget Board. Keep reporting
+  calculations shared with the existing 2-D Insights and recap views.
 - **Round-trip export** to the original web-app JSON format (compatibility).
