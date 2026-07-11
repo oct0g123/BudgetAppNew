@@ -638,6 +638,107 @@ as a solid black slab floating in the room instead of a native panel.
 
 ---
 
+## Ideas for down the road (parking lot, not commitments)
+
+These are deliberately parked ideas, not a plan to build everything below.
+Several would dilute Ledger if promoted into the default workflow. Revisit them
+only when user behavior or repeated requests justify the added surface area.
+
+**Core test for every future feature**
+> Does this make it easier to answer: What can I spend, where did it go, or how
+> did the month end?
+
+Guardrails:
+- Needs / Savings / Wants remain the permanent top-level model.
+- Additional detail is optional, inferred, or progressively disclosed.
+- Prefer features that reuse existing transactions over features that demand
+  more setup or daily bookkeeping.
+- Financial calculations stay deterministic. AI can extract, categorize, or
+  summarize grounded results, but never owns arithmetic or mutates without
+  review and confirmation.
+- Preserve local-first / private-iCloud behavior and useful offline operation.
+- Give each release one coherent story rather than shipping a pile of unrelated
+  additions.
+
+**Confidence and insight candidates (roughly 1.5 territory)**
+- **Reliability foundation:** automated coverage for sync reconciliation,
+  imports, recurring transactions, month close/reopen, and money calculations;
+  locale-correct money entry; CSV recurring-item protection; explicit save
+  errors; less CloudKit churn; and a deliberate money-representation strategy.
+  Mostly invisible, but it protects the numbers users trust.
+- **Projected month outcome:** "At this pace, you'll finish with $430 left,"
+  projected Needs / Wants variance, daily or weekly safe-to-spend, and flexible
+  money after known recurring commitments. Derive it from existing data; no new
+  required setup.
+- **Focused reporting:** month-over-month bucket comparison; 3 / 6 / 12-month
+  savings-rate trend; average Needs / Wants spend; largest changes from the
+  previous month; tap a chart to reveal the transactions behind it. Avoid a
+  customizable analytics-dashboard product.
+- **visionOS showcase:** spatial widget, detachable Insights, Spatial Budget
+  Board, and restrained recap depth. Detailed and sequenced in the visionOS
+  section above.
+- **Shareable recap:** an optional privacy-conscious month-close image with the
+  month, savings rate, safe-to-spend result, and bucket outcomes. Hide income
+  and exact amounts unless the user explicitly includes them.
+
+**Planning without bookkeeping (possible 1.x follow-ons)**
+- **Optional rollover:** separately choose whether each bucket resets, carries
+  remaining money, or carries overspending. Default behavior stays the simple
+  monthly reset; Savings can optionally accumulate.
+- **Savings goals beneath Savings:** Emergency Fund, Vacation, New Computer,
+  etc., with target amount and optional date. Goals are an optional layer inside
+  Savings, never a fourth top-level bucket.
+- **Lightweight purchase types:** Dining, Groceries, Transport, Subscriptions,
+  Health, Shopping, etc. Suggested automatically from descriptions, editable,
+  never required, and hidden unless richer insights are enabled. The three
+  primary buckets remain the main classification.
+- **Recurring-commitments forecast:** upcoming known charges, flexible money
+  after commitments, expected dates, and unusually changed or missing recurring
+  expenses. Do not turn this into a full bill-management calendar.
+- **Grounded scenario tool:** a small "Can I afford this?" calculation using the
+  current bucket, known commitments, and time remaining. It should explain the
+  trade-off, not offer financial advice.
+
+**Possible 2.0 directions — pick one, not all**
+- **Shared Household Ledger:** invite a partner with CloudKit sharing; shared
+  months and transactions; contributor attribution; clear shared-vs-personal
+  boundaries; conflict-safe recurring rules. Highest functional expansion, but
+  also the largest change to Ledger's single-user identity and sync complexity.
+  Build only after repeated demand.
+- **Goals and forward planning:** deeper Savings goals, planned purchases,
+  optional rollover, recurring-income / expense forecasting, and grounded
+  scenarios. This is the safest way to deepen Ledger without changing ownership
+  or privacy; currently the preferred conceptual direction.
+- **Frictionless capture:** receipt scan -> transaction draft, natural-language
+  multi-entry, stronger Siri / Shortcuts support, and privately synced merchant
+  memory. Capture should reduce typing, not turn Ledger into a receipt archive.
+
+**High-risk scope expansion — approach cautiously or decline**
+- **Bank synchronization:** operationally expensive, privacy-sensitive, commonly
+  subscription-funded, and changes Ledger from a private manual budget into a
+  financial-data service.
+- **AI financial advice or open-ended financial Q&A:** high trust, grounding, and
+  liability risk. Keep AI constrained to extraction, optional categorization,
+  and summaries of Swift-computed facts.
+- **Debt payoff systems, investments, net-worth tracking, or tax features:**
+  valuable but effectively separate products that would blur the monthly-budget
+  promise.
+- **Too many required categories or tags:** setup and maintenance begin to feel
+  like accounting. Any richer taxonomy must remain optional.
+- **Mandatory receipt storage or attachments:** adds permissions, storage,
+  backup, and privacy burden for limited core value.
+- **Social comparison, streak pressure, or heavy gamification:** poor fit for
+  private financial behavior and Ledger's calm tone.
+- **A subscription for basic budgeting:** conflicts with the current simple,
+  private, no-ads brand. If monetization expands, keep the core product honest
+  and understandable.
+
+This section is an idea shelf. Moving an item into a release plan requires a
+clear user problem, a simplicity check, and an explicit decision about what does
+*not* get built alongside it.
+
+---
+
 # Ledger 2.0 — later
 
 Deliberately deferred — bigger, multi-user, or better-built once Apple's
