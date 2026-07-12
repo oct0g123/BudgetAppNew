@@ -456,7 +456,7 @@ complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)ar
 - Dictation quick-add → leans on the AI parser
 - Data via CloudKit (shares the iCloud store) or WatchConnectivity snapshot
 
-**visionOS (polish only in 1.0)**
+**visionOS (polish shipped; spatial showcase planned for 1.x)**
 - [x] **Native visionOS app** (device family 7 + `xros` SDK) — not "Designed for
       iPad." Runs as a glass window with eye/pinch interaction; themes apply.
 - [x] **Spatial polish — shipped.** Bottom **ornament** for month navigation and
@@ -464,8 +464,43 @@ complications → watch app → App Intents. Effort tags: (S)mall/(M)edium/(L)ar
       rows/pills (also benefits the iPad pointer); a sensible **default window
       size**. All gated to visionOS (hover compiles out on macOS), so no effect
       on the iPhone/iPad/Mac build.
-- Larger spatial features (volumetric 3D charts, immersive space, multi-window)
-  remain parked in 2.0.
+- **Goal for the next visionOS-focused release:** add a small amount of genuine
+  spatial utility plus one memorable, screenshot-worthy showcase. Ledger should
+  still feel like a calm budgeting tool, not a technology demo.
+- (M) **Native spatial widget — highest utility.** Adapt the existing budget
+  snapshot widgets for placement on a wall or desk. At a distance show the
+  month + safe-to-spend amount; nearby reveal Needs / Savings / Wants progress
+  and savings rate. Support visionOS proximity-aware detail and recessed /
+  elevated mounting styles. This is the feature most likely to be useful every
+  day even when the main app is closed.
+- (S-M) **Consolidated Budget ornament.** Evaluate replacing the separate bottom
+  month control and trailing add button with one intentional bottom rail:
+  `‹  July 2026  ›    $1,284 safe    +`. This reduces eye travel, makes the
+  controls read as one system, and puts Ledger's most valuable number outside
+  the scrolling content. Verify in-headset before removing the current pair.
+- (M) **Detachable Insights window.** Let the user open Insights beside Budget,
+  synchronized to the selected month. Selecting a chart mark can filter or
+  reveal the matching transactions in the main window. Windows open only on
+  request; Ledger never scatters multiple windows automatically.
+- (M) **Spatial month-close recap.** Give the existing recap a restrained
+  visionOS presentation: the three bucket results settle at shallowly different
+  depths, budget markers reveal the final variance, then savings rate and the
+  month-over-month change appear. Keep ordinary controls for Open in Budget and
+  Share Recap; support Reduce Motion and avoid a Full Space.
+- (M-L) **Signature feature — Spatial Budget Board.** An optional volume or
+  dedicated spatial Insights view with three data-driven columns for Needs,
+  Savings, and Wants. Column height represents actual spending; a translucent
+  budget marker shows the limit; remaining / overspent space is immediately
+  legible. Look to highlight, pinch to inspect transactions, and animate between
+  months. Prefer Swift Charts `Chart3D` / 3D `RectangleMark` on visionOS 26;
+  use RealityKit only if Chart3D cannot deliver the interaction or finish.
+- **Recommended sequence:** spatial widget -> consolidated ornament ->
+  detachable Insights -> Spatial Budget Board -> recap depth polish. The widget
+  supplies lasting utility; the Budget Board supplies the App Store / featuring
+  story.
+- **Restraint:** no immersive budgeting room, floating currency or coin stacks,
+  constant particles, decorative depth on text, or automatic window spawning.
+  Use depth only to communicate budget, actual, variance, selection, or hierarchy.
 
 ## Core features
 - **"Safe to spend"** / projected end-of-month number (partly in the tab bar)
@@ -500,10 +535,9 @@ Captured from testing notes; the small wins below shipped together.
   assignable to the Action Button / Control Center / Shortcuts. Hand-off via a
   `QuickAdd` flag → RootView → Budget tab pops the sheet. (The parameterized Siri
   `AddTransactionIntent` is unchanged.)
-- (M) **Native 3-D Insights charts on visionOS** — feasible: Swift Charts gained
-  a 3-D API (`Chart3D` / `SurfacePlot`, iOS & visionOS 26), or RealityKit for a
-  custom build; gate to visionOS. This is the "ambitious visionOS" showcase —
-  see Ledger 2.0.
+- (M-L) **Native 3-D Insights on visionOS** — tracked as the Spatial Budget
+  Board in the visionOS plan above. Gate to visionOS 26 and keep the existing
+  2-D charts as the accessible, cross-platform presentation.
 
 ## Reporting
 *Two distinct shapes — keep them separate from each other and from the shipped
@@ -636,6 +670,107 @@ as a solid black slab floating in the room instead of a native panel.
 
 ---
 
+## Ideas for down the road (parking lot, not commitments)
+
+These are deliberately parked ideas, not a plan to build everything below.
+Several would dilute Ledger if promoted into the default workflow. Revisit them
+only when user behavior or repeated requests justify the added surface area.
+
+**Core test for every future feature**
+> Does this make it easier to answer: What can I spend, where did it go, or how
+> did the month end?
+
+Guardrails:
+- Needs / Savings / Wants remain the permanent top-level model.
+- Additional detail is optional, inferred, or progressively disclosed.
+- Prefer features that reuse existing transactions over features that demand
+  more setup or daily bookkeeping.
+- Financial calculations stay deterministic. AI can extract, categorize, or
+  summarize grounded results, but never owns arithmetic or mutates without
+  review and confirmation.
+- Preserve local-first / private-iCloud behavior and useful offline operation.
+- Give each release one coherent story rather than shipping a pile of unrelated
+  additions.
+
+**Confidence and insight candidates (roughly 1.5 territory)**
+- **Reliability foundation:** automated coverage for sync reconciliation,
+  imports, recurring transactions, month close/reopen, and money calculations;
+  locale-correct money entry; CSV recurring-item protection; explicit save
+  errors; less CloudKit churn; and a deliberate money-representation strategy.
+  Mostly invisible, but it protects the numbers users trust.
+- **Projected month outcome:** "At this pace, you'll finish with $430 left,"
+  projected Needs / Wants variance, daily or weekly safe-to-spend, and flexible
+  money after known recurring commitments. Derive it from existing data; no new
+  required setup.
+- **Focused reporting:** month-over-month bucket comparison; 3 / 6 / 12-month
+  savings-rate trend; average Needs / Wants spend; largest changes from the
+  previous month; tap a chart to reveal the transactions behind it. Avoid a
+  customizable analytics-dashboard product.
+- **visionOS showcase:** spatial widget, detachable Insights, Spatial Budget
+  Board, and restrained recap depth. Detailed and sequenced in the visionOS
+  section above.
+- **Shareable recap:** an optional privacy-conscious month-close image with the
+  month, savings rate, safe-to-spend result, and bucket outcomes. Hide income
+  and exact amounts unless the user explicitly includes them.
+
+**Planning without bookkeeping (possible 1.x follow-ons)**
+- **Optional rollover:** separately choose whether each bucket resets, carries
+  remaining money, or carries overspending. Default behavior stays the simple
+  monthly reset; Savings can optionally accumulate.
+- **Savings goals beneath Savings:** Emergency Fund, Vacation, New Computer,
+  etc., with target amount and optional date. Goals are an optional layer inside
+  Savings, never a fourth top-level bucket.
+- **Lightweight purchase types:** Dining, Groceries, Transport, Subscriptions,
+  Health, Shopping, etc. Suggested automatically from descriptions, editable,
+  never required, and hidden unless richer insights are enabled. The three
+  primary buckets remain the main classification.
+- **Recurring-commitments forecast:** upcoming known charges, flexible money
+  after commitments, expected dates, and unusually changed or missing recurring
+  expenses. Do not turn this into a full bill-management calendar.
+- **Grounded scenario tool:** a small "Can I afford this?" calculation using the
+  current bucket, known commitments, and time remaining. It should explain the
+  trade-off, not offer financial advice.
+
+**Possible 2.0 directions — pick one, not all**
+- **Shared Household Ledger:** invite a partner with CloudKit sharing; shared
+  months and transactions; contributor attribution; clear shared-vs-personal
+  boundaries; conflict-safe recurring rules. Highest functional expansion, but
+  also the largest change to Ledger's single-user identity and sync complexity.
+  Build only after repeated demand.
+- **Goals and forward planning:** deeper Savings goals, planned purchases,
+  optional rollover, recurring-income / expense forecasting, and grounded
+  scenarios. This is the safest way to deepen Ledger without changing ownership
+  or privacy; currently the preferred conceptual direction.
+- **Frictionless capture:** receipt scan -> transaction draft, natural-language
+  multi-entry, stronger Siri / Shortcuts support, and privately synced merchant
+  memory. Capture should reduce typing, not turn Ledger into a receipt archive.
+
+**High-risk scope expansion — approach cautiously or decline**
+- **Bank synchronization:** operationally expensive, privacy-sensitive, commonly
+  subscription-funded, and changes Ledger from a private manual budget into a
+  financial-data service.
+- **AI financial advice or open-ended financial Q&A:** high trust, grounding, and
+  liability risk. Keep AI constrained to extraction, optional categorization,
+  and summaries of Swift-computed facts.
+- **Debt payoff systems, investments, net-worth tracking, or tax features:**
+  valuable but effectively separate products that would blur the monthly-budget
+  promise.
+- **Too many required categories or tags:** setup and maintenance begin to feel
+  like accounting. Any richer taxonomy must remain optional.
+- **Mandatory receipt storage or attachments:** adds permissions, storage,
+  backup, and privacy burden for limited core value.
+- **Social comparison, streak pressure, or heavy gamification:** poor fit for
+  private financial behavior and Ledger's calm tone.
+- **A subscription for basic budgeting:** conflicts with the current simple,
+  private, no-ads brand. If monetization expands, keep the core product honest
+  and understandable.
+
+This section is an idea shelf. Moving an item into a release plan requires a
+clear user problem, a simplicity check, and an explicit decision about what does
+*not* get built alongside it.
+
+---
+
 # Ledger 2.0 — later
 
 Deliberately deferred — bigger, multi-user, or better-built once Apple's
@@ -661,8 +796,7 @@ post-WWDC26 tooling ships.
   once its tooling ships, or an external provider if the privacy trade-off is OK.
 - **Deeper AI via Private Cloud Compute / external providers** — also the path for
   AI prose in the Insights summary (5b) if/when a bigger private model is viable.
-- **Ambitious visionOS** — **native 3-D Insights charts** (now feasible via Swift
-  Charts' `Chart3D` / `SurfacePlot`, iOS & visionOS 26, or RealityKit),
-  multi-window (Budget + Insights). A real spatial showpiece; medium effort,
-  gated to visionOS. Requested in beta — see "Beta feedback" in 1.0.
+- **Ambitious visionOS** — see the focused 1.x visionOS plan above: spatial
+  widget, detachable Insights, and the Spatial Budget Board. Keep reporting
+  calculations shared with the existing 2-D Insights and recap views.
 - **Round-trip export** to the original web-app JSON format (compatibility).
