@@ -298,8 +298,11 @@ struct BudgetView: View {
             await LedgerService.refreshFromCloud(in: context)
         }
         // Without this, the search keyboard has no way to be dismissed on
-        // iPhone — scrolling the list now drops it immediately.
+        // iPhone — scrolling the list now drops it immediately. (The API
+        // doesn't exist on visionOS, whose keyboard floats beside the window.)
+        #if !os(visionOS)
         .scrollDismissesKeyboard(.immediately)
+        #endif
     }
 
     /// In-list search field — sits directly above the transaction rows it
