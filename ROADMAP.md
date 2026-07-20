@@ -269,6 +269,24 @@ cleanup/perf batches. **Sequencing plan (agreed risk tiers):**
   chokepoint** (5 divergent month-targeting shapes) retires findings
   #2/#5/#6/#8's class — best done as its own focused refactor.
 
+### 👁 Monitoring — background CloudKit crash (0xdead10cc), low severity
+TestFlight surfaced one crash (1.1.1, iPhone 17-class, iOS 26.5): RUNNINGBOARD
+`0xdead10cc` = OS killed the app in the **background** while it held a SQLite
+lock, opening the CloudKit store at launch (`AppModelContainer.shared`,
+LedgerApp.swift:169). Triggered by a background CloudKit wake (we register for
+remote notifications) while the device was locked / pre-first-unlock, so the
+data-protected store file couldn't be read. **Not a foreground crash — users
+never see it; not data corruption (clean store-open, interrupted).** Expected
+pattern for NSPersistentCloudKitContainer apps.
+- **Do NOT rush a fix:** the canonical mitigation is store file-protection =
+  `completeUntilFirstUserAuthentication`, but SwiftData's `ModelConfiguration`
+  doesn't expose it, so any fix restructures the launch-critical container init
+  (get it wrong → app won't launch for anyone). Mitigation risk > bug severity.
+- **Action:** watch App Store Connect → Analytics → crash-free rate. Noise at
+  1 report. If it climbs, do a **device-tested** file-protection fix (set
+  `.protectionKey` on the store files post-init via FileManager, or a
+  protected-data-availability guard around the container build), never blind.
+
 ### v1.5 — advanced features
 After the platforms are out, pull a focused few from the sections below
 (reporting, budget rollover, watch complications, adjustable alert threshold,
