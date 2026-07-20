@@ -142,14 +142,14 @@ Original punch list:
   via version update); paste from `appstore/app-store-metadata.md`.
 - Sweep in any other early TestFlight/launch feedback before cutting the build.
 
-### v1.1 — macOS + visionOS  🚧 *(updated 2026-07-08)*
-**Status (2026-07-08):** 🥽 visionOS 1.0 live → **1.1 parity update submitted
-for review** ✅. iOS 1.1: submitting (⚠️ paste the new keyword string into the
-unlocked field + a real "What's New"). macOS 1.1: archive build 2 (includes the
-Mac command-bar/filter fixes) → upload → sips screenshot conversion → metadata
-(keyword string here too) → submit. When all three are live → ⏰ featuring
-nomination (accessibility pass first). Lesson learned: use **manual release**
-when coordinating.
+### v1.1 — macOS + visionOS  🎉 **ALL FOUR PLATFORMS LIVE** *(macOS approved + released 2026-07-15)*
+Ledger is now live natively on **iPhone, iPad, Mac, and Apple Vision Pro** — the
+milestone the featuring nomination hinges on. 🎯 **Submit the featuring
+nomination now** (App Store Connect → Featuring → Nominations; paste from
+`appstore/featuring-nomination.md`). Note: 1.1.1 (glass, recap, keyboard fix,
+etc.) is still working through review separately — it does NOT gate the
+nomination; the four-platform story is already true. Lesson learned: use
+**manual release** when coordinating.
 Remaining work:
 - **visionOS:** ✅ build uploaded; **layered app icon validated by App Store
   Connect** (`AppIconVision.solidimagestack`, 3-layer parallax, wired via
@@ -203,6 +203,19 @@ backlog. No CloudKit schema changes anywhere in this list.
     ("~$954/wk pace", whole dollars, no false-precision cents) or switch to
     fixed weekly buckets (remaining ÷ whole-weeks-left). Decided 2026-07-09
     to keep live pace and observe.
+  - 💡 **"This Week" detail view (idea, 2026-07-11):** a granular weekly card —
+    a per-week allowance for Needs/Wants that starts at the week's slice and
+    *dwindles as you spend*, so you watch it drain in real time. This is the
+    fixed-weekly-bucket model the pace label deliberately isn't. **Feasibility:
+    easy-medium (~half day).** All the inputs exist: `remaining(for:)`,
+    `daysRemainingInCurrentMonth`, and per-txn dates. The real work is two
+    design decisions: (1) *week definition* — calendar weeks (Sun–Sat, resets
+    weekly, simplest) vs. rolling 7-day vs. "remaining ÷ weeks-left" evolving
+    buckets; (2) *what "spent this week" counts* — filter txns by date within
+    the current week window. Needs a small `weekSpent`/`weekBudget` helper on
+    MonthRecord + a card or expandable section on the Budget page. No model or
+    CloudKit change. Pairs naturally with the pacing watch-item above — could
+    replace or complement the "$X/wk" inline label.
 - ✅ **Adjustable alert threshold** (built 2026-07-09): 70–90% segmented picker
   in Settings → Notifications; caption reflects the chosen value.
 - **Wave-3 behavior fixes:** ✅ Siri closed-month redirect (B4, built) ·
