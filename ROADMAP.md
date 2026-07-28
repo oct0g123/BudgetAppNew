@@ -220,8 +220,35 @@ backlog. No CloudKit schema changes anywhere in this list.
   in Settings → Notifications; caption reflects the chosen value.
 - **Wave-3 behavior fixes:** ✅ Siri closed-month redirect (B4, built) ·
   ✅ rule edits update the open month's charge (B6, built; Recurring footer
-  updated) · ⏳ MoneyField commits on end-editing (C2 — deferred, needs careful
-  FocusState wiring across platforms).
+  updated) · ✅ MoneyField keyboard + commit behavior (C2, built 2026-07-28 —
+  see below).
+- ✅ **Keyboard dismissal + income-typing lag (built 2026-07-28)** — reported
+  live from Settings: the monthly-income keyboard could not be dismissed, and
+  each keystroke lagged badly.
+  - *Trap:* `.decimalPad`/`.numberPad` have no Return key, and the app had zero
+    `@FocusState` and zero keyboard toolbars. Settings is a tab root that
+    auto-saves (no Done button) and the keyboard covers the tab bar → force-quit
+    was the only exit. Same dead end on Onboarding (`interactiveDismissDisabled`).
+  - *Fix:* `keyboardDoneButton(_:)` helper in Theme.swift (`#if os(iOS)`, no-op
+    on macOS/visionOS) + `@FocusState` inside `MoneyField`, so **all six money
+    fields** get a "Done" above the keyboard; the Recurring "Day of month"
+    number-pad field gets the same treatment.
+  - *Lag:* the two direct-to-model bindings (Settings default income,
+    Budget month income) wrote the model on **every keystroke** → SwiftData save
+    → CloudKit export → `@Query` invalidation → full Form/List rebuild. Settings'
+    privacy row then called `BiometricAuth.isAvailable`/`kindName` (each
+    allocating an `LAContext` + `canEvaluatePolicy`) 3× per render. Typing
+    "10000" cost 5 saves, 5 exports, 5 rebuilds, ~15 LAContext calls.
+  - *Fix:* both income fields now type into a local draft and commit ~500 ms
+    after typing stops (also committed on disappear; external sync changes still
+    flow in). Biometric availability/name cached in `@State` via `loadDrafts()`.
+    Budget's field is a small `MonthIncomeField` keyed by `month.key` so
+    switching months resets the draft. Sheet Save buttons keep live validation —
+    `MoneyField`'s binding still updates per keystroke; only the *model* write
+    is debounced.
+  - 👁 **Verify on device:** Command-bar review rows render a `MoneyField` per
+    row in a `ForEach`, so several keyboard toolbars are declared at once —
+    confirm only one "Done" appears when a row is focused.
 - ✅ **B5 fixed (2026-07-09, observed in the wild same day):** new transactions
   now land in the month their date belongs to (create path mirrors the edit
   path's re-home; falls back to the sheet's open month if the date's month is

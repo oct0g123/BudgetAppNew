@@ -38,6 +38,18 @@ struct SettingsView: View {
     @State private var savingsPct = 20
     @State private var wantsPct = 30
 
+    /// Income is typed into a local draft and committed to the model shortly
+    /// after typing stops — writing the model on every keystroke triggered a
+    /// SwiftData save + CloudKit export + full Form rebuild per character.
+    @State private var incomeDraft: Double = 0
+    @State private var draftsLoaded = false
+
+    /// Cached once per appearance: each `BiometricAuth` read allocates an
+    /// LAContext and runs `canEvaluatePolicy`, and the privacy row asked for
+    /// these three times on every render of the Form.
+    @State private var biometricsAvailable = false
+    @State private var biometricsName = "Face ID"
+
     // Export / import state
     @State private var showingExporter = false
     @State private var exportKind: ExportKind = .json
@@ -233,12 +245,23 @@ struct SettingsView: View {
     private var incomeSection: some View {
         Section {
             LabeledContent {
-                MoneyField(amount: Binding(get: { settings.defaultIncome },
-                                           set: { settings.defaultIncome = $0 }))
+                MoneyField(amount: $incomeDraft)
                     .labelsHidden()
                     .multilineTextAlignment(.trailing)
                     .font(Typography.mono(.body, weight: .medium))
                     .foregroundStyle(DS.text)
+                    .task(id: incomeDraft) {
+                        // Debounce: only the value you settle on is written.
+                        guard draftsLoaded else { return }
+                        try? await Task.sleep(for: .milliseconds(500))
+                        guard !Task.isCancelled else { return }
+                        commitIncome()
+                    }
+                    .onChange(of: settings.defaultIncome) { _, newValue in
+                        // Reflect a sync/import that landed while we weren't typing.
+                        if abs(newValue - incomeDraft) > 0.0001 { incomeDraft = newValue }
+                    }
+                    .onDisappear { commitIncome() }
             } label: {
                 Text("Monthly default")
             }
@@ -437,8 +460,8 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     // Names the device's actual biometry: Face ID on iPhone,
                     // Touch ID on Macs, Optic ID on Vision Pro.
-                    Text("Require \(BiometricAuth.kindName)")
-                    Text(BiometricAuth.isAvailable
+                    Text("Require \(biometricsName)")
+                    Text(biometricsAvailable
                          ? "Lock Ledger when you leave the app."
                          : "Set a device passcode or biometric unlock to enable this.")
                         .font(.caption)
@@ -446,13 +469,13 @@ struct SettingsView: View {
                 }
             }
             .tint(DS.savings)
-            .disabled(!BiometricAuth.isAvailable)
+            .disabled(!biometricsAvailable)
             .onChange(of: appLockEnabled) { _, enabled in
                 // Trigger the iOS Face ID consent/confirmation right when the
                 // switch is turned on; revert if the user cancels or it fails.
                 guard enabled else { return }
                 Task {
-                    let ok = await BiometricAuth.authenticate(reason: "Confirm \(BiometricAuth.kindName) to lock Ledger")
+                    let ok = await BiometricAuth.authenticate(reason: "Confirm \(biometricsName) to lock Ledger")
                     if !ok { await MainActor.run { appLockEnabled = false } }
                 }
             }
@@ -677,6 +700,18 @@ struct SettingsView: View {
         needsPct = Int(s.defaultNeedsPct)
         savingsPct = Int(s.defaultSavingsPct)
         wantsPct = Int(s.defaultWantsPct)
+        incomeDraft = s.defaultIncome
+        draftsLoaded = true
+        biometricsAvailable = BiometricAuth.isAvailable
+        biometricsName = BiometricAuth.kindName
+    }
+
+    /// Writes the income draft through to the model, if it actually changed.
+    private func commitIncome() {
+        guard draftsLoaded else { return }
+        let s = settings
+        guard abs(incomeDraft - s.defaultIncome) > 0.0001 else { return }
+        s.defaultIncome = incomeDraft
     }
 
     private func archive() -> ExportData {

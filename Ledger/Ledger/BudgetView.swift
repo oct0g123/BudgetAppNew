@@ -362,12 +362,8 @@ struct BudgetView: View {
                     .font(Typography.mono(.caption2, weight: .semibold))
                     .tracking(2)
                     .foregroundStyle(DS.goldDim)
-                MoneyField(amount: Binding(get: { month.income },
-                                           set: { month.income = $0 }))
-                    .labelsHidden()
-                    .font(Typography.mono(.title, weight: .bold))
-                    .foregroundStyle(DS.text)
-                    .disabled(month.isClosed)
+                MonthIncomeField(month: month)
+                    .id(month.key)   // fresh draft when you switch months
                 Text(splitWords(month.split))
                     .font(Typography.mono(.footnote))
                     .foregroundStyle(DS.textMuted)
@@ -375,6 +371,44 @@ struct BudgetView: View {
             .padding(.vertical, Spacing.xs)
         }
         .listRowBackground(DS.rowBackground())
+    }
+
+    /// The month's income field. Typing updates a local draft and only writes
+    /// the model ~½s after you stop — a write per keystroke meant a SwiftData
+    /// save + CloudKit export + full budget-list rebuild per character.
+    private struct MonthIncomeField: View {
+        let month: MonthRecord
+        @State private var draft: Double = 0
+        @State private var loaded = false
+
+        var body: some View {
+            MoneyField(amount: $draft)
+                .labelsHidden()
+                .font(Typography.mono(.title, weight: .bold))
+                .foregroundStyle(DS.text)
+                .disabled(month.isClosed)
+                .onAppear {
+                    draft = month.income
+                    loaded = true
+                }
+                .task(id: draft) {
+                    guard loaded else { return }
+                    try? await Task.sleep(for: .milliseconds(500))
+                    guard !Task.isCancelled else { return }
+                    commit()
+                }
+                .onChange(of: month.income) { _, newValue in
+                    // Reflect a sync/import that landed while we weren't typing.
+                    if abs(newValue - draft) > 0.0001 { draft = newValue }
+                }
+                .onDisappear { commit() }
+        }
+
+        private func commit() {
+            guard loaded, !month.isClosed,
+                  abs(draft - month.income) > 0.0001 else { return }
+            month.income = draft
+        }
     }
 
     private func splitWords(_ split: BudgetSplit) -> String {

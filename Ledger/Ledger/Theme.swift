@@ -52,6 +52,31 @@ extension View {
     }
 }
 
+// MARK: - Keyboard dismissal
+
+extension View {
+    /// Adds a "Done" button above the keyboard for fields that use a numeric
+    /// keypad. `.decimalPad` / `.numberPad` have NO Return key, so without this
+    /// there is no way to dismiss the keyboard on a screen that has no visible
+    /// tap-away target (Settings and Onboarding were dead ends).
+    ///
+    /// iOS only: macOS has no software keyboard, and on visionOS the system's
+    /// floating keyboard carries its own dismiss control.
+    @ViewBuilder
+    func keyboardDoneButton(_ focused: FocusState<Bool>.Binding) -> some View {
+        #if os(iOS)
+        self.toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focused.wrappedValue = false }
+            }
+        }
+        #else
+        self
+        #endif
+    }
+}
+
 // MARK: - Color hex helper
 
 extension Color {
@@ -104,6 +129,8 @@ struct MoneyField: View {
     var placeholder: String = "0"
     @Binding var amount: Double
     @State private var text = ""
+    /// Owned per field so the "Done" button dismisses only this keyboard.
+    @FocusState private var focused: Bool
 
     private static var symbol: String { Locale.current.currencySymbol ?? "$" }
 
@@ -115,6 +142,8 @@ struct MoneyField: View {
             #if os(iOS)
             .keyboardType(.decimalPad)
             #endif
+            .focused($focused)
+            .keyboardDoneButton($focused)
             .onAppear { text = amount == 0 ? "" : Self.display(amount) }
             .onChange(of: text) { _, newValue in
                 let r = Self.reformat(newValue)

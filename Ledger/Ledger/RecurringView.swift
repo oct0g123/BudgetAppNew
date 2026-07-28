@@ -118,6 +118,8 @@ struct RecurringEditor: View {
     @State private var amount: Double? = nil
     @State private var category: BudgetCategory = .needs
     @State private var day = 1
+    /// The day field uses a number pad, which has no Return key.
+    @FocusState private var dayFocused: Bool
 
     private var isValid: Bool { (amount ?? 0) > 0 }
 
@@ -150,6 +152,8 @@ struct RecurringEditor: View {
                                 #if os(iOS)
                                 .keyboardType(.numberPad)
                                 #endif
+                                .focused($dayFocused)
+                                .keyboardDoneButton($dayFocused)
                                 .multilineTextAlignment(.trailing)
                                 .font(Typography.mono(.body, weight: .medium))
                                 .foregroundStyle(DS.text)
