@@ -249,6 +249,13 @@ backlog. No CloudKit schema changes anywhere in this list.
   - 👁 **Verify on device:** Command-bar review rows render a `MoneyField` per
     row in a `ForEach`, so several keyboard toolbars are declared at once —
     confirm only one "Done" appears when a row is focused.
+- ✅ **Recurring marker on transaction rows (built 2026-07-28)** — a small ⟳
+  `repeat` glyph in gold-dim sits before the date on any transaction with a
+  `recurringRuleID`, so a month's fixed costs read at a glance (pairs with the
+  existing "Recurring first" sort). Glyph not color, so it survives color-blind
+  vision and grayscale; VoiceOver appends "repeats monthly". The edit sheet
+  gains a matching footer explaining that changes there affect only that
+  month's charge. No model or CloudKit change — the flag already existed.
 - ✅ **B5 fixed (2026-07-09, observed in the wild same day):** new transactions
   now land in the month their date belongs to (create path mirrors the edit
   path's re-home; falls back to the sheet's open month if the date's month is

@@ -38,6 +38,14 @@ struct AddTransactionView: View {
                                amount: Binding(get: { amount ?? 0 }, set: { amount = $0 }))
                         .font(Typography.mono(.body, weight: .medium))
                         .foregroundStyle(DS.text)
+                } footer: {
+                    // Explains the ⟳ marker on the row you tapped in.
+                    if existing?.recurringRuleID != nil {
+                        Label("From a recurring rule. Changes here affect only this month's charge.",
+                              systemImage: "repeat")
+                            .font(.caption)
+                            .foregroundStyle(DS.textMuted)
+                    }
                 }
                 .listRowBackground(DS.rowBackground())
 

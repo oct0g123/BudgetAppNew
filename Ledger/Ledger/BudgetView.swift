@@ -1063,6 +1063,9 @@ struct CommandBarView: View {
 struct TransactionRow: View {
     let txn: Transaction
 
+    /// Generated from (or saved as) a recurring rule.
+    private var isRecurring: Bool { txn.recurringRuleID != nil }
+
     var body: some View {
         HStack(spacing: Spacing.md) {
             Circle()
@@ -1071,9 +1074,20 @@ struct TransactionRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(txn.desc.isEmpty ? txn.category.title : txn.desc)
                     .foregroundStyle(DS.text)
-                Text(txn.date, format: .dateTime.month().day())
-                    .font(Typography.mono(.caption))
-                    .foregroundStyle(DS.textMuted)
+                HStack(spacing: 5) {
+                    // Marks a rule-driven charge so a month's fixed costs are
+                    // readable at a glance (pairs with the "Recurring first"
+                    // sort). A glyph, not a color, so it survives color-blind
+                    // vision and grayscale.
+                    if isRecurring {
+                        Image(systemName: "repeat")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(DS.goldDim)
+                    }
+                    Text(txn.date, format: .dateTime.month().day())
+                        .font(Typography.mono(.caption))
+                        .foregroundStyle(DS.textMuted)
+                }
             }
             Spacer()
             Text(Money.string(txn.amount))
@@ -1084,6 +1098,6 @@ struct TransactionRow: View {
         // it spoken explicitly alongside the description, amount, and date.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(txn.desc.isEmpty ? txn.category.title : txn.desc), \(Money.string(txn.amount)), \(txn.category.title), \(txn.date.formatted(.dateTime.month().day()))")
+            "\(txn.desc.isEmpty ? txn.category.title : txn.desc), \(Money.string(txn.amount)), \(txn.category.title), \(txn.date.formatted(.dateTime.month().day()))\(isRecurring ? ", repeats monthly" : "")")
     }
 }
