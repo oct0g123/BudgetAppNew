@@ -43,6 +43,12 @@ final class Transaction {
     var categoryRaw: String = BudgetCategory.needs.rawValue
     var date: Date = Date()
 
+    /// Optional free-text memo ("split with Kate", "reimbursable"). Defaulted
+    /// rather than optional so CloudKit is happy and no call site deals with
+    /// nil — an empty string means "no memo". NOT named `note`: the command
+    /// bar's parsed draft already uses `note` for the *description*.
+    var memo: String = ""
+
     /// Set when this transaction was generated from a recurring rule, so the
     /// same rule isn't applied to the same month twice.
     var recurringRuleID: UUID?
@@ -55,12 +61,14 @@ final class Transaction {
          amount: Double,
          category: BudgetCategory,
          date: Date = Date(),
+         memo: String = "",
          recurringRuleID: UUID? = nil) {
         self.id = id
         self.desc = desc
         self.amount = amount
         self.categoryRaw = category.rawValue
         self.date = date
+        self.memo = memo
         self.recurringRuleID = recurringRuleID
     }
 

@@ -249,6 +249,30 @@ backlog. No CloudKit schema changes anywhere in this list.
   - 👁 **Verify on device:** Command-bar review rows render a `MoneyField` per
     row in a `ForEach`, so several keyboard toolbars are declared at once —
     confirm only one "Done" appears when a row is focused.
+- ✅ **Transaction notes / memos (built 2026-07-28)** — `Transaction.memo`
+  (`String = ""`, defaulted not optional, so CloudKit is happy and no call site
+  handles nil). Named `memo` because the command bar's parsed draft already uses
+  `note` for the *description*.
+  - *Entry:* one optional field in the Add/Edit sheet's second section, below
+    Date, `axis: .vertical` with `lineLimit(1...3)` — the sheet's height is
+    unchanged until you actually type. The primary flow (description → amount →
+    Save) is untouched and Save validation still keys only off amount.
+  - *Display:* the memo rides the existing caption line as `Aug 1 · split with
+    Kate`, single-line and tail-truncated, so rows without one are pixel-identical
+    and no third line appears. The amount got `.layoutPriority(1)` so a long memo
+    truncates instead of squeezing the number.
+  - *Search* now matches memo as well as description. VoiceOver appends
+    "note: …".
+  - *Round-trip:* JSON (`decodeIfPresent` → "", only encoded when non-empty),
+    CSV (new `note` column appended **last**, so pre-1.2 exports with 5 columns
+    still import), and the undo-delete buffer all carry it.
+  - ⚠️ **This is a CloudKit schema change** — the only one in 1.2. Sequence:
+    run a Development build so SwiftData adds the field to the Dev schema →
+    promote Dev→Production in the CloudKit Dashboard → *then* submit. Shipping
+    before promoting means memos silently don't sync in production. Old clients
+    ignore the unknown field, so it's backward compatible.
+  - Deliberately NOT done: memos on recurring *rules*. A memo is per-charge, so
+    an auto-generated copy next month starts blank. Revisit if it feels wrong.
 - ✅ **Recurring marker on transaction rows (built 2026-07-28)** — a small ⟳
   `repeat` glyph in gold-dim sits before the date on any transaction with a
   `recurringRuleID`, so a month's fixed costs read at a glance (pairs with the

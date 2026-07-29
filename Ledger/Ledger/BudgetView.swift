@@ -516,7 +516,9 @@ struct BudgetView: View {
             // While searching, ignore the category pill so a leftover filter
             // can't hide matches that live in other categories.
             .filter { searching || filter == nil || $0.category == filter }
-            .filter { query.isEmpty || $0.desc.lowercased().contains(query) }
+            .filter { query.isEmpty
+                || $0.desc.lowercased().contains(query)
+                || $0.memo.lowercased().contains(query) }
             .sorted(by: sortPredicate)
     }
 
@@ -618,7 +620,8 @@ struct BudgetView: View {
         guard !toDelete.isEmpty else { return }
         pendingUndo = toDelete.map {
             DeletedTxn(desc: $0.desc, amount: $0.amount, category: $0.category,
-                       date: $0.date, recurringRuleID: $0.recurringRuleID, month: $0.month)
+                       date: $0.date, memo: $0.memo,
+                       recurringRuleID: $0.recurringRuleID, month: $0.month)
         }
         for txn in toDelete { LedgerService.delete(txn, in: context) }
 
@@ -637,7 +640,8 @@ struct BudgetView: View {
         for d in pendingUndo {
             guard let month = d.month else { continue }
             let txn = Transaction(desc: d.desc, amount: d.amount, category: d.category,
-                                  date: d.date, recurringRuleID: d.recurringRuleID)
+                                  date: d.date, memo: d.memo,
+                                  recurringRuleID: d.recurringRuleID)
             txn.month = month
             context.insert(txn)
         }
@@ -718,6 +722,7 @@ struct DeletedTxn: Identifiable {
     var amount: Double
     var category: BudgetCategory
     var date: Date
+    var memo: String
     var recurringRuleID: UUID?
     var month: MonthRecord?
 }
@@ -1087,17 +1092,28 @@ struct TransactionRow: View {
                     Text(txn.date, format: .dateTime.month().day())
                         .font(Typography.mono(.caption))
                         .foregroundStyle(DS.textMuted)
+                        .fixedSize()
+                    // The memo rides the existing caption line rather than
+                    // adding a third row, so rows without one are unchanged.
+                    if !txn.memo.isEmpty {
+                        Text("· \(txn.memo)")
+                            .font(.caption)
+                            .foregroundStyle(DS.textMuted)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
                 }
             }
-            Spacer()
+            Spacer(minLength: Spacing.sm)
             Text(Money.string(txn.amount))
                 .font(Typography.mono(.body, weight: .medium))
                 .foregroundStyle(DS.text)
+                .layoutPriority(1)   // a long memo truncates; the amount never does
         }
         // The category is conveyed only by the dot's color, so VoiceOver gets
         // it spoken explicitly alongside the description, amount, and date.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(txn.desc.isEmpty ? txn.category.title : txn.desc), \(Money.string(txn.amount)), \(txn.category.title), \(txn.date.formatted(.dateTime.month().day()))\(isRecurring ? ", repeats monthly" : "")")
+            "\(txn.desc.isEmpty ? txn.category.title : txn.desc), \(Money.string(txn.amount)), \(txn.category.title), \(txn.date.formatted(.dateTime.month().day()))\(isRecurring ? ", repeats monthly" : "")\(txn.memo.isEmpty ? "" : ", note: \(txn.memo)")")
     }
 }

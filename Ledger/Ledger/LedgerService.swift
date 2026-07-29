@@ -139,8 +139,10 @@ enum LedgerService {
                                amount: Double,
                                category: BudgetCategory,
                                date: Date,
+                               memo: String = "",
                                in context: ModelContext) {
-        let txn = Transaction(desc: desc, amount: amount, category: category, date: date)
+        let txn = Transaction(desc: desc, amount: amount, category: category,
+                              date: date, memo: memo)
         txn.month = month
         context.insert(txn)
         BudgetAlerts.evaluate(month)
@@ -464,6 +466,7 @@ enum LedgerService {
                                       amount: txnDTO.amount,
                                       category: BudgetCategory(rawValue: txnDTO.category) ?? .needs,
                                       date: txnDTO.date,
+                                      memo: txnDTO.memo,
                                       recurringRuleID: txnDTO.recurringRuleID)
                 txn.month = record
                 context.insert(txn)
@@ -495,7 +498,8 @@ enum LedgerService {
                                       desc: dto.desc,
                                       amount: dto.amount,
                                       category: BudgetCategory(rawValue: dto.category) ?? .needs,
-                                      date: dto.date)
+                                      date: dto.date,
+                                      memo: dto.memo)
                 txn.month = record
                 context.insert(txn)
             }

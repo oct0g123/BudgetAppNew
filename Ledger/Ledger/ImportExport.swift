@@ -146,15 +146,18 @@ struct TransactionDTO: Codable {
     var amount: Double = 0
     var category: String = "needs"
     var date: Date = Date()
+    /// Optional free-text memo. Absent in pre-1.2 backups, so it decodes to "".
+    var memo: String = ""
     /// Link back to the recurring rule that materialized this transaction.
     /// Round-tripped so a restore doesn't break rule dedupe (a lost link makes
     /// a later rule edit re-materialize the charge into open months).
     var recurringRuleID: UUID?
 
     init(id: UUID, desc: String, amount: Double, category: String, date: Date,
-         recurringRuleID: UUID? = nil) {
+         memo: String = "", recurringRuleID: UUID? = nil) {
         self.id = id; self.desc = desc; self.amount = amount
         self.category = category; self.date = date
+        self.memo = memo
         self.recurringRuleID = recurringRuleID
     }
 
@@ -167,6 +170,7 @@ struct TransactionDTO: Codable {
         amount = try c.decodeIfPresent(Double.self, forKey: .amount) ?? 0
         category = (try c.decodeIfPresent(String.self, forKey: .category) ?? "needs").lowercased()
         date = try c.decodeIfPresent(Date.self, forKey: .date) ?? Date()
+        memo = try c.decodeIfPresent(String.self, forKey: .memo) ?? ""
         recurringRuleID = try c.decodeIfPresent(UUID.self, forKey: .recurringRuleID)
     }
 
@@ -177,11 +181,12 @@ struct TransactionDTO: Codable {
         try c.encode(amount, forKey: .amount)
         try c.encode(category, forKey: .category)
         try c.encode(date, forKey: .date)
+        if !memo.isEmpty { try c.encode(memo, forKey: .memo) }
         try c.encodeIfPresent(recurringRuleID, forKey: .recurringRuleID)
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, desc, description, amount, category, date, recurringRuleID
+        case id, desc, description, amount, category, date, memo, recurringRuleID
     }
 }
 
@@ -249,6 +254,7 @@ enum LedgerArchive {
                         .sorted { $0.date < $1.date }
                         .map { TransactionDTO(id: $0.id, desc: $0.desc, amount: $0.amount,
                                               category: $0.categoryRaw, date: $0.date,
+                                              memo: $0.memo,
                                               recurringRuleID: $0.recurringRuleID) }
                 )
             }
@@ -403,7 +409,7 @@ enum LedgerArchive {
     // MARK: CSV (transactions, flat)
 
     static func encodeCSV(_ data: ExportData) -> String {
-        var rows = ["month,date,description,category,amount"]
+        var rows = ["month,date,description,category,amount,note"]
         let iso = ISO8601DateFormatter()
         for month in data.months {
             for txn in month.transactions {
@@ -412,7 +418,8 @@ enum LedgerArchive {
                     iso.string(from: txn.date),
                     txn.desc,
                     txn.category,
-                    String(format: "%.2f", txn.amount)
+                    String(format: "%.2f", txn.amount),
+                    txn.memo
                 ].map(csvEscape)
                 rows.append(fields.joined(separator: ","))
             }
@@ -442,8 +449,9 @@ enum LedgerArchive {
             let category = BudgetCategory(rawValue: cols[3].lowercased())?.rawValue
                 ?? BudgetCategory.needs.rawValue
             let amount = Double(cols[4]) ?? 0
+            let memo = cols.count > 5 ? cols[5] : ""   // absent in pre-1.2 exports
             let dto = TransactionDTO(id: UUID(), desc: desc, amount: amount,
-                                     category: category, date: date)
+                                     category: category, date: date, memo: memo)
             result[monthKey, default: []].append(dto)
         }
         return result

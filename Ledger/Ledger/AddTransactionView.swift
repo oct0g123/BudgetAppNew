@@ -22,6 +22,7 @@ struct AddTransactionView: View {
     @State private var amount: Double? = nil
     @State private var category: BudgetCategory = .needs
     @State private var date = Date()
+    @State private var memo = ""
     @State private var makeRecurring = false
     @State private var saveCount = 0
 
@@ -59,6 +60,15 @@ struct AddTransactionView: View {
                     .labelsHidden()
 
                     DatePicker("Date", selection: $date, displayedComponents: .date)
+                        .foregroundStyle(DS.text)
+
+                    // Optional memo. Grows to a few lines only if you write
+                    // more, so the sheet's height is unchanged when unused.
+                    TextField("Note",
+                              text: $memo,
+                              prompt: Text("Note (optional)"),
+                              axis: .vertical)
+                        .lineLimit(1...3)
                         .foregroundStyle(DS.text)
 
                     if !isEditing {
@@ -117,16 +127,19 @@ struct AddTransactionView: View {
         amount = existing.amount
         category = existing.category
         date = existing.date
+        memo = existing.memo
     }
 
     private func save() {
         guard let value = amount, value > 0 else { return }
         let trimmed = desc.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedMemo = memo.trimmingCharacters(in: .whitespacesAndNewlines)
         if let existing {
             existing.desc = trimmed
             existing.amount = value
             existing.category = category
             existing.date = date
+            existing.memo = trimmedMemo
             // If the edited date moved into a different month, re-home the
             // transaction so it's counted under the month it now belongs to —
             // totals are computed per MonthRecord, so leaving the old `month`
@@ -161,6 +174,7 @@ struct AddTransactionView: View {
                                       amount: value,
                                       category: category,
                                       date: date,
+                                      memo: trimmedMemo,
                                       recurringRuleID: rule.id)
                 txn.month = target
                 context.insert(txn)
@@ -171,6 +185,7 @@ struct AddTransactionView: View {
                                              amount: value,
                                              category: category,
                                              date: date,
+                                             memo: trimmedMemo,
                                              in: context)
             }
             BudgetAlerts.evaluate(target)
