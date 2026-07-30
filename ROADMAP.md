@@ -327,6 +327,69 @@ cleanup/perf batches. **Sequencing plan (agreed risk tiers):**
   chokepoint** (5 divergent month-targeting shapes) retires findings
   #2/#5/#6/#8's class — best done as its own focused refactor.
 
+### 📋 Performance & battery audit (2026-07-28) — findings pinned, fixes NOT applied
+Triggered by "still getting intermittent lag on the Settings page, at least on
+iOS" — i.e. lag that *survives* the per-keystroke income fix shipped the same
+day. Read-only pass; nothing changed. **Circle back after the 2026-07-28 device
+test** (keyboard Done / income latency / recurring ⟳ / memos) so the two sets of
+changes stay attributable. Claude to re-flag this section once that feedback
+lands.
+
+- 🔴 **P1 — the whole app re-renders on every CloudKit event.**
+  `LedgerApp.swift:207` holds `@StateObject private var syncMonitor =
+  SyncMonitor.shared`. `@StateObject` *subscribes*, and `SyncMonitor`
+  republishes on every `NSPersistentCloudKitContainer` event (setup / import /
+  export, begin **and** end, per batch — dozens per sync burst). Each one
+  invalidates the App body → `WindowGroup` → `LockGate` → `RootView` → the
+  active tab. The App never reads a published property; it only forwards the
+  object via `.environmentObject`.
+  - Note the irony: `SyncMonitor`'s own doc comment (`LedgerApp.swift:94`) and
+    the `SyncStatusSection` extraction (`SettingsView.swift:365`) both exist
+    *because* of "the old Settings-hang bug" — but the App-level subscription
+    re-broadcasts to everything anyway, so that extraction only ever recovered
+    part of the win.
+  - Settings feels it worst (9 sections, ~25 rows, segmented pickers, a
+    `ForEach` of theme rows), and "intermittent" fits exactly: it hits when a
+    sync burst overlaps with being on that screen.
+  - **Fix (1 line):** `private let syncMonitor = SyncMonitor.shared`. Safe —
+    `.shared` is a `static let` with app lifetime, so there's nothing for
+    `@StateObject` to own, and only `SyncStatusSection` (which declares
+    `@EnvironmentObject`) still re-renders. **Bonus:** make `Phase` `Equatable`
+    and skip the assignment when unchanged, so redundant events never publish.
+- 🟠 **P2 — Settings holds two live `@Query`s it never displays.**
+  `SettingsView.swift:23-24` (`months`, `rules`) are read only by `archive()`
+  (line 718, Advanced screen, on demand) and one button action (line 308).
+  Nothing in the visible form uses them — but any `MonthRecord` / `Transaction`
+  / `RecurringRule` change, including every CloudKit import batch, invalidates
+  them and rebuilds all nine sections. **Fix:** delete both; fetch on demand via
+  the existing `LedgerService.allMonths(in:)` / `allRecurringRules(in:)`. Keep
+  `allSettings` live — income needs it, and `AppSettings` rarely changes.
+- 🟠 **P3 — the Advanced screen re-encodes the entire database per render.**
+  `SettingsView.swift:142-144`: `.fileExporter(document:)` takes a plain
+  parameter, not an autoclosure, so `ExportDocument(data: jsonData()/csvText())`
+  is evaluated on **every body pass**, not when the sheet presents. While
+  Advanced is open, each re-render maps every month + transaction to DTOs and
+  JSON/CSV-encodes them — and combined with P1 that's a full export encode per
+  CloudKit event. **Fix:** build the payload in the button action into `@State`
+  and hand the exporter that.
+- 🟢 **Battery profile is fundamentally clean.** No timers, no polling, no
+  `TimelineView`, no background tasks, no location, no network beyond CloudKit.
+  The widget is well-behaved: 2-hour `.after` policy plus change-driven reloads,
+  and `BudgetSnapshotStore.update` already skips the write *and* the timeline
+  reload when content is unchanged (`LedgerService.swift:740`) — correct, since
+  WidgetKit throttles reload budgets. The one real drain in an app like this is
+  **write amplification** (every model write is a CloudKit export), which was
+  the per-keystroke income binding — fixed 2026-07-28.
+- ⚪️ Minor, not worth acting on alone: `RootView.swift:87` runs
+  `BudgetSnapshotStore.update` on *every* scene-phase transition (2–3× per app
+  switch), each JSON-*decoding* the old snapshot just to compare — comparing
+  encoded `Data` would skip that. And `MonthRecord.spent(for:)` is O(txns)
+  called 3–6× per render; noise at realistic sizes, revisit only if someone
+  imports years of history.
+- **Caveat:** no profiler available in the review environment, so P1 is a
+  code-level diagnosis, not a measurement. Confirmation signal: the hitch should
+  stop correlating with sync activity.
+
 ### 👁 Monitoring — background CloudKit crash (0xdead10cc), low severity
 TestFlight surfaced one crash (1.1.1, iPhone 17-class, iOS 26.5): RUNNINGBOARD
 `0xdead10cc` = OS killed the app in the **background** while it held a SQLite
