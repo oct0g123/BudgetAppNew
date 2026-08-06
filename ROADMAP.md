@@ -248,9 +248,33 @@ backlog. No CloudKit schema changes anywhere in this list.
     matching `safeToSpend`. Keep the existing `$X/wk` pace label as-is.
     Alternative if it reads heavy: a single combined Needs+Wants line that
     expands on tap.
-  - **Surface:** new helpers on `MonthRecord` (`weekWindow`, `spent(for:in:)`,
-    `weekBudget(for:)`, `leftThisWeek(for:)`) + one section in `BudgetView`.
-    Pure computation. ~half day.
+  - ✅ **DECIDED + BUILT 2026-08-06 — it replaced the safe-to-spend bar.**
+    Mockup (card vs. bar variants, with the math):
+    https://claude.ai/code/artifact/e405164b-bca3-4b8b-ab38-e62e6ebbac0e
+    - **Shipped as the tab accessory, NOT a Budget card.** The bar is the
+      most-seen surface in the app (on screen on every tab), which is where a
+      number you're meant to *react* to belongs. The month figure it replaced
+      was reassuring but rarely actionable — large early in the month and
+      barely moving day to day, so you stop reading it. Option A's "This Week"
+      card is **deferred, not dropped**: with the bar carrying the weekly
+      number the card would repeat it a few hundred pixels away. Its remaining
+      value is the Needs-vs-Wants *split*, which the bar can't show.
+    - **Wants only** (user's call, and the right one): this is the
+      before-you-spend number. Needs is mostly committed fixed costs, so
+      folding it in makes the figure look healthy in a week where rent simply
+      hasn't cleared yet. The label says so — `This week · $288.67 left for
+      Wants` / `… over on Wants`.
+    - **Falls back to the month's safe-to-spend** while browsing a past or
+      closed month, so that figure isn't lost — just relocated to where it
+      still makes sense.
+    - **Surface built:** `MonthKey.weekWindow(inMonth:from:)` (clipped week
+      window, user's `firstWeekday`, DST-safe day counts via `dateComponents`)
+      + `MonthRecord.weekSpending(for:now:)` returning
+      `(budget, spent, left)`; `SafeToSpendBar` in RootView rewritten around a
+      shared `bar(leading:value:positive:negative:)`. No model field, no
+      CloudKit schema change, no migration — all derived from transaction
+      dates. iOS 26 only, same as the accessory itself (**macOS still has no
+      equivalent — see the macOS revamp Phase 2 item**).
 - ✅ **Adjustable alert threshold** (built 2026-07-09): 70–90% segmented picker
   in Settings → Notifications; caption reflects the chosen value.
 - **Wave-3 behavior fixes:** ✅ Siri closed-month redirect (B4, built) ·

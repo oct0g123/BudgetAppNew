@@ -149,6 +149,31 @@ final class MonthRecord {
     var safeToSpend: Double {
         remaining(for: .needs) + remaining(for: .wants)
     }
+
+    /// This week's allowance for `category`, anchored at the START of the week.
+    ///
+    /// The anchor is `remaining + spentThisWeek` — what was left when the week
+    /// began. That sum is invariant to spending *inside* the week (spend $50
+    /// and `remaining` drops 50 while `spentThisWeek` rises 50), so `budget`
+    /// holds steady all week and only `left` drains. A naive
+    /// `remaining ÷ weeks-left` would re-baseline itself on every purchase and
+    /// could never visibly empty — which is the whole point of the number.
+    ///
+    /// It's the same even-pace math as the `$X/wk` label on the bucket rows,
+    /// just anchored at the week's start instead of today, so the two agree.
+    /// Nil for anything but the live, open month — a "this week" figure is
+    /// meaningless while browsing history.
+    func weekSpending(for category: BudgetCategory, now: Date = Date())
+        -> (budget: Double, spent: Double, left: Double)? {
+        guard key == MonthKey.current, !isClosed,
+              let window = MonthKey.weekWindow(inMonth: key, from: now) else { return nil }
+        let spentThisWeek = txns
+            .filter { $0.category == category && $0.date >= window.start && $0.date < window.end }
+            .reduce(0) { $0 + $1.amount }
+        let anchor = remaining(for: category) + spentThisWeek
+        let budget = anchor / Double(window.daysToMonthEnd) * Double(window.days)
+        return (budget, spentThisWeek, budget - spentThisWeek)
+    }
 }
 
 // MARK: - RecurringRule

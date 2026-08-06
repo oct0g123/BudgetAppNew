@@ -60,6 +60,37 @@ enum MonthKey {
         return max(length - day + 1, 1)
     }
 
+    /// The current calendar week, CLIPPED to `key`'s month.
+    ///
+    /// Returns nil when `date` doesn't fall inside that month. `days` is the
+    /// length of the clipped window and `daysToMonthEnd` counts from the
+    /// window's start through the last day of the month — together they let a
+    /// weekly allowance be anchored at the start of the week (see
+    /// `MonthRecord.weekSpending`). Clipping is what makes a month that begins
+    /// mid-week, and a short final week, fall out for free.
+    ///
+    /// Uses the *user's* first weekday (Sunday in the US) on an otherwise
+    /// Gregorian calendar, so week boundaries feel local while month
+    /// boundaries still line up with the Gregorian month keys.
+    static func weekWindow(inMonth key: String, from date: Date = Date())
+        -> (start: Date, end: Date, days: Int, daysToMonthEnd: Int)? {
+        guard self.key(for: date) == key else { return nil }
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone.current
+        cal.firstWeekday = Calendar.current.firstWeekday
+        guard let week = cal.dateInterval(of: .weekOfYear, for: date),
+              let month = cal.dateInterval(of: .month, for: date) else { return nil }
+        let start = max(week.start, month.start)
+        let end = min(week.end, month.end)          // exclusive
+        guard start < end else { return nil }
+        // dateComponents (not a raw interval ÷ 86400) so DST transitions don't
+        // shave or add a day.
+        let days = cal.dateComponents([.day], from: start, to: end).day ?? 0
+        let toMonthEnd = cal.dateComponents([.day], from: start, to: month.end).day ?? 0
+        guard days > 0, toMonthEnd > 0 else { return nil }
+        return (start, end, days, toMonthEnd)
+    }
+
     /// "May 2026" for display.
     static func displayName(_ key: String) -> String {
         guard let (y, m) = components(key) else { return key }

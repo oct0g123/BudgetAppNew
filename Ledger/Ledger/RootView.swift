@@ -136,8 +136,17 @@ private struct TabChrome: ViewModifier {
     }
 }
 
-/// "June · $1,283 left" — income minus everything spent in the viewed month.
-/// The system wraps this in Liquid Glass automatically as a tab accessory.
+/// "This week · $288.67 left for Wants" — the discretionary allowance for the
+/// current week, which drains as you spend and resets at the start of each
+/// week. The system wraps this in Liquid Glass automatically as a tab accessory.
+///
+/// Wants, deliberately, not Needs + Wants: this is the number you act on before
+/// spending ("can I go out tonight"). Needs is mostly fixed costs that are
+/// already committed, so folding it in makes the figure look healthy in a week
+/// where rent simply hasn't cleared yet.
+///
+/// Falls back to the month's safe-to-spend while browsing a past or closed
+/// month, where a "this week" figure would be meaningless.
 struct SafeToSpendBar: View {
     @AppStorage("viewedMonthKey") private var viewedKey: String = MonthKey.current
     @Query(sort: \MonthRecord.key) private var months: [MonthRecord]
@@ -148,27 +157,41 @@ struct SafeToSpendBar: View {
 
     var body: some View {
         if let month {
-            let left = month.safeToSpend
-            HStack(spacing: Spacing.sm) {
-                Circle()
-                    .fill(left >= 0 ? DS.savings : DS.needs)
-                    .frame(width: 8, height: 8)
-                Text(MonthKey.shortMonthName(month.key))
-                    .font(Typography.mono(.footnote, weight: .medium))
-                    .foregroundStyle(DS.textMuted)
-                Text(left >= 0 ? Money.string(left) + " left to spend"
-                               : Money.string(-left) + " over budget")
-                    .font(Typography.mono(.footnote, weight: .semibold))
-                    .foregroundStyle(left >= 0 ? DS.text : DS.needs)
+            if let week = month.weekSpending(for: .wants) {
+                bar(leading: "This week",
+                    value: week.left,
+                    positive: " left for Wants",
+                    negative: " over on Wants")
+            } else {
+                bar(leading: MonthKey.shortMonthName(month.key),
+                    value: month.safeToSpend,
+                    positive: " left to spend",
+                    negative: " over budget")
             }
-            .padding(.horizontal, Spacing.lg)
-            // Single VoiceOver element: "Jul, $2,750.00 left to spend".
-            .accessibilityElement(children: .combine)
         } else {
             Text("Ledger")
                 .font(Typography.serif(.footnote, weight: .semibold))
                 .foregroundStyle(DS.textMuted)
         }
+    }
+
+    private func bar(leading: String, value: Double,
+                     positive: String, negative: String) -> some View {
+        HStack(spacing: Spacing.sm) {
+            Circle()
+                .fill(value >= 0 ? DS.savings : DS.needs)
+                .frame(width: 8, height: 8)
+            Text(leading)
+                .font(Typography.mono(.footnote, weight: .medium))
+                .foregroundStyle(DS.textMuted)
+            Text(value >= 0 ? Money.string(value) + positive
+                            : Money.string(-value) + negative)
+                .font(Typography.mono(.footnote, weight: .semibold))
+                .foregroundStyle(value >= 0 ? DS.text : DS.needs)
+        }
+        .padding(.horizontal, Spacing.lg)
+        // Single VoiceOver element: "This week, $288.67 left for Wants".
+        .accessibilityElement(children: .combine)
     }
 }
 
