@@ -390,7 +390,35 @@ are called out below (the navigator singleton, and Phase 3's type tokens) —
 both would silently change iPhone/iPad/Vision Pro behavior. Holding this line
 is what keeps the blast radius at zero for the three shipped platforms.
 
-#### Phase 1 — menus + shortcuts (~half day, low risk, biggest win/effort)
+#### Phase 1 — menus + shortcuts ✅ **BUILT 2026-08-06** (untested on device)
+Shipped, all behind `#if os(macOS)` / `#if !os(macOS)`. The diff is **purely
+additive — zero lines removed** — so the iPhone / iPad / Vision Pro code paths
+are byte-identical to what's on the App Store today.
+- **File ▸ New Transaction (⌘N)** — via `focusedSceneValue`, jumps to Budget
+  and pops the add sheet through the `requestAddTransaction` path the Siri /
+  Action Button hand-off already built. Disabled when no window is focused.
+- **View ▸ Budget / Insights / History (⌘1 ⌘2 ⌘3)**.
+- **View ▸ Previous / Next / Current Month (⌘[ ⌘] ⇧⌘T)** — these need no view
+  state at all; they read and write the same `@AppStorage("viewedMonthKey")`
+  the Budget screen does.
+- **Settings window (⌘,)** — a real `Settings` scene with its own model
+  container and environment objects, and the Settings tab dropped from the Mac
+  sidebar so it isn't in two places. `SettingsView` now branches: `macSettings`
+  (General / Advanced `TabView`, fixed 580×560, no large title) vs
+  `tabSettings` (the existing form, untouched). `advancedScreen` was already
+  self-contained so it dropped straight in as the second tab.
+- ⏸️ **File ▸ Export JSON / CSV (⌘E) deferred, deliberately.** Moving Settings
+  into its own window means an export command in the *main* window can't reach
+  SettingsView's export state at all. It now needs either a second focused
+  value published from the Settings scene, or its own export path built
+  straight off the model container. Phase 2 material — noting it so the gap
+  isn't mistaken for an oversight.
+- 🧪 **Untested — no Mac here.** Build all four targets before archiving.
+  Watch for: the Settings window opening blank or trapping (missing
+  environment object), ⌘N firing while the Settings window is frontmost, and
+  the Recurring row still pushing correctly inside the General tab's stack.
+
+#### Phase 1 spec (as written before building)
 - ~~**Prereq:** `AppNavigator` becomes a shared singleton.~~ **RETRACTED
   2026-08-06 — this would have regressed iPad.** A singleton is shared across
   *scenes*, and `WindowGroup` gives iPadOS (Stage Manager / Split View) and

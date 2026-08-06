@@ -73,6 +73,55 @@ struct SettingsView: View {
     }
 
     var body: some View {
+        #if os(macOS)
+        macSettings
+        #else
+        tabSettings
+        #endif
+    }
+
+    #if os(macOS)
+    /// Mac: a real Settings window (⌘,) with General / Advanced tabs — the
+    /// shape every Mac app uses. No large title, no NavigationStack chrome
+    /// wrapping the whole thing, and `advancedScreen` becomes a tab instead of
+    /// a pushed row. Sized to its content, since a Settings window doesn't
+    /// resize to fill a display.
+    private var macSettings: some View {
+        TabView {
+            // The stack is only here so the Recurring row can still push.
+            NavigationStack {
+                Form {
+                    appearanceSection
+                    incomeSection
+                    allocationSection
+                    displaySection
+                    privacySection
+                    notificationsSection
+                    recurringSection
+                    aboutSection
+                }
+                .formStyle(.grouped)
+                .scrollContentBackground(.hidden)
+                .screenBackground()
+                .overlay(alignment: .bottom) { toast }
+                .animation(.spring(duration: 0.3), value: banner)
+            }
+            .tabItem { Label("General", systemImage: "gearshape") }
+
+            // Already self-contained — its own form plus the exporter /
+            // importer / paste / reset modifiers — so it drops straight in.
+            advancedScreen
+                .tabItem { Label("Advanced", systemImage: "externaldrive.badge.icloud") }
+        }
+        .frame(width: 580, height: 560)
+        .tint(DS.gold)
+        .onAppear(perform: loadDrafts)
+    }
+    #endif
+
+    /// iPhone / iPad / Vision Pro: one scrolling form inside the Settings tab.
+    /// Unchanged.
+    private var tabSettings: some View {
         NavigationStack {
             Form {
                 appearanceSection

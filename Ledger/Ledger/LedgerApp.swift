@@ -195,6 +195,69 @@ enum AppModelContainer {
     }()
 }
 
+// MARK: - Mac menu bar
+//
+// macOS only. Menu commands live OUTSIDE the view tree, so they reach the
+// window through focused scene values rather than a shared object. That choice
+// is deliberate: a singleton would be shared across scenes, and `WindowGroup`
+// opens multiple windows on iPadOS (Stage Manager / Split View) and visionOS —
+// two windows would then fight over one `selectedTab`. `.focusedSceneValue` is
+// per-scene, so only the frontmost window responds and `AppNavigator` stays
+// exactly as it is on every other platform.
+
+#if os(macOS)
+struct NewTransactionKey: FocusedValueKey { typealias Value = () -> Void }
+struct SelectTabKey: FocusedValueKey { typealias Value = (AppTab) -> Void }
+
+extension FocusedValues {
+    var newTransaction: NewTransactionKey.Value? {
+        get { self[NewTransactionKey.self] }
+        set { self[NewTransactionKey.self] = newValue }
+    }
+    var selectTab: SelectTabKey.Value? {
+        get { self[SelectTabKey.self] }
+        set { self[SelectTabKey.self] = newValue }
+    }
+}
+
+/// File ▸ New Transaction, plus View ▸ section and month navigation.
+struct LedgerCommands: Commands {
+    /// The viewed month is `@AppStorage`, so month commands need no view state
+    /// at all — they read and write the same key the Budget screen does.
+    @AppStorage("viewedMonthKey") private var viewedKey: String = MonthKey.current
+    @FocusedValue(\.newTransaction) private var newTransaction
+    @FocusedValue(\.selectTab) private var selectTab
+
+    var body: some Commands {
+        // `after:` and NOT `replacing:` — replacing the .newItem group would
+        // delete File ▸ New Window along with it.
+        CommandGroup(after: .newItem) {
+            Button("New Transaction") { newTransaction?() }
+                .keyboardShortcut("n", modifiers: .command)
+                .disabled(newTransaction == nil)
+        }
+
+        CommandGroup(after: .sidebar) {
+            Divider()
+            Button("Budget")   { selectTab?(.budget) }
+                .keyboardShortcut("1", modifiers: .command)
+            Button("Insights") { selectTab?(.insights) }
+                .keyboardShortcut("2", modifiers: .command)
+            Button("History")  { selectTab?(.history) }
+                .keyboardShortcut("3", modifiers: .command)
+            Divider()
+            Button("Previous Month") { viewedKey = MonthKey.offset(viewedKey, by: -1) }
+                .keyboardShortcut("[", modifiers: .command)
+            Button("Next Month") { viewedKey = MonthKey.offset(viewedKey, by: 1) }
+                .keyboardShortcut("]", modifiers: .command)
+            Button("Current Month") { viewedKey = MonthKey.current }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
+                .disabled(viewedKey == MonthKey.current)
+        }
+    }
+}
+#endif
+
 @main
 struct LedgerApp: App {
 
@@ -233,9 +296,26 @@ struct LedgerApp: App {
         .modelContainer(AppModelContainer.shared)
         #if os(macOS)
         .defaultSize(width: 920, height: 680)
+        .commands { LedgerCommands() }
         #endif
         #if os(visionOS)
         .defaultSize(width: 720, height: 900)
+        #endif
+
+        // Mac keeps preferences where Mac users look for them: ⌘, in its own
+        // window, not a fourth item in the sidebar. This is a SEPARATE scene,
+        // so it needs its own model container and its own environment objects
+        // — SyncStatusSection reads SyncMonitor via @EnvironmentObject and
+        // would trap without it.
+        #if os(macOS)
+        Settings {
+            SettingsView()
+                .environmentObject(syncMonitor)
+                .environmentObject(themeManager)
+                .tint(DS.accent)
+                .preferredColorScheme(AppColorScheme(rawValue: appColorScheme)?.colorScheme)
+        }
+        .modelContainer(AppModelContainer.shared)
         #endif
     }
 }

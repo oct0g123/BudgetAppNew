@@ -53,9 +53,13 @@ struct RootView: View {
             Tab("History", systemImage: "clock.arrow.circlepath", value: AppTab.history) {
                 HistoryView()
             }
+            // macOS opens Settings with ⌘, in its own window (the `Settings`
+            // scene in LedgerApp), so it isn't duplicated in the sidebar there.
+            #if !os(macOS)
             Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
                 SettingsView()
             }
+            #endif
         }
         .tabViewStyle(.sidebarAdaptable)
         // visionOS: no opaque fill so the system glass window shows through.
@@ -70,6 +74,20 @@ struct RootView: View {
         // is preserved across the rebuild.
         .id(themeManager.theme)
         .environmentObject(navigator)
+        // Lets the Mac menu bar drive THIS window, with no shared global state
+        // — see the note above LedgerCommands for why a singleton would have
+        // broken multi-window iPad and Vision Pro.
+        #if os(macOS)
+        // Explicit closure types (not trailing-closure shorthand) so the
+        // generic `focusedSceneValue(_:_:)` can't pick the wrong overload.
+        .focusedSceneValue(\.newTransaction, { () -> Void in
+            navigator.selectedTab = .budget
+            navigator.requestAddTransaction = true
+        })
+        .focusedSceneValue(\.selectTab, { (tab: AppTab) -> Void in
+            navigator.selectedTab = tab
+        })
+        #endif
         // Consolidate any duplicate months/settings that arrive via iCloud sync.
         // Runs on launch and whenever the app re-activates (e.g. after a fresh
         // import has brought duplicates down from another device).
