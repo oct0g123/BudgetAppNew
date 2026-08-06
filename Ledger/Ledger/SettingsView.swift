@@ -89,6 +89,12 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .readableContentWidth()
             .screenBackground()
+            // Second way out, independent of the keyboard toolbar: scrolling
+            // the form drops the keyboard. (Unavailable on visionOS, whose
+            // keyboard floats beside the window with its own dismiss control.)
+            #if !os(visionOS)
+            .scrollDismissesKeyboard(.immediately)
+            #endif
             .navigationTitle("Settings")
             #if !os(macOS)
             .toolbarTitleDisplayMode(.large)

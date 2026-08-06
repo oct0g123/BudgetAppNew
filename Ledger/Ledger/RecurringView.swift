@@ -171,6 +171,12 @@ struct RecurringEditor: View {
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
             .screenBackground()
+            // Second way out, independent of the keyboard toolbar: scrolling
+            // the form drops the keyboard. (Unavailable on visionOS, whose
+            // keyboard floats beside the window with its own dismiss control.)
+            #if !os(visionOS)
+            .scrollDismissesKeyboard(.immediately)
+            #endif
             .navigationTitle(rule == nil ? "New Recurring" : "Edit Recurring")
             #if !os(macOS)
             .toolbarTitleDisplayMode(.inline)

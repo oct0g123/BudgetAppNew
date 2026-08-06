@@ -248,6 +248,11 @@ struct OnboardingView: View {
         }
         .screenBackground()
         .tint(DS.gold)
+        // Onboarding has no Cancel and no tap-away target, so scrolling must
+        // be able to drop the keyboard even if the toolbar Done doesn't show.
+        #if !os(visionOS)
+        .scrollDismissesKeyboard(.immediately)
+        #endif
         .interactiveDismissDisabled(true)
         #if os(macOS)
         .frame(minWidth: 460, minHeight: 520)

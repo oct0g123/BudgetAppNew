@@ -7,6 +7,9 @@
 //
 
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 // MARK: - Currency formatting
 
@@ -68,7 +71,17 @@ extension View {
         self.toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("Done") { focused.wrappedValue = false }
+                Button("Done") {
+                    focused.wrappedValue = false
+                    // Belt and braces. Keyboard-toolbar content is hosted in
+                    // the window's input accessory view, outside the Form row
+                    // that owns the @FocusState — so clearing the binding
+                    // alone doesn't reliably resign first responder. Asking
+                    // the responder chain directly always works.
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder),
+                        to: nil, from: nil, for: nil)
+                }
             }
         }
         #else

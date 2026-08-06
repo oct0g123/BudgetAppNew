@@ -96,6 +96,12 @@ struct AddTransactionView: View {
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
             .screenBackground()
+            // Second way out, independent of the keyboard toolbar: scrolling
+            // the form drops the keyboard. (Unavailable on visionOS, whose
+            // keyboard floats beside the window with its own dismiss control.)
+            #if !os(visionOS)
+            .scrollDismissesKeyboard(.immediately)
+            #endif
             .navigationTitle(isEditing ? "Edit Transaction" : "New Transaction")
             #if !os(macOS)
             .toolbarTitleDisplayMode(.inline)
