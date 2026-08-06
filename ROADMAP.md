@@ -248,6 +248,16 @@ backlog. No CloudKit schema changes anywhere in this list.
     matching `safeToSpend`. Keep the existing `$X/wk` pace label as-is.
     Alternative if it reads heavy: a single combined Needs+Wants line that
     expands on tap.
+  - ✅ **Watch item CLOSED 2026-08-06** (the "label it as a pace / drop the
+    false-precision cents" option, logged 2026-07-09). The bucket detail line
+    is now whole dollars on all three buckets (`$3,000 remaining · $778/wk
+    pace`), and the pace label says the word **pace**. Prompted by the user
+    hitting exactly the predicted confusion in the wild: `$777.78/wk` on the
+    Wants row vs `$700.00 left for Wants` in the bar looked contradictory.
+    They aren't — same formula, different anchor (pace recalculates from
+    *today* with 27 days left; the bar is frozen at the *week's start* with 30)
+    — but nothing on screen said so. Rule now: **derived figures are whole
+    dollars, exact ledger amounts (spent / budget / transactions) keep cents.**
   - ✅ **DECIDED + BUILT 2026-08-06 — it replaced the safe-to-spend bar.**
     Mockup (card vs. bar variants, with the math):
     https://claude.ai/code/artifact/e405164b-bca3-4b8b-ab38-e62e6ebbac0e

@@ -33,6 +33,24 @@ enum Money {
         return (value < 0 ? "-" : "") + base
     }
 
+    /// Whole dollars, for *derived* figures — what's left, what you can spend
+    /// per week. Cents there imply a precision the number doesn't have: a pace
+    /// of "$777.78/wk" is an estimate that changes tomorrow, so the cents are
+    /// noise. Exact ledger amounts (a transaction, spent-vs-budget) keep them.
+    private static let wholeFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.locale = Locale.current
+        formatter.maximumFractionDigits = 0
+        formatter.minimumFractionDigits = 0
+        return formatter
+    }()
+
+    static func whole(_ value: Double) -> String {
+        let base = wholeFormatter.string(from: NSNumber(value: abs(value))) ?? "\(value)"
+        return (value < 0 ? "-" : "") + base
+    }
+
     static func percent(_ fraction: Double) -> String {
         return String(format: "%.0f%%", fraction * 100)
     }

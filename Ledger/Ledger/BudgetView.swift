@@ -430,10 +430,15 @@ struct BudgetView: View {
         .listRowBackground(DS.rowBackground())
     }
 
-    /// "$625/wk" pacing for Needs/Wants on the LIVE month: what's left spread
+    /// "$625/wk pace" for Needs/Wants on the LIVE month: what's left spread
     /// over the time remaining. Switches to "/day" inside the final week.
     /// Savings is excluded (it's a goal, not a spending allowance), as are
     /// past/future/closed months where pacing has no meaning.
+    ///
+    /// The word "pace" is load-bearing. The tab bar now shows what's LEFT in
+    /// the current week, anchored at the week's start; this is a rate for the
+    /// REST OF THE MONTH, recalculated from today. Two weekly-looking figures
+    /// that legitimately differ, so each has to say which question it answers.
     private func paceText(for month: MonthRecord, category: BudgetCategory) -> String? {
         guard category != .savings,
               month.key == MonthKey.current, !month.isClosed else { return nil }
@@ -441,9 +446,9 @@ struct BudgetView: View {
         guard remaining > 0 else { return nil }
         let daysLeft = MonthKey.daysRemainingInCurrentMonth()
         if daysLeft <= 7 {
-            return Money.string(remaining / Double(daysLeft)) + "/day"
+            return Money.whole(remaining / Double(daysLeft)) + "/day pace"
         }
-        return Money.string(remaining * 7 / Double(daysLeft)) + "/wk"
+        return Money.whole(remaining * 7 / Double(daysLeft)) + "/wk pace"
     }
 
     // MARK: Transactions
@@ -747,15 +752,17 @@ struct BucketRow: View {
     /// Going over Savings is a good thing, so it's never the "alarm" red.
     private var alarmOver: Bool { over && !isSavings }
 
+    /// Whole dollars throughout: this line is derived context, not a ledger
+    /// figure. The exact spent-vs-budget numbers above it keep their cents.
     private var statusText: String {
         if over && isSavings {
-            return Money.string(-remaining) + " past goal"
+            return Money.whole(-remaining) + " past goal"
         } else if over {
-            return "Over by " + Money.string(-remaining)
+            return "Over by " + Money.whole(-remaining)
         } else if let pace {
-            return Money.string(remaining) + " remaining · " + pace
+            return Money.whole(remaining) + " remaining · " + pace
         } else {
-            return Money.string(remaining) + " remaining"
+            return Money.whole(remaining) + " remaining"
         }
     }
 
