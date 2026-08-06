@@ -138,8 +138,8 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .readableContentWidth()
             .screenBackground()
-            // Second way out, independent of the keyboard toolbar: scrolling
-            // the form drops the keyboard. (Unavailable on visionOS, whose
+            // How the numeric keypad gets dismissed: it has no Return key, so
+            // scrolling the form drops it. (Unavailable on visionOS, whose
             // keyboard floats beside the window with its own dismiss control.)
             #if !os(visionOS)
             .scrollDismissesKeyboard(.immediately)

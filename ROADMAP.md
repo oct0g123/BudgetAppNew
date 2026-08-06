@@ -291,6 +291,42 @@ backlog. No CloudKit schema changes anywhere in this list.
   ✅ rule edits update the open month's charge (B6, built; Recurring footer
   updated) · ✅ MoneyField keyboard + commit behavior (C2, built 2026-07-28 —
   see below).
+- 🔴 **REGRESSION + PARTIAL REVERT (2026-08-06).** The keyboard-toolbar half of
+  the fix below shipped a **blocking bug to TestFlight**: opening Add
+  Transaction rendered an *empty* form and froze the app hard enough that taking
+  a screenshot lagged. Intermittent — a second attempt worked, but the sheet
+  stayed sluggish. Two tells in the user's screenshots:
+  1. The **Done button appeared over an alphabetic keyboard.** That toolbar was
+     attached only to `MoneyField` (`.decimalPad`), so it was showing while the
+     *Description* field had focus — `ToolbarItemGroup(placement: .keyboard)` is
+     **scene-ambient, not scoped to the view that declares it.** The
+     "each field owns its own FocusState so only one Done appears" assumption
+     was simply wrong; the command-bar duplicate-Done risk flagged earlier was
+     the same defect showing up somewhere less harmful.
+  2. The **accessory stayed up with no keyboard at all.** That's UIKit's first
+     responder desynchronized from SwiftUI's `@FocusState` — caused by the
+     `UIApplication.sendAction(resignFirstResponder)` "belt and braces"
+     broadcast, which resigns the responder *behind SwiftUI's back*. SwiftUI
+     still believes the field is focused and tries to restore it. Add a sheet
+     with `.presentationDetents` (the accessory changes safe-area insets →
+     detent re-measure → relayout → repeat) and that's the freeze and the
+     collapsed form.
+  - **Reverted:** `keyboardDoneButton`, `MoneyField`'s `@FocusState`, the
+    recurring Day field's focus, and the `resignFirstResponder` broadcast — all
+    gone. `MoneyField` is byte-identical to its pre-2026-07-28 shape.
+  - **KEPT:** `.scrollDismissesKeyboard(.immediately)` on Settings, Add/Edit,
+    the recurring editor and onboarding. This is the native single-mechanism
+    fix for the original dead end — no accessory view, no responder games — and
+    it needs no `@FocusState` at all.
+  - **If Done ever comes back:** declare it ONCE per screen (not per field),
+    never inside a sheet that also sets `presentationDetents`, and never pair
+    it with a manual `resignFirstResponder`. Not worth attempting without a
+    device to test on.
+  - ⚠️ **Still unexplained:** the empty form is *consistent* with the
+    detent/accessory relayout loop but isn't proven. If it recurs after this
+    revert, next suspect is the memo field — `TextField(axis: .vertical)` with
+    `.lineLimit(1...3)` inside a `Form` inside a detented sheet. Isolate by
+    making it single-line.
 - ✅ **Keyboard dismissal + income-typing lag (built 2026-07-28)** — reported
   live from Settings: the monthly-income keyboard could not be dismissed, and
   each keystroke lagged badly.
