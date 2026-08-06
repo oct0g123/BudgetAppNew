@@ -216,6 +216,41 @@ backlog. No CloudKit schema changes anywhere in this list.
     MonthRecord + a card or expandable section on the Budget page. No model or
     CloudKit change. Pairs naturally with the pacing watch-item above — could
     replace or complement the "$X/wk" inline label.
+  - ✍️ **Design settled 2026-08-06** (user: "once you're halfway through a week
+    it's a little hard to tell how much you've spent that week, without combing
+    through the transactions"). **Stateless, anchored at the week's start:**
+
+    ```
+    window       = current calendar week (Calendar.current.firstWeekday, so US = Sun–Sat),
+                   CLIPPED to the month: [max(weekStart, monthStart) … min(weekEnd, monthEnd)]
+    spentThisWeek(cat) = Σ txns in window
+    weekBudget(cat)    = (remaining(cat) + spentThisWeek(cat))
+                         ÷ daysFromWindowStartToMonthEnd × daysInWindow
+    leftThisWeek(cat)  = weekBudget(cat) − spentThisWeek(cat)
+    ```
+
+    **Why this shape:** the numerator `remaining + spentThisWeek` is *invariant*
+    to spending inside the week — spend $50 and `remaining` drops 50 while
+    `spentThisWeek` rises 50. So `weekBudget` holds steady all week and only
+    `leftThisWeek` drains, which is exactly the "watch it dwindle" feel. It's
+    also the SAME even-pace math as the existing `$X/wk` label, just anchored at
+    the week's start instead of today — so the two numbers agree instead of
+    telling competing stories. And it needs **no stored state**: no new model
+    field, no CloudKit schema change, nothing to sync or migrate.
+  - Edge cases handled by the clipping: a week that starts before the month
+    (month begins mid-week) and a short final week both shrink `daysInWindow`
+    proportionally. Editing/deleting a *previous* week's transaction correctly
+    re-raises this week's budget. Gate on `month.key == MonthKey.current &&
+    !month.isClosed`, same as `paceText`.
+  - **Placement (recommended):** one compact "This Week" section on the Budget
+    page between income and the buckets — `THIS WEEK · Aug 4–10` with a Needs
+    row and a Wants row (`$312 left of $450` + thin bar). Savings excluded,
+    matching `safeToSpend`. Keep the existing `$X/wk` pace label as-is.
+    Alternative if it reads heavy: a single combined Needs+Wants line that
+    expands on tap.
+  - **Surface:** new helpers on `MonthRecord` (`weekWindow`, `spent(for:in:)`,
+    `weekBudget(for:)`, `leftThisWeek(for:)`) + one section in `BudgetView`.
+    Pure computation. ~half day.
 - ✅ **Adjustable alert threshold** (built 2026-07-09): 70–90% segmented picker
   in Settings → Notifications; caption reflects the chosen value.
 - **Wave-3 behavior fixes:** ✅ Siri closed-month redirect (B4, built) ·
@@ -294,6 +329,81 @@ backlog. No CloudKit schema changes anywhere in this list.
   "Support Ledger" screen).
 - Filler if needed: widget snapshot skip-identical-writes (D2), predicated
   month queries (D6).
+
+### 🖥 macOS revamp (specced 2026-08-06) — "feels sloppy next to the others"
+**Root cause:** it's an iPad app in a window. The layout adapts fine; almost
+none of the things that make a Mac app feel like a Mac app exist yet. Audited
+the whole target — the gaps are concrete, not vibes:
+
+1. **No menu bar.** Zero `.commands {}` in the project, so File/Edit/View hold
+   only what the system provides free. On Mac the menu bar *is* the app.
+2. **No keyboard shortcuts.** Not one `keyboardShortcut` anywhere. ⌘N, ⌘F,
+   ⌘[ / ⌘], ⌘E are all reflexes that currently hit nothing.
+3. **Settings is a sidebar tab, not a Settings window.** The most iPad-ish
+   thing about it — Mac opens preferences with ⌘, in its own window.
+4. **Mac silently loses the safe-to-spend bar.** `TabChrome` (RootView:123)
+   installs the accessory only on iOS 26; Mac falls through to plain content.
+   That's a missing *feature*, not just chrome.
+5. **No way to force a sync.** Pull-to-refresh (BudgetView:297) is the only
+   path and doesn't exist on Mac; no toolbar button replaces it.
+6. **Nothing constrains the window.** `.defaultSize(920×680)` with no
+   `windowResizability` — draggable to shapes the layout never anticipated.
+
+#### Phase 1 — menus + shortcuts (~half day, low risk, biggest win/effort)
+- **Prereq:** `AppNavigator` becomes a shared singleton (`static let shared`),
+  mirroring `SyncMonitor.shared` / `ThemeManager.shared`, so `.commands` can
+  reach it — `RootView` swaps `@StateObject private var navigator =
+  AppNavigator()` for `.shared`. (The idiomatic multi-window alternative is
+  `.focusedSceneValue` + `@FocusedValue`; overkill for a single-window app,
+  note it in case Ledger ever opens multiple windows.)
+- `LedgerApp`: add `.commands { … }` on the `WindowGroup`, all `#if os(macOS)`:
+  - **File ▸ New Transaction — ⌘N** → `CommandGroup(replacing: .newItem)`,
+    sets `AppNavigator.shared.selectedTab = .budget` +
+    `requestAddTransaction = true` (BudgetView already consumes this via
+    `handleQuickAdd()`, RootView:605 — no new plumbing).
+  - **File ▸ Export JSON — ⌘E / Export CSV — ⇧⌘E** →
+    `CommandGroup(after: .newItem)`. Needs the export trigger lifted out of
+    SettingsView; simplest is an `AppNavigator.requestExport: ExportKind?`
+    that Settings observes, OR do it after Phase 3 when Settings moves.
+  - **View ▸ Previous / Next Month — ⌘[ / ⌘]** → `CommandMenu` or
+    `CommandGroup(after: .sidebar)`; both just write `@AppStorage
+    "viewedMonthKey"` via `MonthKey.offset(_:by:)`, which commands can read and
+    write directly — no view state needed.
+  - **View ▸ Budget / Insights / History — ⌘1…⌘3** → sets
+    `AppNavigator.shared.selectedTab`.
+- **Settings scene (⌘,):** add a `Settings { SettingsView() }` scene in
+  `LedgerApp.body`. ⚠️ It's a *separate* scene, so it needs its own
+  `.modelContainer(AppModelContainer.shared)` **and**
+  `.environmentObject(SyncMonitor.shared)` (SyncStatusSection declares
+  `@EnvironmentObject`) or it will crash on open. Then drop the Settings tab on
+  Mac only — `#if !os(macOS)` around the `Tab(…, value: .settings)` in
+  RootView:55 — so it isn't duplicated.
+- ⚠️ SettingsView's `NavigationStack` + `.navigationTitle("Settings")` reads
+  wrong in a Settings window; on Mac it should be a plain `Form` (no stack, no
+  title) and the Advanced `NavigationLink` needs a different affordance —
+  simplest is to inline the Advanced sections behind a `TabView` with
+  General / Advanced tabs, which is the Mac-standard preferences shape.
+
+#### Phase 2 — restore parity (~half day)
+- **Safe-to-spend on Mac:** add a `ToolbarItem(placement: .status)` to
+  `BudgetView` under `#if os(macOS)` rendering the existing `SafeToSpendBar`
+  content ("Aug · $2,867 left to spend"). `.status` is the natural Mac
+  placement (centered in the toolbar). Reuses the view already written for the
+  iOS tab accessory — extract its body so both call it.
+- **Sync button:** `#if os(macOS)` toolbar item beside Sort calling
+  `await LedgerService.refreshFromCloud(in: context)` (LedgerService:521 —
+  already `@MainActor`, already waits out in-flight imports), with a
+  `ProgressView` while running. This is the Mac stand-in for pull-to-refresh.
+- **Window:** `.windowResizability(.contentMinSize)` on the `WindowGroup` plus
+  a `#if os(macOS) .frame(minWidth: 720, minHeight: 520)` on `RootView`, so the
+  window can't be dragged below what the three-bucket layout needs.
+
+#### Phase 3 — visual density (~1 day, do LAST, needs screenshots)
+Typography is sized for touch and reads large on Mac; `.formStyle(.grouped)`
+with custom `DS.rowBackground()` fills looks transplanted; toolbar spacing
+wants Mac-specific tuning. **Blocked on Mac screenshots of Budget + Settings**
+— "sloppy" is visual, and this has been reviewed blind so far. Handle it the
+way the visionOS glass pass went: screenshot → targeted diagnosis → option A/B.
 
 ### 📋 Code review round 2 (2026-07-11) — findings pinned, fixes NOT yet applied
 Full review of everything since Wave 1 (39 commits). 8 verified findings +
