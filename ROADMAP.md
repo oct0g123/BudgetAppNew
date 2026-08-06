@@ -383,13 +383,34 @@ the whole target — the gaps are concrete, not vibes:
 6. **Nothing constrains the window.** `.defaultSize(920×680)` with no
    `windowResizability` — draggable to shapes the layout never anticipated.
 
+#### ⚠️ Ground rule for the whole revamp
+**Every change is either inside `#if os(macOS)` or purely additive.** No edits
+to shared, ungated code paths. The two places it will be tempting to break this
+are called out below (the navigator singleton, and Phase 3's type tokens) —
+both would silently change iPhone/iPad/Vision Pro behavior. Holding this line
+is what keeps the blast radius at zero for the three shipped platforms.
+
 #### Phase 1 — menus + shortcuts (~half day, low risk, biggest win/effort)
-- **Prereq:** `AppNavigator` becomes a shared singleton (`static let shared`),
-  mirroring `SyncMonitor.shared` / `ThemeManager.shared`, so `.commands` can
-  reach it — `RootView` swaps `@StateObject private var navigator =
-  AppNavigator()` for `.shared`. (The idiomatic multi-window alternative is
-  `.focusedSceneValue` + `@FocusedValue`; overkill for a single-window app,
-  note it in case Ledger ever opens multiple windows.)
+- ~~**Prereq:** `AppNavigator` becomes a shared singleton.~~ **RETRACTED
+  2026-08-06 — this would have regressed iPad.** A singleton is shared across
+  *scenes*, and `WindowGroup` gives iPadOS (Stage Manager / Split View) and
+  visionOS multiple windows for free. Two Ledger windows would then share one
+  `selectedTab`: switching tabs in one silently switches the other. Use
+  **`.focusedSceneValue` + `@FocusedValue`** instead — it's per-scene, so only
+  the focused window responds, and `AppNavigator` is left completely untouched:
+  ```swift
+  struct NewTransactionKey: FocusedValueKey { typealias Value = () -> Void }
+  extension FocusedValues {
+      var newTransaction: NewTransactionKey.Value? { … }
+  }
+  // RootView, #if os(macOS):
+  .focusedSceneValue(\.newTransaction) { navigator.requestAddTransaction = true }
+  // in .commands:
+  @FocusedValue(\.newTransaction) private var newTransaction
+  Button("New Transaction") { newTransaction?() }.keyboardShortcut("n")
+  ```
+  Slightly more scaffolding, but it's the correct shape *and* it drops the
+  cross-platform risk of Phase 1 to nil.
 - `LedgerApp`: add `.commands { … }` on the `WindowGroup`, all `#if os(macOS)`:
   - **File ▸ New Transaction — ⌘N** → `CommandGroup(replacing: .newItem)`,
     sets `AppNavigator.shared.selectedTab = .budget` +
@@ -431,6 +452,23 @@ the whole target — the gaps are concrete, not vibes:
 - **Window:** `.windowResizability(.contentMinSize)` on the `WindowGroup` plus
   a `#if os(macOS) .frame(minWidth: 720, minHeight: 520)` on `RootView`, so the
   window can't be dragged below what the three-bucket layout needs.
+
+#### Cross-platform risk register (assessed 2026-08-06)
+| Change | Risk to iOS / iPadOS / visionOS |
+|---|---|
+| `.commands` block, `Settings` scene, `windowResizability`, Mac min-frame | **None** — macOS-only APIs behind `#if os(macOS)`; they don't exist in the other builds. |
+| Safe-to-spend in the Mac toolbar | **None** — `SafeToSpendBar` is already a self-contained `View`. Reuse it as-is; do NOT refactor it. |
+| Dropping the Settings tab on Mac | **None** — `#if !os(macOS)` around the `Tab`, compile-time only. |
+| SettingsView Mac restructure (no NavigationStack, General/Advanced tabs) | **Low, contained** — must be `#if os(macOS)` branches *inside* the file. This is the file most likely to get broken by accident; the iOS path should come out byte-identical. |
+| ~~AppNavigator singleton~~ | **Would have been real** — see the retraction above. Avoided entirely by `focusedSceneValue`. |
+| Phase 3 type/density tuning | **Real if done wrong.** Editing `Typography.baseSize()` or `Spacing` tokens to fix Mac changes *every* platform. Any Phase 3 change must be macOS-scoped, never a global token edit. |
+| Compile breakage | **The actual likely failure.** `#if os(macOS)` branches are invisible to the iOS compiler, so a Mac-only mistake surfaces only when that target builds — and vice versa, which is exactly how `scrollDismissesKeyboard` slipped through to a visionOS archive. **Build all four targets before archiving anything.** |
+
+- `CommandGroup(replacing: .newItem)` also *removes* File ▸ New Window. Use
+  `CommandGroup(after: .newItem)` unless single-window is a deliberate choice.
+- **Sequencing:** ship 1.2 first. The Mac work can't touch the iOS/visionOS
+  binaries, but it does change the *Mac* binary — so don't submit a Mac build
+  mid-revamp. Land 1.2 everywhere, then treat the Mac revamp as 1.3.
 
 #### Phase 3 — visual density (~1 day, do LAST, needs screenshots)
 Typography is sized for touch and reads large on Mac; `.formStyle(.grouped)`
