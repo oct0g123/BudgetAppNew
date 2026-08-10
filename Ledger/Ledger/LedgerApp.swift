@@ -26,6 +26,7 @@ import Combine
 import UIKit
 #elseif os(macOS)
 import AppKit
+import UniformTypeIdentifiers
 #endif
 import LocalAuthentication
 import UserNotifications
@@ -220,7 +221,55 @@ extension FocusedValues {
     }
 }
 
-/// File ▸ New Transaction, plus View ▸ section and month navigation.
+/// Export straight from the menu bar.
+///
+/// It reads the shared container directly rather than routing through
+/// SettingsView: Settings is its own SCENE on Mac now (⌘,), so a command in the
+/// main window has no path to its export state. Same archive builder the
+/// in-app export uses, so the files are identical.
+@MainActor
+enum LedgerExport {
+    enum Kind { case json, csv }
+
+    static func save(_ kind: Kind) {
+        let context = AppModelContainer.shared.mainContext
+        let archive = LedgerArchive.makeExport(
+            settings: (try? context.fetch(FetchDescriptor<AppSettings>()))?.first,
+            months: LedgerService.allMonths(in: context),
+            rules: LedgerService.allRecurringRules(in: context))
+
+        let data: Data
+        switch kind {
+        case .json:
+            guard let encoded = try? LedgerArchive.encodeJSON(archive) else {
+                alert("Couldn't prepare the export.")
+                return
+            }
+            data = encoded
+        case .csv:
+            data = Data(LedgerArchive.encodeCSV(archive).utf8)
+        }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [kind == .json ? .json : .commaSeparatedText]
+        panel.nameFieldStringValue = kind == .json ? "ledger-export" : "ledger-transactions"
+        guard panel.runModal() == .OK, let url = panel.url else { return }   // cancelled
+        do {
+            try data.write(to: url)
+        } catch {
+            alert("Couldn't save the export: \(error.localizedDescription)")
+        }
+    }
+
+    private static func alert(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.alertStyle = .warning
+        alert.runModal()
+    }
+}
+
+/// File ▸ New Transaction and export, plus View ▸ section and month navigation.
 struct LedgerCommands: Commands {
     /// The viewed month is `@AppStorage`, so month commands need no view state
     /// at all — they read and write the same key the Budget screen does.
@@ -235,6 +284,11 @@ struct LedgerCommands: Commands {
             Button("New Transaction") { newTransaction?() }
                 .keyboardShortcut("n", modifiers: .command)
                 .disabled(newTransaction == nil)
+            Divider()
+            Button("Export JSON…") { LedgerExport.save(.json) }
+                .keyboardShortcut("e", modifiers: .command)
+            Button("Export CSV…") { LedgerExport.save(.csv) }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
         }
 
         CommandGroup(after: .sidebar) {
@@ -296,6 +350,7 @@ struct LedgerApp: App {
         .modelContainer(AppModelContainer.shared)
         #if os(macOS)
         .defaultSize(width: 920, height: 680)
+        .windowResizability(.contentMinSize)
         .commands { LedgerCommands() }
         #endif
         #if os(visionOS)

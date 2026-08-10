@@ -503,7 +503,28 @@ are byte-identical to what's on the App Store today.
   simplest is to inline the Advanced sections behind a `TabView` with
   General / Advanced tabs, which is the Mac-standard preferences shape.
 
-#### Phase 2 — restore parity (~half day)
+#### Phase 2 — restore parity ✅ **BUILT 2026-08-06** (untested on device)
+All `#if os(macOS)`; nothing outside a gate. Shipped:
+- **Safe-to-spend readout on Mac** — `ToolbarItem(placement: .status)` on
+  BudgetView rendering `SafeToSpendBar` *verbatim* (no refactor of the shared
+  view, so iOS can't be affected). Closes the parity gap where the weekly
+  Wants allowance existed only on the iOS tab accessory.
+- **Sync Now button** beside Sort, calling `refreshFromCloud(in:)` with a
+  spinner — the Mac stand-in for pull-to-refresh, which has no gesture there.
+  Its `syncing` @State is itself gated.
+- **Window constraints** — `.windowResizability(.contentMinSize)` plus a
+  720×520 minimum on RootView, so the three-bucket layout can't be squeezed
+  into a shape it was never designed for.
+- **File ▸ Export JSON (⌘E) / CSV (⇧⌘E)** — the Phase 1 deferral, now done.
+  `LedgerExport` reads the shared container directly and drives an
+  `NSSavePanel`, because Settings is its own scene on Mac and a main-window
+  command has no route to its export state. Uses the same `LedgerArchive`
+  builder as the in-app export, so the files are byte-identical.
+- 🧪 **Untested.** Watch for: two `.primaryAction` items plus `.status`
+  crowding the toolbar at small widths; the Sync spinner leaving the button
+  stuck if `refreshFromCloud` throws; ⌘E colliding with anything system-level.
+
+#### Phase 2 spec (as written before building)
 - **Safe-to-spend on Mac:** add a `ToolbarItem(placement: .status)` to
   `BudgetView` under `#if os(macOS)` rendering the existing `SafeToSpendBar`
   content ("Aug · $2,867 left to spend"). `.status` is the natural Mac

@@ -40,6 +40,10 @@ struct BudgetView: View {
     /// The just-closed month, presented as a RecapView sheet (the "ritual"
     /// wrap-up moment). Review prompt fires after this dismisses.
     @State private var recapMonth: MonthRecord?
+    #if os(macOS)
+    /// Drives the Mac toolbar's Sync button spinner.
+    @State private var syncing = false
+    #endif
 
     private var currentMonth: MonthRecord? {
         // Canonical pick: a duplicate month waiting out its delete-grace
@@ -118,6 +122,31 @@ struct BudgetView: View {
                         Label("Add transaction", systemImage: "plus")
                     }
                     .disabled(currentMonth == nil || currentMonth?.isClosed == true)
+                }
+                // The weekly allowance rides the tab accessory on iOS, which
+                // doesn't exist on Mac — so Mac had no safe-to-spend readout at
+                // all. `.status` is the centered Mac toolbar slot; the view is
+                // reused verbatim.
+                ToolbarItem(placement: .status) {
+                    SafeToSpendBar()
+                }
+                // Mac's stand-in for pull-to-refresh, which has no gesture here.
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        guard !syncing else { return }
+                        syncing = true
+                        Task {
+                            await LedgerService.refreshFromCloud(in: context)
+                            syncing = false
+                        }
+                    } label: {
+                        if syncing {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Label("Sync Now", systemImage: "arrow.clockwise")
+                        }
+                    }
+                    .disabled(syncing)
                 }
                 #endif
             }

@@ -62,6 +62,9 @@ struct RootView: View {
             #endif
         }
         .tabViewStyle(.sidebarAdaptable)
+        #if os(macOS)
+        .frame(minWidth: 720, minHeight: 520)
+        #endif
         // visionOS: no opaque fill so the system glass window shows through.
         .background {
             #if !os(visionOS)
