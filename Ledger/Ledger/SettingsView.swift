@@ -342,7 +342,9 @@ struct SettingsView: View {
         } header: {
             Text("Default Income")
         } footer: {
-            Text("Carried forward to each new month.")
+            // Names where the CURRENT month's income actually lives — the two
+            // were easy to confuse when this only said "carried forward".
+            Text("Used when a new month is created. To change this month's income, edit it at the top of the Budget screen.")
         }
         .listRowBackground(DS.rowBackground())
     }
@@ -372,14 +374,14 @@ struct SettingsView: View {
                     .foregroundStyle(draftSplit.isValid ? DS.text : DS.needs)
             }
 
-            Button("Save as Default") {
+            Button("Save Split as Default") {
                 commitIncome()          // don't leave it to the debounce
                 settingsForWrite().defaultSplit = draftSplit
                 flash("Default split saved")
             }
             .disabled(!draftSplit.isValid)
 
-            Button("Apply to \(MonthKey.displayName(viewedKey))") {
+            Button("Apply Split to \(MonthKey.displayName(viewedKey))") {
                 commitIncome()          // don't leave it to the debounce
                 if let month = LedgerService.canonical(months, key: viewedKey), !month.isClosed {
                     month.needsPct = draftSplit.needs
@@ -394,7 +396,7 @@ struct SettingsView: View {
         } header: {
             Text("Allocation Model")
         } footer: {
-            Text("Set your default split for new months. Past months keep the split they were created with.")
+            Text("Set your default split for new months. Applying changes only this month's percentages, not its income. Past months keep the split they were created with.")
         }
         .listRowBackground(DS.rowBackground())
     }
