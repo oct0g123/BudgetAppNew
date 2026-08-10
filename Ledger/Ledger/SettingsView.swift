@@ -43,6 +43,10 @@ struct SettingsView: View {
     /// SwiftData save + CloudKit export + full Form rebuild per character.
     @State private var incomeDraft: Double = 0
     @State private var draftsLoaded = false
+    /// The income we last wrote or loaded. An external value is adopted only
+    /// when it differs from THIS — otherwise a stale read mid-render would
+    /// quietly revert what was just typed.
+    @State private var incomeCommitted: Double = 0
 
     /// Cached once per appearance: each `BiometricAuth` read allocates an
     /// LAContext and runs `canEvaluatePolicy`, and the privacy row asked for
@@ -61,10 +65,20 @@ struct SettingsView: View {
 
     enum ExportKind { case json, csv }
 
-    private var settings: AppSettings {
-        // Use the reactive @Query result to avoid a fetch on every access
-        // (e.g. the income field calls this on each keystroke); create only if
-        // none exists yet.
+    /// The settings row, or nil if the query hasn't produced one yet.
+    ///
+    /// Deliberately does NOT create one. This is read during *rendering*, and
+    /// `LedgerService.settings(in:)` INSERTS a row seeded from the local backup
+    /// cache whenever the table looks empty — so a momentarily-empty @Query
+    /// result would spawn a duplicate carrying stale values.
+    /// `mergeDuplicateSettings` then resolves the pair by taking the HIGHER
+    /// income, which silently undoes an income the user just lowered. Writes
+    /// create the row explicitly instead, via `settingsForWrite()`.
+    private var settings: AppSettings? { allSettings.first }
+
+    /// Write path only — creating a row here is safe because it happens in
+    /// response to a real user action, not a render.
+    private func settingsForWrite() -> AppSettings {
         allSettings.first ?? LedgerService.settings(in: context)
     }
 
@@ -312,9 +326,14 @@ struct SettingsView: View {
                         guard !Task.isCancelled else { return }
                         commitIncome()
                     }
-                    .onChange(of: settings.defaultIncome) { _, newValue in
-                        // Reflect a sync/import that landed while we weren't typing.
-                        if abs(newValue - incomeDraft) > 0.0001 { incomeDraft = newValue }
+                    .onChange(of: settings?.defaultIncome) { _, newValue in
+                        // Adopt a REAL external change (sync / import). Compare
+                        // against the last committed value, not the draft, so a
+                        // stale read can't undo an in-progress edit.
+                        guard let newValue,
+                              abs(newValue - incomeCommitted) > 0.0001 else { return }
+                        incomeCommitted = newValue
+                        incomeDraft = newValue
                     }
                     .onDisappear { commitIncome() }
             } label: {
@@ -354,12 +373,14 @@ struct SettingsView: View {
             }
 
             Button("Save as Default") {
-                settings.defaultSplit = draftSplit
+                commitIncome()          // don't leave it to the debounce
+                settingsForWrite().defaultSplit = draftSplit
                 flash("Default split saved")
             }
             .disabled(!draftSplit.isValid)
 
             Button("Apply to \(MonthKey.displayName(viewedKey))") {
+                commitIncome()          // don't leave it to the debounce
                 if let month = LedgerService.canonical(months, key: viewedKey), !month.isClosed {
                     month.needsPct = draftSplit.needs
                     month.savingsPct = draftSplit.savings
@@ -751,22 +772,25 @@ struct SettingsView: View {
     // MARK: Helpers
 
     private func loadDrafts() {
-        let s = settings
+        biometricsAvailable = BiometricAuth.isAvailable
+        biometricsName = BiometricAuth.kindName
+        // No row yet (or the query hasn't landed): leave the drafts unloaded so
+        // nothing commits over a row that's still arriving from iCloud. The
+        // next appearance retries.
+        guard let s = settings else { return }
         needsPct = Int(s.defaultNeedsPct)
         savingsPct = Int(s.defaultSavingsPct)
         wantsPct = Int(s.defaultWantsPct)
         incomeDraft = s.defaultIncome
+        incomeCommitted = s.defaultIncome
         draftsLoaded = true
-        biometricsAvailable = BiometricAuth.isAvailable
-        biometricsName = BiometricAuth.kindName
     }
 
     /// Writes the income draft through to the model, if it actually changed.
     private func commitIncome() {
-        guard draftsLoaded else { return }
-        let s = settings
-        guard abs(incomeDraft - s.defaultIncome) > 0.0001 else { return }
-        s.defaultIncome = incomeDraft
+        guard draftsLoaded, abs(incomeDraft - incomeCommitted) > 0.0001 else { return }
+        settingsForWrite().defaultIncome = incomeDraft
+        incomeCommitted = incomeDraft
     }
 
     private func archive() -> ExportData {
@@ -816,7 +840,7 @@ struct SettingsView: View {
             do {
                 // Auto-detects this app's format or the original web app's backup.
                 let archive = try LedgerArchive.decodeAny(Data(trimmed.utf8),
-                                                          defaultSplit: settings.defaultSplit)
+                                                          defaultSplit: settings?.defaultSplit ?? draftSplit)
                 LedgerService.importArchive(archive, in: context)
                 let txns = archive.months.reduce(0) { $0 + $1.transactions.count }
                 flash("Imported \(archive.months.count) month(s), \(txns) transaction(s)")
