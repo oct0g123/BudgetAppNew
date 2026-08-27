@@ -193,6 +193,16 @@ final class RecurringRule {
     var isActive: Bool = true
     /// First month the rule applies, e.g. "2026-06".
     var startKey: String = ""
+    /// LAST month the rule applies (inclusive), e.g. "2026-08" — nil means it
+    /// runs until switched off.
+    ///
+    /// Stored as a month rather than a "3 payments left" counter on purpose. A
+    /// counter has to be decremented as months materialize, and with CloudKit
+    /// two devices can materialize the same month before syncing — each would
+    /// decrement, or a conflict would drop one. An end month is idempotent:
+    /// every device derives the same answer from the same data, which is the
+    /// rule the rest of the merge system follows.
+    var endKey: String?
     var createdAt: Date = Date()
 
     init(id: UUID = UUID(),
@@ -201,7 +211,8 @@ final class RecurringRule {
          category: BudgetCategory,
          dayOfMonth: Int = 1,
          isActive: Bool = true,
-         startKey: String) {
+         startKey: String,
+         endKey: String? = nil) {
         self.id = id
         self.desc = desc
         self.amount = amount
@@ -209,6 +220,29 @@ final class RecurringRule {
         self.dayOfMonth = dayOfMonth
         self.isActive = isActive
         self.startKey = startKey
+        self.endKey = endKey
+    }
+
+    /// Whether this rule should charge in `monthKey`. One definition, so the
+    /// two places that materialize rules can't drift apart.
+    func covers(_ monthKey: String) -> Bool {
+        guard startKey <= monthKey else { return false }
+        guard let endKey else { return true }      // open-ended
+        return monthKey <= endKey
+    }
+
+    /// The end month has passed: the rule will never charge again, even though
+    /// it may still be `isActive`. Kept separate from `isActive` — "finished"
+    /// and "paused" are different things and the row says which.
+    var hasFinished: Bool {
+        guard let endKey else { return false }
+        return endKey < MonthKey.current
+    }
+
+    /// Total number of charges when limited, for the editor's stepper.
+    var monthCount: Int? {
+        guard let endKey else { return nil }
+        return max(MonthKey.monthsBetween(startKey, endKey) + 1, 1)
     }
 
     var category: BudgetCategory {

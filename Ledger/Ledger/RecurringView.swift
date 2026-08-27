@@ -79,7 +79,7 @@ struct RecurringView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(rule.desc.isEmpty ? rule.category.title : rule.desc)
                             .foregroundStyle(DS.text)
-                        Text("Day \(rule.dayOfMonth) · \(rule.category.title) · from \(MonthKey.shortMonthName(rule.startKey))")
+                        Text(subtitle(rule))
                             .font(Typography.mono(.caption))
                             .foregroundStyle(DS.textMuted)
                     }
@@ -100,7 +100,18 @@ struct RecurringView: View {
                 .labelsHidden()
                 .tint(DS.savings)
         }
-        .opacity(rule.isActive ? 1 : 0.6)
+        .opacity(rule.isActive && !rule.hasFinished ? 1 : 0.6)
+    }
+
+    /// "Day 1 · Needs · from Aug · through Oct" — the end reads as "ended" once
+    /// it's behind us, so a finished rule doesn't look merely paused.
+    private func subtitle(_ rule: RecurringRule) -> String {
+        var text = "Day \(rule.dayOfMonth) · \(rule.category.title) · from \(MonthKey.shortMonthName(rule.startKey))"
+        if let end = rule.endKey {
+            text += rule.hasFinished ? " · ended \(MonthKey.shortMonthName(end))"
+                                     : " · through \(MonthKey.shortMonthName(end))"
+        }
+        return text
     }
 }
 
@@ -118,8 +129,28 @@ struct RecurringEditor: View {
     @State private var amount: Double? = nil
     @State private var category: BudgetCategory = .needs
     @State private var day = 1
+    @State private var isLimited = false
+    @State private var monthCount = 3
 
     private var isValid: Bool { (amount ?? 0) > 0 }
+
+    /// An existing rule keeps its own start; a new one begins in the viewed month.
+    private var effectiveStartKey: String { rule?.startKey ?? viewedKey }
+
+    /// nil = runs until switched off. The UI counts months because that's how
+    /// people think about it ("3 payments"); the model stores the resulting end
+    /// month, which can't drift the way a decrementing counter would.
+    private var computedEndKey: String? {
+        isLimited ? MonthKey.offset(effectiveStartKey, by: monthCount - 1) : nil
+    }
+
+    private var durationFooter: String {
+        guard let end = computedEndKey else {
+            return "Repeats every month until you turn it off."
+        }
+        let times = monthCount == 1 ? "once" : "\(monthCount) times"
+        return "Charges \(times) — \(MonthKey.displayName(effectiveStartKey)) through \(MonthKey.displayName(end))."
+    }
 
     var body: some View {
         NavigationStack {
@@ -163,6 +194,33 @@ struct RecurringEditor: View {
                     Text("The transaction is dated this day in each month (capped at 28 so it exists in every month).")
                 }
                 .listRowBackground(DS.rowBackground())
+
+                Section {
+                    Toggle(isOn: $isLimited) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Ends after a set number of months")
+                            Text("For installments or a fixed-term plan")
+                                .font(.caption)
+                                .foregroundStyle(DS.textMuted)
+                        }
+                    }
+                    .tint(DS.savings)
+
+                    if isLimited {
+                        Stepper(value: $monthCount, in: 1...60) {
+                            LabeledContent("Number of months") {
+                                Text("\(monthCount)")
+                                    .font(Typography.mono(.body, weight: .medium))
+                                    .foregroundStyle(DS.text)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Duration")
+                } footer: {
+                    Text(durationFooter)
+                }
+                .listRowBackground(DS.rowBackground())
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
@@ -203,6 +261,10 @@ struct RecurringEditor: View {
         amount = rule.amount
         category = rule.category
         day = rule.dayOfMonth
+        if let count = rule.monthCount {
+            isLimited = true
+            monthCount = min(max(count, 1), 60)
+        }
     }
 
     private func save() {
@@ -213,13 +275,15 @@ struct RecurringEditor: View {
             rule.amount = value
             rule.category = category
             rule.dayOfMonth = day
+            rule.endKey = computedEndKey
             LedgerService.applyRule(rule, in: context)
         } else {
             let newRule = RecurringRule(desc: trimmed,
                                         amount: value,
                                         category: category,
                                         dayOfMonth: day,
-                                        startKey: viewedKey)
+                                        startKey: viewedKey,
+                                        endKey: computedEndKey)
             context.insert(newRule)
             LedgerService.applyRule(newRule, in: context)
         }

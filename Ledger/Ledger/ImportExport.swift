@@ -65,11 +65,15 @@ struct RuleDTO: Codable {
     var dayOfMonth: Int = 1
     var isActive: Bool = true
     var startKey: String = ""
+    /// Inclusive last month; absent in pre-1.2 backups, which decode to nil
+    /// (= runs forever), matching how those rules behaved.
+    var endKey: String?
 
     init(id: UUID, desc: String, amount: Double, category: String,
-         dayOfMonth: Int, isActive: Bool, startKey: String) {
+         dayOfMonth: Int, isActive: Bool, startKey: String, endKey: String? = nil) {
         self.id = id; self.desc = desc; self.amount = amount; self.category = category
         self.dayOfMonth = dayOfMonth; self.isActive = isActive; self.startKey = startKey
+        self.endKey = endKey
     }
 
     init(from decoder: Decoder) throws {
@@ -81,6 +85,7 @@ struct RuleDTO: Codable {
         dayOfMonth = try c.decodeIfPresent(Int.self, forKey: .dayOfMonth) ?? 1
         isActive = try c.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
         startKey = try c.decodeIfPresent(String.self, forKey: .startKey) ?? ""
+        endKey = try c.decodeIfPresent(String.self, forKey: .endKey)
     }
 }
 
@@ -261,7 +266,8 @@ enum LedgerArchive {
         let ruleDTOs = rules.map { rule in
             RuleDTO(id: rule.id, desc: rule.desc, amount: rule.amount,
                     category: rule.categoryRaw, dayOfMonth: rule.dayOfMonth,
-                    isActive: rule.isActive, startKey: rule.startKey)
+                    isActive: rule.isActive, startKey: rule.startKey,
+                    endKey: rule.endKey)
         }
         return ExportData(settings: settingsDTO, months: monthDTOs, rules: ruleDTOs)
     }

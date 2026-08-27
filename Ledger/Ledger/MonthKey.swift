@@ -60,6 +60,12 @@ enum MonthKey {
         return max(length - day + 1, 1)
     }
 
+    /// Whole months from `from` to `to` (negative when `to` precedes `from`).
+    static func monthsBetween(_ from: String, _ to: String) -> Int {
+        guard let (fy, fm) = components(from), let (ty, tm) = components(to) else { return 0 }
+        return (ty * 12 + (tm - 1)) - (fy * 12 + (fm - 1))
+    }
+
     /// The current calendar week, CLIPPED to `key`'s month.
     ///
     /// Returns nil when `date` doesn't fall inside that month. `days` is the

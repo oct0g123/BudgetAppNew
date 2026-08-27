@@ -83,7 +83,7 @@ enum LedgerService {
         guard !month.isClosed else { return }
         let existingRuleIDs = Set(month.txns.compactMap { $0.recurringRuleID })
         for rule in allRecurringRules(in: context) where rule.isActive {
-            guard rule.startKey <= month.key else { continue }
+            guard rule.covers(month.key) else { continue }   // start…end window
             guard !existingRuleIDs.contains(rule.id) else { continue }
             // Deterministic id: two devices that each materialize this rule into
             // this month (e.g. both open the app on the 1st before syncing)
@@ -107,14 +107,24 @@ enum LedgerService {
     /// a rule (e.g. rent $1800 → $2000) is reflected in the current open month
     /// — not just future ones (open months only; closed months stay frozen).
     static func applyRule(_ rule: RecurringRule, in context: ModelContext) {
-        for month in allMonths(in: context) where !month.isClosed && rule.startKey <= month.key {
-            if let existing = month.txns.first(where: { $0.recurringRuleID == rule.id }) {
-                existing.desc = rule.desc
-                existing.amount = rule.amount
-                existing.category = rule.category
-                existing.date = dateForDay(rule.dayOfMonth, inMonthKey: month.key)
-            } else {
-                applyRecurringRules(to: month, in: context)
+        for month in allMonths(in: context) where !month.isClosed {
+            if rule.covers(month.key) {
+                if let existing = month.txns.first(where: { $0.recurringRuleID == rule.id }) {
+                    existing.desc = rule.desc
+                    existing.amount = rule.amount
+                    existing.category = rule.category
+                    existing.date = dateForDay(rule.dayOfMonth, inMonthKey: month.key)
+                } else {
+                    applyRecurringRules(to: month, in: context)
+                }
+            } else if let endKey = rule.endKey, month.key > endKey {
+                // The window SHRANK (6 months → 3): retract charges past the new
+                // end, or they'd linger with no rule behind them. Open months
+                // only, and only rows carrying this rule's id — closed months
+                // stay frozen and hand-entered transactions are never touched.
+                for txn in month.txns where txn.recurringRuleID == rule.id {
+                    context.delete(txn)
+                }
             }
         }
     }
@@ -482,7 +492,8 @@ enum LedgerService {
                                      category: BudgetCategory(rawValue: ruleDTO.category) ?? .needs,
                                      dayOfMonth: ruleDTO.dayOfMonth,
                                      isActive: ruleDTO.isActive,
-                                     startKey: ruleDTO.startKey)
+                                     startKey: ruleDTO.startKey,
+                                     endKey: ruleDTO.endKey)
             context.insert(rule)
         }
     }
