@@ -675,6 +675,43 @@ pattern for NSPersistentCloudKitContainer apps.
   `.protectionKey` on the store files post-init via FileManager, or a
   protected-data-availability guard around the container build), never blind.
 
+### 💡 Finite recurring rules — "for 3 months" (idea, logged 2026-08-06)
+User: *"set a certain limit on recurring transactions. For example if you are
+paying monthly on something for just 3 months."* Installment plans, a gym
+contract, a trial — anything with a known end. Today every `RecurringRule` runs
+forever until you remember to switch it off.
+
+- **Store a declarative end, not a countdown.** Add `endKey: String?` to
+  `RecurringRule` (inclusive last month, e.g. `"2026-10"`). A mutable
+  `remainingCount` that decrements is the obvious design and the wrong one
+  here: with CloudKit, two devices materializing the same month could each
+  decrement it, and a sync conflict could silently lose one. `endKey` is
+  idempotent — every device computes the same answer from the same data,
+  which is the same rule the rest of the merge system follows.
+- **Count in the UI, date in the model.** Ask "For how long?" — *Forever* /
+  *For N months* with a stepper — then store
+  `MonthKey.offset(startKey, by: n - 1)`. The user thinks in "3 months"; the
+  model stores something that can't drift.
+- **Where it gates:** `applyRecurringRules(to:in:)` (LedgerService:86) currently
+  guards only `rule.startKey <= month.key`; it needs the upper bound too. Same
+  for `applyRule(_:in:)`, which loops open months from `startKey`.
+  ⚠️ **Both call sites are inside the known-buggy `applyRule` retroactive-rewrite
+  finding** (pinned, code review round 2). Do that fix FIRST or together —
+  adding a second bound to code that already rewrites the wrong months just
+  makes the eventual fix harder.
+- **Display:** the rule row should say `Ends Oct 2026` (or `3 of 6 charged`) and
+  dim once past its end. `isActive` stays a separate, user-controlled toggle —
+  an ended rule isn't a paused rule, and conflating them loses information.
+- **Past months are untouched** — `endKey` only gates *future* materialization,
+  so history keeps whatever was charged. Closed months are already immune.
+- **Round-trip:** `RuleDTO` needs `endKey` with `decodeIfPresent`, same pattern
+  as `memo`.
+- ⚠️ **CloudKit schema change** (one optional String). If it lands before 1.2
+  ships it can ride the same Dev→Production promotion as `memo`; otherwise it
+  needs its own. Worth batching with the `AppSettings.updatedAt` field the
+  income-merge fix wants, so there's one promotion instead of three.
+- **Effort:** ~half day once `applyRule` is sorted.
+
 ### v1.5 — advanced features
 After the platforms are out, pull a focused few from the sections below
 (reporting, budget rollover, watch complications, adjustable alert threshold,
