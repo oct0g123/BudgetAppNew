@@ -675,7 +675,32 @@ pattern for NSPersistentCloudKitContainer apps.
   `.protectionKey` on the store files post-init via FileManager, or a
   protected-data-availability guard around the container build), never blind.
 
-### 💡 Finite recurring rules — "for 3 months" (idea, logged 2026-08-06)
+### ✅ Finite recurring rules — "for 3 months" **BUILT 2026-08-06**
+Shipped as designed below, with three notes:
+- **The "fix `applyRule` FIRST" warning was overstated** and is retracted. The
+  bound is a single `rule.covers(month.key)` replacing `rule.startKey <=
+  month.key` in both sites — it *narrows* the month range, so it neither
+  compounds the retroactive-rewrite finding nor complicates its eventual fix.
+- **Shrinking a rule now retracts charges past the new end.** `applyRule` gained
+  an else-branch: in an open month strictly after `endKey`, transactions
+  carrying that rule's id are deleted. Without it, cutting 6 months to 3 would
+  leave three orphan charges with no rule behind them. Tightly bounded — open
+  months only, only rows with the rule's id, closed months frozen, hand-entered
+  transactions never touched — but it IS a delete triggered by an edit, so it's
+  the thing to exercise first.
+- `covers(_:)`, `hasFinished` and `monthCount` live on the model, so the window
+  has exactly one definition and the two materialization sites can't drift.
+- Editor gains a **Duration** section (toggle + 1–60 stepper) whose footer spells
+  out the result: *"Charges 3 times — August 2026 through October 2026."* The
+  rule row reads `… · through Oct`, flipping to `· ended Oct` and dimming once
+  past. `hasFinished` stays separate from `isActive`: finished ≠ paused.
+- Quick-add's "Repeat monthly" toggle still creates an open-ended rule; set a
+  limit by editing it afterwards.
+- ⚠️ **Second CloudKit field in 1.2** (`endKey`, optional String) alongside
+  `memo`. Both are in the Dev schema after one Debug run, so **one** Dev→
+  Production promotion now covers both.
+
+#### Original design note (idea, logged 2026-08-06)
 User: *"set a certain limit on recurring transactions. For example if you are
 paying monthly on something for just 3 months."* Installment plans, a gym
 contract, a trial — anything with a known end. Today every `RecurringRule` runs
