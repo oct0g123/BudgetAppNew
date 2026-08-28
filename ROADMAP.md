@@ -745,6 +745,10 @@ doesn't take a ton of room. Sort based off the card as well. Add cards in
 settings (name, maybe last 4 digits), then a simple picker when adding a
 transaction. Optional, not required."*
 
+**Mockup:** https://claude.ai/code/artifact/720964d1-12df-40a9-b81b-d0b49c5e558b
+(list rows, plain-text vs. chip, Settings → Cards + editor, the picker, and the
+by-card sort — with the open decisions called out.)
+
 **Explicit non-goal: this is a label, not an account.** No balances, no
 statement periods, no "how much do I owe on the Amex." It doesn't touch budgets
 or the 50/30/20 math at all — a transaction counts exactly the same whichever
