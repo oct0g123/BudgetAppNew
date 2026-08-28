@@ -18,12 +18,11 @@ struct CardDTO: Codable {
     var id: UUID = UUID()
     var name: String = ""
     var abbrev: String = ""
-    var last4: String = ""
     var isArchived: Bool = false
 
-    init(id: UUID, name: String, abbrev: String, last4: String, isArchived: Bool) {
+    init(id: UUID, name: String, abbrev: String, isArchived: Bool) {
         self.id = id; self.name = name; self.abbrev = abbrev
-        self.last4 = last4; self.isArchived = isArchived
+        self.isArchived = isArchived
     }
 
     init(from decoder: Decoder) throws {
@@ -31,7 +30,6 @@ struct CardDTO: Codable {
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
         abbrev = try c.decodeIfPresent(String.self, forKey: .abbrev) ?? ""
-        last4 = try c.decodeIfPresent(String.self, forKey: .last4) ?? ""
         isArchived = try c.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
     }
 }
@@ -305,7 +303,7 @@ enum LedgerArchive {
         }
         let cardDTOs = cards.map { card in
             CardDTO(id: card.id, name: card.name, abbrev: card.abbrev,
-                    last4: card.last4, isArchived: card.isArchived)
+                    isArchived: card.isArchived)
         }
         return ExportData(settings: settingsDTO, months: monthDTOs,
                           rules: ruleDTOs, cards: cardDTOs)

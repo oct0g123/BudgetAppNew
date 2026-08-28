@@ -237,9 +237,8 @@ enum LedgerService {
         let ruleIDs = ((try? context.fetch(ruleDesc)) ?? []).map(\.id)
         if Set(ruleIDs).count != ruleIDs.count { return true }
 
-        // Cards: few enough to fetch whole. Keyed the same way dedupeCards
-        // keys them, so two cards that merely share a name (different last 4)
-        // don't trip a merge on every pass.
+        // Cards: few enough to fetch whole. Keyed exactly as dedupeCards keys
+        // them, so the precheck and the merge always agree.
         let cards = (try? context.fetch(FetchDescriptor<PaymentCard>())) ?? []
         let cardIDs = cards.map(\.id)
         if Set(cardIDs).count != cardIDs.count { return true }
@@ -390,10 +389,11 @@ enum LedgerService {
     }
 
     /// Content key for a card, or nil when there's nothing to compare on.
+    /// Name alone, now that last-4 is gone — two cards a user can't tell apart
+    /// on screen shouldn't stay separate in the store either.
     private static func cardKey(_ card: PaymentCard) -> String? {
         let name = card.name.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !name.isEmpty else { return nil }
-        return name + "|" + card.last4
+        return name.isEmpty ? nil : name
     }
 
     /// Collapse duplicate cards. Two shapes show up, and they need different
@@ -568,7 +568,6 @@ enum LedgerService {
             context.insert(PaymentCard(id: cardDTO.id,
                                        name: cardDTO.name,
                                        abbrev: cardDTO.abbrev,
-                                       last4: cardDTO.last4,
                                        isArchived: cardDTO.isArchived))
         }
 

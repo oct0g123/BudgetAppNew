@@ -390,7 +390,7 @@ struct CardsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(card.name.isEmpty ? "Untitled card" : card.name)
                         .foregroundStyle(DS.text)
-                    Text(card.last4.isEmpty ? card.tag : "\(card.tag) · •\(card.last4)")
+                    Text(card.tag)
                         .font(Typography.mono(.caption))
                         .foregroundStyle(DS.textMuted)
                 }
@@ -419,7 +419,6 @@ struct CardEditor: View {
 
     @State private var name = ""
     @State private var abbrev = ""
-    @State private var last4 = ""
     @State private var isArchived = false
 
     private var isValid: Bool {
@@ -429,9 +428,7 @@ struct CardEditor: View {
     /// What the row will actually show, live as you type.
     private var previewTag: String {
         let typed = abbrev.trimmingCharacters(in: .whitespaces)
-        if !typed.isEmpty { return typed }
-        if !last4.isEmpty { return "•" + last4 }
-        return PaymentCard.suggestedAbbrev(for: name)
+        return typed.isEmpty ? PaymentCard.suggestedAbbrev(for: name) : typed
     }
 
     var body: some View {
@@ -457,21 +454,6 @@ struct CardEditor: View {
                             }
                     }
 
-                    LabeledContent("Last 4 digits") {
-                        TextField("", text: $last4, prompt: Text("optional"))
-                            .multilineTextAlignment(.trailing)
-                            .font(Typography.mono(.body, weight: .medium))
-                            .foregroundStyle(DS.text)
-                            #if os(iOS)
-                            .keyboardType(.numberPad)
-                            #endif
-                            .onChange(of: last4) { _, newValue in
-                                let digits = newValue.filter(\.isNumber)
-                                if digits != newValue || digits.count > 4 {
-                                    last4 = String(digits.prefix(4))
-                                }
-                            }
-                    }
                 } footer: {
                     Text("Transactions show “\(previewTag)”. Suggested from the name — change it to anything up to \(PaymentCard.maxAbbrev) characters.")
                 }
@@ -498,10 +480,6 @@ struct CardEditor: View {
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
             .screenBackground()
-            // The last-4 field uses a number pad, which has no Return key.
-            #if !os(visionOS)
-            .scrollDismissesKeyboard(.immediately)
-            #endif
             .navigationTitle(card == nil ? "New Card" : "Edit Card")
             #if !os(macOS)
             .toolbarTitleDisplayMode(.inline)
@@ -527,7 +505,6 @@ struct CardEditor: View {
         guard let card else { return }
         name = card.name
         abbrev = card.abbrev
-        last4 = card.last4
         isArchived = card.isArchived
     }
 
@@ -538,28 +515,24 @@ struct CardEditor: View {
         if let card {
             card.name = trimmedName
             card.abbrev = trimmedAbbrev
-            card.last4 = last4
             card.isArchived = isArchived
         } else if let existing = duplicate(of: trimmedName) {
             // Re-adding a card you already have edits it instead of stacking a
             // second one — the merge pass would collapse them anyway.
             existing.abbrev = trimmedAbbrev
-            existing.last4 = last4
             existing.isArchived = false
         } else {
             context.insert(PaymentCard(name: trimmedName,
-                                       abbrev: trimmedAbbrev,
-                                       last4: last4))
+                                       abbrev: trimmedAbbrev))
         }
         dismiss()
     }
 
-    /// An existing card with the same name and last 4, if there is one.
+    /// An existing card with the same name, if there is one.
     private func duplicate(of name: String) -> PaymentCard? {
         let key = name.lowercased()
         return LedgerService.allCards(in: context).first {
             $0.name.trimmingCharacters(in: .whitespaces).lowercased() == key
-                && $0.last4 == last4
         }
     }
 

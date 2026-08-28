@@ -196,8 +196,6 @@ final class PaymentCard {
     /// Short tag shown on each transaction row, e.g. "CSP". Capped in the
     /// editor so a long one can't crowd the row.
     var abbrev: String = ""
-    /// Optional, purely for telling two similar cards apart.
-    var last4: String = ""
     /// Archived cards drop out of the picker but still resolve for history, so
     /// past transactions never silently lose their label.
     var isArchived: Bool = false
@@ -206,22 +204,18 @@ final class PaymentCard {
     init(id: UUID = UUID(),
          name: String,
          abbrev: String = "",
-         last4: String = "",
          isArchived: Bool = false,
          createdAt: Date = Date()) {
         self.id = id
         self.name = name
         self.abbrev = abbrev
-        self.last4 = last4
         self.isArchived = isArchived
         self.createdAt = createdAt
     }
 
     /// What actually appears on a transaction row.
     var tag: String {
-        if !abbrev.isEmpty { return abbrev }
-        if !last4.isEmpty { return "•" + last4 }
-        return Self.suggestedAbbrev(for: name)
+        abbrev.isEmpty ? Self.suggestedAbbrev(for: name) : abbrev
     }
 
     /// "Chase Sapphire" → "CS". A suggestion only — always editable, because a

@@ -780,6 +780,18 @@ user chose to combine, so 1.2 now carries three new schema items — `memo`,
     SwiftUI's `ForEach` two rows with the same identity.
   - Re-adding an existing card by name + last 4 now edits it instead of
     stacking another.
+- ✂️ **Last-4 digits cut 2026-08-06, after testing.** User: *"feels sketchy and
+  isn't terribly useful."* Agreed — storing part of a card number invites the
+  "does this app hold my card details?" question the feature exists to avoid,
+  and it earned nothing: the abbreviation already tells cards apart, and it
+  never appeared on a transaction row. A card is now just **name +
+  abbreviation**. `cardKey` (dedupe + the `needsMerge` precheck) falls back to
+  name alone, which is right: two cards a user can't tell apart on screen
+  shouldn't stay separate in the store. Mockup updated to match.
+  - Schema note: `PaymentCard` hasn't been promoted yet, so nothing in
+    Production ever carried this. A `CD_last4` field may linger unused in the
+    **Development** schema from an earlier Debug run — harmless, and not worth
+    resetting the Dev environment over.
 - Round-trip: `CardDTO` in the archive, `cardID` on `TransactionDTO`, both
   `decodeIfPresent`; CSV gains an export-only `card` column (names, not ids —
   a CSV is for reading in a spreadsheet). `resetAllData` clears cards too.
