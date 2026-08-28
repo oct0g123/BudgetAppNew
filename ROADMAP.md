@@ -593,6 +593,20 @@ All `#if os(macOS)`; nothing outside a gate. Shipped:
     so the placeholder is its only hint.
   - Mac sheets resized for a pointer: add/edit 520×470, recurring editor
     520×470, card editor 460×360 (were 400×320/340 — phone-sized).
+  - 📌 **PINNED FOR ~1.5 — another pass on the add/edit sheet.** User after the
+    fixes: *"far better… idk if the submenu is perfect."* Not broken, just not
+    finished. Candidates, none started:
+    - The **"Amount" label renders in bold mono** because the caller applies
+      `.font(Typography.mono(…))` to the whole `MoneyField` and on macOS that
+      reaches the label too. Sits oddly beside a regular-weight "Description".
+      Fixing it means moving the font *inside* `MoneyField`, which changes iOS —
+      so it needs its own decision, not a drive-by.
+    - The segmented category picker is intrinsic-width and left-aligned; a Mac
+      form usually wants it filling the row.
+    - `NavigationStack` + `navigationTitle` gives the sheet a title bar; Mac
+      sheets more often use a plain bold heading or none.
+    - Grouped-form row boxes inside an already-boxed sheet read as double
+      framing on Mac.
   - ⚠️ **Caught two of my own edits before commit:** `#if` can't sit inside a
     function's argument list, nor between a base expression and its trailing
     modifier chain. Both became computed properties returning `Text`. Worth
