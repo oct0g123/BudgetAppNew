@@ -11,6 +11,29 @@ import SwiftUI
 import SwiftData
 import StoreKit
 
+#if os(macOS)
+/// Centres a List's ROWS in a readable column while leaving the scroll view
+/// itself full-width, so the scroller stays at the window edge.
+///
+/// `readableContentWidth()` can't do this here. History and Insights apply it to
+/// the inner VStack *inside* a ScrollView, so their scroll view is still
+/// full-width and their scroller lands correctly. A `List` IS the scroll view,
+/// so constraining it drags the scroller inward with the content and parks it in
+/// the middle of the window. `contentMargins(for: .scrollContent)` insets the
+/// content and leaves the scroller where macOS expects it.
+private struct CenteredListContent: ViewModifier {
+    var maxWidth: CGFloat = 720
+
+    func body(content: Content) -> some View {
+        GeometryReader { geo in
+            content.contentMargins(.horizontal,
+                                   max(0, (geo.size.width - maxWidth) / 2),
+                                   for: .scrollContent)
+        }
+    }
+}
+#endif
+
 struct BudgetView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.requestReview) private var requestReview
@@ -77,14 +100,12 @@ struct BudgetView: View {
             }
             .scrollContentBackground(.hidden)
             // Budget was the ONLY screen that didn't constrain its width —
-            // Insights, History and Settings all call this. On a wide Mac
-            // window that left the bars ~830pt long and pinned the figures
-            // against the window edge, while every other tab sat in a tidy
-            // centred column. Same modifier, same 720pt, so it now matches.
-            // (iOS/iPadOS deliberately untouched: they ship full-bleed today
-            // and this is a Mac-only complaint.)
+            // on a wide Mac window the bars ran ~830pt and the figures sat
+            // against the window edge, while every other tab was a tidy centred
+            // column. (iOS/iPadOS deliberately untouched: they ship full-bleed
+            // today and this is a Mac-only complaint.)
             #if os(macOS)
-            .readableContentWidth()
+            .modifier(CenteredListContent())
             #endif
             .screenBackground()
             #if os(iOS)

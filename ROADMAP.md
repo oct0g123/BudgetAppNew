@@ -565,6 +565,19 @@ All `#if os(macOS)`; nothing outside a gate. Shipped:
   read as full-bleed rather than a card. Every *other* tab already sat in a tidy
   column — which is exactly why the user described the others as cohesive and
   this one as wrong. Now `#if os(macOS) .readableContentWidth()`.
+- ✅ **Follow-up: the scroller was parked mid-window.** `readableContentWidth()`
+  works on History/Insights because they apply it to the inner VStack *inside* a
+  ScrollView — the scroll view stays full-width, so the scroller lands at the
+  window edge. **A `List` IS the scroll view**, so constraining it dragged the
+  scroller inward with the content. Budget now uses `contentMargins(.horizontal,
+  …, for: .scrollContent)` from a `GeometryReader`, which insets the rows and
+  leaves the scroller where macOS expects it. Rows stay in the same 720pt column.
+  - Rule for later: **constrain content inside a scroll view, never the scroll
+    view itself** — the codebase already did this correctly in two places and I
+    picked the wrong one of the two patterns.
+  - `SettingsView` has the same shape (`readableContentWidth()` on the Form) but
+    is harmless on Mac now: the Settings window is a fixed 580pt, below the
+    720pt cap, so nothing is constrained and no scroller floats.
 - 📋 **Deliberately ONE change, then re-judge.** Typography is still iPhone-sized
   on Mac ("August 2026" ~28pt, income ~34pt) and row height is generous for a
   pointer-driven list. Both are real, but most of the "stretched" feeling comes
