@@ -737,6 +737,68 @@ forever until you remember to switch it off.
   income-merge fix wants, so there's one promotion instead of three.
 - **Effort:** ~half day once `applyRule` is sorted.
 
+### 💡 Payment cards — tag a transaction with the card you used (idea, 2026-08-06)
+User: *"add a credit card (manually, NOT connecting to it), then when making a
+transaction, the option to add what card it was spent on… displayed inline with
+the transaction, just like how a memo shows up. Maybe an abbreviation so it
+doesn't take a ton of room. Sort based off the card as well. Add cards in
+settings (name, maybe last 4 digits), then a simple picker when adding a
+transaction. Optional, not required."*
+
+**Explicit non-goal: this is a label, not an account.** No balances, no
+statement periods, no "how much do I owe on the Amex." It doesn't touch budgets
+or the 50/30/20 math at all — a transaction counts exactly the same whichever
+card carried it. Worth writing down because balance tracking is the obvious next
+ask and it's a *much* bigger feature (it would need its own data model, payment
+reconciliation, and a real answer for transfers).
+
+- **New model `PaymentCard`:** `id`, `name` ("Chase Sapphire"), `abbrev`
+  (short tag, cap ~6 chars), `last4` (optional), `isArchived`, `createdAt`.
+  Must be added to the `Schema([...])` list in `AppModelContainer`.
+- **Link by ID, NOT a SwiftData relationship.** `Transaction.cardID: UUID?`,
+  mirroring the existing `recurringRuleID`. Two reasons: it matches the pattern
+  the codebase already chose for CloudKit's sake, and a relationship with the
+  wrong delete rule could **cascade-delete transactions** when a card is
+  removed. A loose id can't. Deleting a card is then survivable by definition —
+  the worst case is an unresolvable id, which renders as no card.
+- **Resolve once, not per row.** `BudgetView` holds `@Query var cards` and
+  builds a `[UUID: PaymentCard]` map, passing the resolved abbreviation into
+  `TransactionRow`. A per-row lookup would be O(rows × cards) on every render.
+- **Display — reuse the memo's caption line**, card BEFORE memo:
+  `⟳ Aug 5 · CSP · Big dinner`. Order matters: the card is fixed-width
+  structured data, the memo is free text that already truncates, so putting the
+  card first means the truncation still lands on the thing designed to absorb
+  it. ⚠️ That line now carries up to four things on an iPhone — check it on the
+  smallest device before committing to plain text; the fallback is a small
+  muted chip for the abbreviation, or dropping the card from the row and
+  showing it only in the edit sheet.
+- **Abbreviation:** auto-derive from initials ("Chase Sapphire" → "CS") or
+  `•1234` when only last4 is given, always user-editable. Never auto-generate
+  something the user can't override.
+- **Settings → Cards** is a straight clone of the Recurring screen's shape:
+  `CardsView` (list, swipe to delete, tap to edit) + `CardEditor` (name,
+  abbreviation, last 4). That pattern already exists and works, so this is
+  mostly assembly.
+- **Picker in Add/Edit:** a `Picker` with "None" first, in the second section
+  next to Date. Optional by default — no card is the normal case.
+- **Sorting:** new `TxnSort` case, grouping by card name with **unassigned
+  last** (an empty group at the top would be noise). 💭 *Filtering* by card is
+  arguably more useful than sorting ("show me everything on the Amex"), but the
+  filter pill row is already spoken for by categories — a second filter
+  dimension is a separate design problem, not a freebie. Ship sort first.
+- **Archive rather than hard-delete** where possible: `isArchived` hides a card
+  from the picker while history still resolves its name. If a hard delete stays,
+  its confirmation must say old transactions will lose the label.
+- **Round-trip:** `ExportData` gains `cards: [CardDTO]?`, `TransactionDTO` gains
+  `cardID` — both `decodeIfPresent`, so pre-1.3 backups import unchanged.
+- 🔗 **Natural follow-on:** a `defaultCardID` on `RecurringRule` (rent always
+  goes on the same card), and the AI command bar learning "on the amex". Both
+  are cheap once the model exists; neither is v1.
+- ⚠️ **CloudKit:** a new record type *plus* a new optional field on
+  `Transaction`. Additive and safe, but it needs its own Dev→Production
+  promotion unless it lands before 1.2 ships alongside `memo` and `endKey`.
+- **Effort:** ~1 day.
+
 ### v1.5 — advanced features
 After the platforms are out, pull a focused few from the sections below
 (reporting, budget rollover, watch complications, adjustable alert threshold,
