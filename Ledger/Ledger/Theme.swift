@@ -125,11 +125,23 @@ struct MoneyField: View {
 
     private static var symbol: String { Locale.current.currencySymbol ?? "$" }
 
+    /// On macOS a TextField's title renders as the form LABEL and the prompt
+    /// as placeholder text, so echoing the placeholder produced a row reading
+    /// "Amount            Amount". Show the zero value there instead. iOS hides
+    /// labels, so it keeps the placeholder as its only visible hint.
+    private var fieldPrompt: Text {
+        #if os(macOS)
+        Text(Self.symbol + "0")
+        #else
+        Text(placeholder)
+        #endif
+    }
+
     var body: some View {
         // Title + prompt: callers that show the title as a macOS form label
         // keep it; callers that hide labels still get a real placeholder
         // (on macOS a title alone renders as a label, not placeholder text).
-        TextField(placeholder, text: $text, prompt: Text(placeholder))
+        TextField(placeholder, text: $text, prompt: fieldPrompt)
             #if os(iOS)
             .keyboardType(.decimalPad)
             #endif

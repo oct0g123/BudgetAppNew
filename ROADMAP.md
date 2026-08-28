@@ -577,6 +577,27 @@ All `#if os(macOS)`; nothing outside a gate. Shipped:
   while the other three tabs are constrained. Not touched: iPad ships that way
   today and this was a Mac complaint. Worth a deliberate decision later rather
   than a drive-by change.
+- ✅ **Sheet polish + ⌘N fix (2026-08-06, second screenshot round).**
+  - **⌘N did nothing while ⌘1–3 worked.** Not the focused-value plumbing (⌘1–3
+    proves that works) — a `WindowGroup` **automatically binds File ▸ New Window
+    to ⌘N**, so the `CommandGroup(after: .newItem)` item asking for ⌘N was a
+    duplicate binding and the system's won. Switched to
+    `CommandGroup(replacing: .newItem)`, which claims ⌘N and drops New Window.
+    Right trade here: in a budgeting app "New" means a transaction, and a second
+    window onto the same synced data earns very little.
+  - **"Amount            Amount"** in the add sheet: on macOS a TextField's
+    *title* becomes the form label and the *prompt* becomes placeholder text, so
+    passing the same string for both printed it twice. The money field now
+    prompts with the zero value (`$0`) on macOS; the Note row prompts "Optional"
+    since "Note" is already its label. iOS keeps today's text — it hides labels,
+    so the placeholder is its only hint.
+  - Mac sheets resized for a pointer: add/edit 520×470, recurring editor
+    520×470, card editor 460×360 (were 400×320/340 — phone-sized).
+  - ⚠️ **Caught two of my own edits before commit:** `#if` can't sit inside a
+    function's argument list, nor between a base expression and its trailing
+    modifier chain. Both became computed properties returning `Text`. Worth
+    remembering — `#if` in Swift is statement/declaration level, not expression
+    level, and the compiler that would have caught it isn't in this environment.
 - ⚠️ **The 2026-08-06 screenshots were from a PRE-Phase-1 build** (Settings still
   a sidebar tab; income footer still the old "Carried forward to each new
   month"). So they show none of Phases 1–2 — no Settings window, no toolbar

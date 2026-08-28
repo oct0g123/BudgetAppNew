@@ -34,6 +34,16 @@ struct AddTransactionView: View {
         PaymentCard.uniqued(cards).filter { !$0.isArchived || $0.id == cardID }
     }
 
+    /// Same label/placeholder duplication as the money field: on macOS "Note"
+    /// is already the row's label, so the prompt mustn't repeat it.
+    private var notePrompt: Text {
+        #if os(macOS)
+        Text("Optional")
+        #else
+        Text("Note (optional)")
+        #endif
+    }
+
     private var isEditing: Bool { existing != nil }
     private var isValid: Bool { (amount ?? 0) > 0 }
 
@@ -84,10 +94,7 @@ struct AddTransactionView: View {
 
                     // Optional memo. Grows to a few lines only if you write
                     // more, so the sheet's height is unchanged when unused.
-                    TextField("Note",
-                              text: $memo,
-                              prompt: Text("Note (optional)"),
-                              axis: .vertical)
+                    TextField("Note", text: $memo, prompt: notePrompt, axis: .vertical)
                         .lineLimit(1...3)
                         .foregroundStyle(DS.text)
 
@@ -143,7 +150,7 @@ struct AddTransactionView: View {
         .presentationDetents([.medium, .large])
         #endif
         #if os(macOS)
-        .frame(minWidth: 400, minHeight: 320)
+        .frame(minWidth: 520, minHeight: 470)
         #endif
     }
 

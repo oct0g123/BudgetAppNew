@@ -280,9 +280,13 @@ struct LedgerCommands: Commands {
     @FocusedValue(\.selectTab) private var selectTab
 
     var body: some Commands {
-        // `after:` and NOT `replacing:` — replacing the .newItem group would
-        // delete File ▸ New Window along with it.
-        CommandGroup(after: .newItem) {
+        // `replacing:` — a WindowGroup automatically binds File ▸ New Window
+        // to ⌘N, so an `after:` item asking for ⌘N is a DUPLICATE binding and
+        // the system's wins (which is why ⌘N did nothing while ⌘1–3 worked).
+        // Replacing the group takes ⌘N and drops New Window, which is the right
+        // trade here: in a budgeting app "New" means a transaction, and a
+        // second window of the same synced data earns very little.
+        CommandGroup(replacing: .newItem) {
             Button("New Transaction") { newTransaction?() }
                 .keyboardShortcut("n", modifiers: .command)
                 .disabled(newTransaction == nil)

@@ -259,7 +259,7 @@ struct RecurringEditor: View {
         .presentationDetents([.medium, .large])
         #endif
         #if os(macOS)
-        .frame(minWidth: 400, minHeight: 340)
+        .frame(minWidth: 520, minHeight: 470)
         #endif
     }
 
@@ -497,7 +497,7 @@ struct CardEditor: View {
         }
         .tint(DS.gold)
         #if os(macOS)
-        .frame(minWidth: 400, minHeight: 320)
+        .frame(minWidth: 460, minHeight: 360)
         #endif
     }
 
