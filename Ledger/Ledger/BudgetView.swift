@@ -73,6 +73,16 @@ struct BudgetView: View {
                 }
             }
             .scrollContentBackground(.hidden)
+            // Budget was the ONLY screen that didn't constrain its width —
+            // Insights, History and Settings all call this. On a wide Mac
+            // window that left the bars ~830pt long and pinned the figures
+            // against the window edge, while every other tab sat in a tidy
+            // centred column. Same modifier, same 720pt, so it now matches.
+            // (iOS/iPadOS deliberately untouched: they ship full-bleed today
+            // and this is a Mac-only complaint.)
+            #if os(macOS)
+            .readableContentWidth()
+            #endif
             .screenBackground()
             #if os(iOS)
             .overlay(alignment: .bottomTrailing) { addButton }

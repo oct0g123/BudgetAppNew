@@ -555,7 +555,34 @@ All `#if os(macOS)`; nothing outside a gate. Shipped:
   binaries, but it does change the *Mac* binary — so don't submit a Mac build
   mid-revamp. Land 1.2 everywhere, then treat the Mac revamp as 1.3.
 
-#### Phase 3 — visual density (~1 day, do LAST, needs screenshots)
+#### Phase 3 — visual density 🚧 **STARTED 2026-08-06** (screenshots received)
+- ✅ **Root cause of "the Budget screen needs the most work" found and fixed in
+  one line.** `HistoryView`, `InsightsView` and `SettingsView` all call
+  `readableContentWidth()` (720pt, centred). **`BudgetView` never did.** On a
+  985pt Mac window it stretched to fill, so progress bars ran ~830pt, the
+  `$2,901.00 / $3,311.50` and `88% used` figures sat ~4pt from the window edge,
+  the month header and its chevrons ended up ~800pt apart, and the income slab
+  read as full-bleed rather than a card. Every *other* tab already sat in a tidy
+  column — which is exactly why the user described the others as cohesive and
+  this one as wrong. Now `#if os(macOS) .readableContentWidth()`.
+- 📋 **Deliberately ONE change, then re-judge.** Typography is still iPhone-sized
+  on Mac ("August 2026" ~28pt, income ~34pt) and row height is generous for a
+  pointer-driven list. Both are real, but most of the "stretched" feeling comes
+  from width, and changing five things at once means learning nothing about
+  which mattered. Next screenshot decides whether type/density work is needed.
+- ⚠️ **Type/density work, if it happens, must be macOS-scoped.** Editing
+  `Typography.baseSize()` or the `Spacing` tokens to fix Mac reflows *every*
+  platform — see the revamp's ground rule.
+- 💭 **Same inconsistency exists on iPadOS** — Budget is full-bleed there too
+  while the other three tabs are constrained. Not touched: iPad ships that way
+  today and this was a Mac complaint. Worth a deliberate decision later rather
+  than a drive-by change.
+- ⚠️ **The 2026-08-06 screenshots were from a PRE-Phase-1 build** (Settings still
+  a sidebar tab; income footer still the old "Carried forward to each new
+  month"). So they show none of Phases 1–2 — no Settings window, no toolbar
+  safe-to-spend, no Sync button. Re-shoot after pulling before judging chrome.
+
+#### Phase 3 spec (as written before screenshots)
 Typography is sized for touch and reads large on Mac; `.formStyle(.grouped)`
 with custom `DS.rowBackground()` fills looks transplanted; toolbar spacing
 wants Mac-specific tuning. **Blocked on Mac screenshots of Budget + Settings**
