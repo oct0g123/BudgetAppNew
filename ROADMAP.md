@@ -737,7 +737,31 @@ forever until you remember to switch it off.
   income-merge fix wants, so there's one promotion instead of three.
 - **Effort:** ~half day once `applyRule` is sorted.
 
-### 💡 Payment cards — tag a transaction with the card you used (idea, 2026-08-06)
+### ✅ Payment cards **BUILT 2026-08-06** — shipping in 1.2 (user's call)
+Built as specced below, going into **1.2 rather than 1.3**. I recommended the
+opposite (ship the tested release, take the extra CloudKit promotion later);
+user chose to combine, so 1.2 now carries three new schema items — `memo`,
+`endKey`, and `PaymentCard` + `Transaction.cardID` — in one promotion.
+- **Chip, not plain text** — user's call, reversing my recommendation, on the
+  argument that the outline breaks the caption line up for readability. It's a
+  fair read: that line can already carry ⟳ + date + memo.
+- ⚠️ **Deviation from the mockup: no group headers in the by-card sort.**
+  Grouping means splitting the transaction `ForEach` into per-card `Section`s,
+  which would duplicate the row builder, its context menu, `onDelete` and the
+  undo wiring — the busiest, most recently-broken screen in the app. It sorts
+  by card name with unassigned last, and the chip STAYS visible in that view
+  (the mockup hid it, relying on headers). Headers remain a clean follow-up.
+- Picker is hidden entirely until at least one card exists, so the add sheet is
+  untouched for anyone not using the feature. Archived cards stay selectable on
+  a transaction that already uses one, so editing old rows never drops a label.
+- `CardsView` + `CardEditor` are a new FILE. ⚠️ The project uses synchronized
+  root groups so it should be picked up automatically — if the build says
+  "cannot find CardsView in scope", drag it into the target.
+- Round-trip: `CardDTO` in the archive, `cardID` on `TransactionDTO`, both
+  `decodeIfPresent`; CSV gains an export-only `card` column (names, not ids —
+  a CSV is for reading in a spreadsheet). `resetAllData` clears cards too.
+
+#### Original design note (idea, 2026-08-06)
 User: *"add a credit card (manually, NOT connecting to it), then when making a
 transaction, the option to add what card it was spent on… displayed inline with
 the transaction, just like how a memo shows up. Maybe an abbreviation so it

@@ -12,6 +12,7 @@ import SwiftData
 struct AddTransactionView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: \PaymentCard.createdAt) private var cards: [PaymentCard]
 
     /// Target month for a NEW transaction. Ignored when editing.
     var month: MonthRecord? = nil
@@ -23,8 +24,15 @@ struct AddTransactionView: View {
     @State private var category: BudgetCategory = .needs
     @State private var date = Date()
     @State private var memo = ""
+    @State private var cardID: UUID?
     @State private var makeRecurring = false
     @State private var saveCount = 0
+
+    /// Archived cards stay selectable only if this transaction already uses
+    /// one, so editing an old transaction never silently drops its card.
+    private var pickableCards: [PaymentCard] {
+        cards.filter { !$0.isArchived || $0.id == cardID }
+    }
 
     private var isEditing: Bool { existing != nil }
     private var isValid: Bool { (amount ?? 0) > 0 }
@@ -61,6 +69,18 @@ struct AddTransactionView: View {
 
                     DatePicker("Date", selection: $date, displayedComponents: .date)
                         .foregroundStyle(DS.text)
+
+                    // Optional. Hidden entirely until at least one card exists,
+                    // so the sheet is unchanged for anyone not using them.
+                    if !pickableCards.isEmpty {
+                        Picker("Card", selection: $cardID) {
+                            Text("None").tag(UUID?.none)
+                            ForEach(pickableCards) { card in
+                                Text(card.name).tag(UUID?.some(card.id))
+                            }
+                        }
+                        .tint(DS.textMuted)
+                    }
 
                     // Optional memo. Grows to a few lines only if you write
                     // more, so the sheet's height is unchanged when unused.
@@ -134,6 +154,7 @@ struct AddTransactionView: View {
         category = existing.category
         date = existing.date
         memo = existing.memo
+        cardID = existing.cardID
     }
 
     private func save() {
@@ -146,6 +167,7 @@ struct AddTransactionView: View {
             existing.category = category
             existing.date = date
             existing.memo = trimmedMemo
+            existing.cardID = cardID
             // If the edited date moved into a different month, re-home the
             // transaction so it's counted under the month it now belongs to —
             // totals are computed per MonthRecord, so leaving the old `month`
@@ -181,6 +203,7 @@ struct AddTransactionView: View {
                                       category: category,
                                       date: date,
                                       memo: trimmedMemo,
+                                      cardID: cardID,
                                       recurringRuleID: rule.id)
                 txn.month = target
                 context.insert(txn)
@@ -192,6 +215,7 @@ struct AddTransactionView: View {
                                              category: category,
                                              date: date,
                                              memo: trimmedMemo,
+                                             cardID: cardID,
                                              in: context)
             }
             BudgetAlerts.evaluate(target)

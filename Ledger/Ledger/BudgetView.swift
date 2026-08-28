@@ -18,6 +18,7 @@ struct BudgetView: View {
 
     @AppStorage("viewedMonthKey") private var viewedKey: String = MonthKey.current
     @Query(sort: \MonthRecord.key) private var months: [MonthRecord]
+    @Query(sort: \PaymentCard.createdAt) private var cards: [PaymentCard]
 
     @AppStorage("showBucketUsage") private var showBucketUsage = true
     @AppStorage("hasCompletedOnboarding") private var hasOnboarded = false
@@ -44,6 +45,17 @@ struct BudgetView: View {
     /// Drives the Mac toolbar's Sync button spinner.
     @State private var syncing = false
     #endif
+
+    /// Resolved once per render instead of per row — a lookup inside
+    /// `TransactionRow` would be O(rows × cards) every time the list redraws.
+    /// Built with a loop rather than `Dictionary(uniqueKeysWithValues:)`, which
+    /// TRAPS on duplicate keys — and duplicate records are exactly what the
+    /// CloudKit merge system exists to clean up.
+    private var cardsByID: [UUID: PaymentCard] {
+        var map: [UUID: PaymentCard] = [:]
+        for card in cards { map[card.id] = card }
+        return map
+    }
 
     private var currentMonth: MonthRecord? {
         // Canonical pick: a duplicate month waiting out its delete-grace
@@ -511,7 +523,8 @@ struct BudgetView: View {
                     Button {
                         if !month.isClosed { editingTransaction = txn }
                     } label: {
-                        TransactionRow(txn: txn)
+                        TransactionRow(txn: txn,
+                                       cardTag: txn.cardID.flatMap { cardsByID[$0]?.tag })
                     }
                     .buttonStyle(.plain)
                     .hoverHighlight()
@@ -546,14 +559,33 @@ struct BudgetView: View {
     private func filteredTransactions(_ month: MonthRecord) -> [Transaction] {
         let query = debouncedSearch.trimmingCharacters(in: .whitespaces).lowercased()
         let searching = !query.isEmpty
-        return month.txns
+        let base = month.txns
             // While searching, ignore the category pill so a leftover filter
             // can't hide matches that live in other categories.
             .filter { searching || filter == nil || $0.category == filter }
             .filter { query.isEmpty
                 || $0.desc.lowercased().contains(query)
                 || $0.memo.lowercased().contains(query) }
-            .sorted(by: sortPredicate)
+        guard sort == .byCard else { return base.sorted(by: sortPredicate) }
+        // Card sorting needs names, so it's done here where the map is already
+        // built — resolving inside `sortPredicate` would rebuild it on every
+        // comparison. Unassigned sinks to the bottom: most transactions won't
+        // have a card, and a big "no card" block on top would bury the rest.
+        let map = cardsByID
+        return base.sorted { a, b in
+            let aName = a.cardID.flatMap { map[$0]?.name }
+            let bName = b.cardID.flatMap { map[$0]?.name }
+            switch (aName, bName) {
+            case let (lhs?, rhs?):
+                if lhs != rhs {
+                    return lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
+                }
+                return a.date > b.date
+            case (_?, nil):  return true
+            case (nil, _?):  return false
+            case (nil, nil): return a.date > b.date
+            }
+        }
     }
 
     private func sortPredicate(_ a: Transaction, _ b: Transaction) -> Bool {
@@ -567,6 +599,8 @@ struct BudgetView: View {
             let bRecurring = b.recurringRuleID != nil
             if aRecurring != bRecurring { return aRecurring }  // recurring first
             return a.date > b.date                             // then newest within each group
+        case .byCard:
+            return false   // handled in filteredTransactions, which has the names
         }
     }
 
@@ -654,7 +688,7 @@ struct BudgetView: View {
         guard !toDelete.isEmpty else { return }
         pendingUndo = toDelete.map {
             DeletedTxn(desc: $0.desc, amount: $0.amount, category: $0.category,
-                       date: $0.date, memo: $0.memo,
+                       date: $0.date, memo: $0.memo, cardID: $0.cardID,
                        recurringRuleID: $0.recurringRuleID, month: $0.month)
         }
         for txn in toDelete { LedgerService.delete(txn, in: context) }
@@ -674,7 +708,7 @@ struct BudgetView: View {
         for d in pendingUndo {
             guard let month = d.month else { continue }
             let txn = Transaction(desc: d.desc, amount: d.amount, category: d.category,
-                                  date: d.date, memo: d.memo,
+                                  date: d.date, memo: d.memo, cardID: d.cardID,
                                   recurringRuleID: d.recurringRuleID)
             txn.month = month
             context.insert(txn)
@@ -735,7 +769,7 @@ struct BudgetView: View {
 // MARK: - Transaction sort order
 
 enum TxnSort: CaseIterable {
-    case dateDesc, dateAsc, amountDesc, amountAsc, recurringFirst
+    case dateDesc, dateAsc, amountDesc, amountAsc, recurringFirst, byCard
 
     var label: String {
         switch self {
@@ -744,6 +778,7 @@ enum TxnSort: CaseIterable {
         case .amountDesc:      return "Largest first"
         case .amountAsc:       return "Smallest first"
         case .recurringFirst:  return "Recurring first"
+        case .byCard:          return "By card"
         }
     }
 }
@@ -757,6 +792,7 @@ struct DeletedTxn: Identifiable {
     var category: BudgetCategory
     var date: Date
     var memo: String
+    var cardID: UUID?
     var recurringRuleID: UUID?
     var month: MonthRecord?
 }
@@ -1103,6 +1139,8 @@ struct CommandBarView: View {
 
 struct TransactionRow: View {
     let txn: Transaction
+    /// Short card tag ("CSP"), resolved by the caller.
+    var cardTag: String? = nil
 
     /// Generated from (or saved as) a recurring rule.
     private var isRecurring: Bool { txn.recurringRuleID != nil }
@@ -1129,6 +1167,24 @@ struct TransactionRow: View {
                         .font(Typography.mono(.caption))
                         .foregroundStyle(DS.textMuted)
                         .fixedSize()
+                    // A chip, not plain text: this line can already carry a
+                    // repeat glyph, a date and a memo, and the outline gives
+                    // the eye somewhere to break. Fixed-size so a long memo
+                    // truncates instead of squeezing the card.
+                    if let cardTag {
+                        Text(cardTag)
+                            .font(Typography.mono(.caption2, weight: .medium))
+                            .foregroundStyle(DS.textMuted)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(DS.surfaceHighStyle,
+                                        in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                    .stroke(DS.hairline, lineWidth: 1)
+                            )
+                            .fixedSize()
+                    }
                     // The memo rides the existing caption line rather than
                     // adding a third row, so rows without one are unchanged.
                     if !txn.memo.isEmpty {
@@ -1150,6 +1206,6 @@ struct TransactionRow: View {
         // it spoken explicitly alongside the description, amount, and date.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(txn.desc.isEmpty ? txn.category.title : txn.desc), \(Money.string(txn.amount)), \(txn.category.title), \(txn.date.formatted(.dateTime.month().day()))\(isRecurring ? ", repeats monthly" : "")\(txn.memo.isEmpty ? "" : ", note: \(txn.memo)")")
+            "\(txn.desc.isEmpty ? txn.category.title : txn.desc), \(Money.string(txn.amount)), \(txn.category.title), \(txn.date.formatted(.dateTime.month().day()))\(isRecurring ? ", repeats monthly" : "")\(cardTag.map { ", card \($0)" } ?? "")\(txn.memo.isEmpty ? "" : ", note: \(txn.memo)")")
     }
 }

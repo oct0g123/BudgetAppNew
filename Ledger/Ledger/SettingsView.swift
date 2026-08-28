@@ -22,6 +22,7 @@ struct SettingsView: View {
     @Query private var allSettings: [AppSettings]
     @Query(sort: \MonthRecord.key) private var months: [MonthRecord]
     @Query(sort: \RecurringRule.createdAt) private var rules: [RecurringRule]
+    @Query(sort: \PaymentCard.createdAt) private var cards: [PaymentCard]
 
     @AppStorage("showBucketUsage") private var showBucketUsage = true
     @AppStorage("appLockEnabled") private var appLockEnabled = false
@@ -648,8 +649,15 @@ struct SettingsView: View {
             } label: {
                 Label("Recurring Transactions", systemImage: "arrow.triangle.2.circlepath")
             }
+            NavigationLink {
+                CardsView()
+            } label: {
+                Label("Cards", systemImage: "creditcard")
+            }
         } header: {
-            Text("Recurring")
+            Text("Recurring & Cards")
+        } footer: {
+            Text("Cards let you tag a transaction with how you paid. Labels only — Ledger never connects to an account.")
         }
         .listRowBackground(DS.rowBackground())
     }
@@ -796,7 +804,8 @@ struct SettingsView: View {
     }
 
     private func archive() -> ExportData {
-        LedgerArchive.makeExport(settings: allSettings.first, months: months, rules: rules)
+        LedgerArchive.makeExport(settings: allSettings.first, months: months,
+                                 rules: rules, cards: cards)
     }
 
     private func jsonData() -> Data {

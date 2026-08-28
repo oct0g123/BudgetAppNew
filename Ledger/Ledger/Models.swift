@@ -49,6 +49,12 @@ final class Transaction {
     /// bar's parsed draft already uses `note` for the *description*.
     var memo: String = ""
 
+    /// Which `PaymentCard` paid for this, if any. A loose id rather than a
+    /// SwiftData relationship, mirroring `recurringRuleID`: a relationship with
+    /// the wrong delete rule could cascade-delete transactions when a card is
+    /// removed. An unresolvable id simply renders as no card.
+    var cardID: UUID?
+
     /// Set when this transaction was generated from a recurring rule, so the
     /// same rule isn't applied to the same month twice.
     var recurringRuleID: UUID?
@@ -62,6 +68,7 @@ final class Transaction {
          category: BudgetCategory,
          date: Date = Date(),
          memo: String = "",
+         cardID: UUID? = nil,
          recurringRuleID: UUID? = nil) {
         self.id = id
         self.desc = desc
@@ -69,6 +76,7 @@ final class Transaction {
         self.categoryRaw = category.rawValue
         self.date = date
         self.memo = memo
+        self.cardID = cardID
         self.recurringRuleID = recurringRuleID
     }
 
@@ -174,6 +182,58 @@ final class MonthRecord {
         let budget = anchor / Double(window.daysToMonthEnd) * Double(window.days)
         return (budget, spentThisWeek, budget - spentThisWeek)
     }
+}
+
+// MARK: - PaymentCard
+
+/// A card the user types in by hand. Ledger never connects to an account and
+/// never tracks balances — this is a LABEL on a transaction, nothing more, and
+/// it has no effect on budgets or the 50/30/20 math.
+@Model
+final class PaymentCard {
+    var id: UUID = UUID()
+    var name: String = ""
+    /// Short tag shown on each transaction row, e.g. "CSP". Capped in the
+    /// editor so a long one can't crowd the row.
+    var abbrev: String = ""
+    /// Optional, purely for telling two similar cards apart.
+    var last4: String = ""
+    /// Archived cards drop out of the picker but still resolve for history, so
+    /// past transactions never silently lose their label.
+    var isArchived: Bool = false
+    var createdAt: Date = Date()
+
+    init(id: UUID = UUID(),
+         name: String,
+         abbrev: String = "",
+         last4: String = "",
+         isArchived: Bool = false,
+         createdAt: Date = Date()) {
+        self.id = id
+        self.name = name
+        self.abbrev = abbrev
+        self.last4 = last4
+        self.isArchived = isArchived
+        self.createdAt = createdAt
+    }
+
+    /// What actually appears on a transaction row.
+    var tag: String {
+        if !abbrev.isEmpty { return abbrev }
+        if !last4.isEmpty { return "•" + last4 }
+        return Self.suggestedAbbrev(for: name)
+    }
+
+    /// "Chase Sapphire" → "CS". A suggestion only — always editable, because a
+    /// generated label the user can't override is worse than no label.
+    static func suggestedAbbrev(for name: String) -> String {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        let initials = trimmed.split(separator: " ").prefix(3).compactMap(\.first)
+        if initials.isEmpty { return String(trimmed.prefix(3)).uppercased() }
+        return String(String(initials).uppercased().prefix(maxAbbrev))
+    }
+
+    static let maxAbbrev = 6
 }
 
 // MARK: - RecurringRule

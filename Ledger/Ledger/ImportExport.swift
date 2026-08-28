@@ -14,6 +14,28 @@ import CryptoKit
 
 // MARK: - DTOs
 
+struct CardDTO: Codable {
+    var id: UUID = UUID()
+    var name: String = ""
+    var abbrev: String = ""
+    var last4: String = ""
+    var isArchived: Bool = false
+
+    init(id: UUID, name: String, abbrev: String, last4: String, isArchived: Bool) {
+        self.id = id; self.name = name; self.abbrev = abbrev
+        self.last4 = last4; self.isArchived = isArchived
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        abbrev = try c.decodeIfPresent(String.self, forKey: .abbrev) ?? ""
+        last4 = try c.decodeIfPresent(String.self, forKey: .last4) ?? ""
+        isArchived = try c.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
+    }
+}
+
 struct ExportData: Codable {
     var version: Int = 1
     var exportedAt: Date = Date()
@@ -21,19 +43,22 @@ struct ExportData: Codable {
     var months: [MonthDTO] = []
     /// Optional for backward/forward compatibility with older exports.
     var rules: [RuleDTO]? = []
+    /// Payment cards. Optional for the same reason — pre-1.2 files have none.
+    var cards: [CardDTO]? = []
     /// Whether the decoded file actually carried a `settings` object. Imports
     /// only overwrite the user's settings when this is true — a partial file
     /// without settings must not reset income/split to defaults. Not encoded.
     var hadSettings: Bool = true
 
     private enum CodingKeys: String, CodingKey {
-        case version, exportedAt, settings, months, rules
+        case version, exportedAt, settings, months, rules, cards
     }
 
     init(version: Int = 1, exportedAt: Date = Date(), settings: SettingsDTO,
-         months: [MonthDTO], rules: [RuleDTO]? = []) {
+         months: [MonthDTO], rules: [RuleDTO]? = [], cards: [CardDTO]? = []) {
         self.version = version; self.exportedAt = exportedAt
-        self.settings = settings; self.months = months; self.rules = rules
+        self.settings = settings; self.months = months
+        self.rules = rules; self.cards = cards
     }
 
     init(from decoder: Decoder) throws {
@@ -45,6 +70,7 @@ struct ExportData: Codable {
             ?? SettingsDTO(defaultIncome: 0, needsPct: 50, savingsPct: 20, wantsPct: 30)
         months = try c.decodeIfPresent([MonthDTO].self, forKey: .months) ?? []
         rules = try c.decodeIfPresent([RuleDTO].self, forKey: .rules) ?? []
+        cards = try c.decodeIfPresent([CardDTO].self, forKey: .cards) ?? []
     }
 
     func encode(to encoder: Encoder) throws {
@@ -54,6 +80,7 @@ struct ExportData: Codable {
         try c.encode(settings, forKey: .settings)
         try c.encode(months, forKey: .months)
         try c.encodeIfPresent(rules, forKey: .rules)
+        try c.encodeIfPresent(cards, forKey: .cards)
     }
 }
 
@@ -153,16 +180,19 @@ struct TransactionDTO: Codable {
     var date: Date = Date()
     /// Optional free-text memo. Absent in pre-1.2 backups, so it decodes to "".
     var memo: String = ""
+    /// Which card paid for it. Absent in pre-1.2 backups → nil.
+    var cardID: UUID?
     /// Link back to the recurring rule that materialized this transaction.
     /// Round-tripped so a restore doesn't break rule dedupe (a lost link makes
     /// a later rule edit re-materialize the charge into open months).
     var recurringRuleID: UUID?
 
     init(id: UUID, desc: String, amount: Double, category: String, date: Date,
-         memo: String = "", recurringRuleID: UUID? = nil) {
+         memo: String = "", cardID: UUID? = nil, recurringRuleID: UUID? = nil) {
         self.id = id; self.desc = desc; self.amount = amount
         self.category = category; self.date = date
         self.memo = memo
+        self.cardID = cardID
         self.recurringRuleID = recurringRuleID
     }
 
@@ -176,6 +206,7 @@ struct TransactionDTO: Codable {
         category = (try c.decodeIfPresent(String.self, forKey: .category) ?? "needs").lowercased()
         date = try c.decodeIfPresent(Date.self, forKey: .date) ?? Date()
         memo = try c.decodeIfPresent(String.self, forKey: .memo) ?? ""
+        cardID = try c.decodeIfPresent(UUID.self, forKey: .cardID)
         recurringRuleID = try c.decodeIfPresent(UUID.self, forKey: .recurringRuleID)
     }
 
@@ -187,11 +218,12 @@ struct TransactionDTO: Codable {
         try c.encode(category, forKey: .category)
         try c.encode(date, forKey: .date)
         if !memo.isEmpty { try c.encode(memo, forKey: .memo) }
+        try c.encodeIfPresent(cardID, forKey: .cardID)
         try c.encodeIfPresent(recurringRuleID, forKey: .recurringRuleID)
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, desc, description, amount, category, date, memo, recurringRuleID
+        case id, desc, description, amount, category, date, memo, cardID, recurringRuleID
     }
 }
 
@@ -237,7 +269,8 @@ enum LedgerArchive {
 
     static func makeExport(settings: AppSettings?,
                            months: [MonthRecord],
-                           rules: [RecurringRule] = []) -> ExportData {
+                           rules: [RecurringRule] = [],
+                           cards: [PaymentCard] = []) -> ExportData {
         let settingsDTO = SettingsDTO(
             defaultIncome: settings?.defaultIncome ?? 0,
             needsPct: settings?.defaultNeedsPct ?? 50,
@@ -260,6 +293,7 @@ enum LedgerArchive {
                         .map { TransactionDTO(id: $0.id, desc: $0.desc, amount: $0.amount,
                                               category: $0.categoryRaw, date: $0.date,
                                               memo: $0.memo,
+                                              cardID: $0.cardID,
                                               recurringRuleID: $0.recurringRuleID) }
                 )
             }
@@ -269,7 +303,12 @@ enum LedgerArchive {
                     isActive: rule.isActive, startKey: rule.startKey,
                     endKey: rule.endKey)
         }
-        return ExportData(settings: settingsDTO, months: monthDTOs, rules: ruleDTOs)
+        let cardDTOs = cards.map { card in
+            CardDTO(id: card.id, name: card.name, abbrev: card.abbrev,
+                    last4: card.last4, isArchived: card.isArchived)
+        }
+        return ExportData(settings: settingsDTO, months: monthDTOs,
+                          rules: ruleDTOs, cards: cardDTOs)
     }
 
     // MARK: JSON
@@ -415,8 +454,12 @@ enum LedgerArchive {
     // MARK: CSV (transactions, flat)
 
     static func encodeCSV(_ data: ExportData) -> String {
-        var rows = ["month,date,description,category,amount,note"]
+        var rows = ["month,date,description,category,amount,note,card"]
         let iso = ISO8601DateFormatter()
+        // Names, not ids — a CSV is for reading in a spreadsheet. Import still
+        // reads only the first six columns, so this is export-only.
+        var cardNames: [UUID: String] = [:]
+        for card in (data.cards ?? []) { cardNames[card.id] = card.name }
         for month in data.months {
             for txn in month.transactions {
                 let fields = [
@@ -425,7 +468,8 @@ enum LedgerArchive {
                     txn.desc,
                     txn.category,
                     String(format: "%.2f", txn.amount),
-                    txn.memo
+                    txn.memo,
+                    txn.cardID.flatMap { cardNames[$0] } ?? ""
                 ].map(csvEscape)
                 rows.append(fields.joined(separator: ","))
             }

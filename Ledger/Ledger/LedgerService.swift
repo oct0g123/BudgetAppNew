@@ -67,6 +67,16 @@ enum LedgerService {
         return record
     }
 
+    // MARK: Payment cards
+
+    /// Every card, archived included — history has to resolve archived ones.
+    static func allCards(in context: ModelContext) -> [PaymentCard] {
+        let descriptor = FetchDescriptor<PaymentCard>(
+            sortBy: [SortDescriptor(\.createdAt)]
+        )
+        return (try? context.fetch(descriptor)) ?? []
+    }
+
     // MARK: Recurring rules
 
     static func allRecurringRules(in context: ModelContext) -> [RecurringRule] {
@@ -150,9 +160,10 @@ enum LedgerService {
                                category: BudgetCategory,
                                date: Date,
                                memo: String = "",
+                               cardID: UUID? = nil,
                                in context: ModelContext) {
         let txn = Transaction(desc: desc, amount: amount, category: category,
-                              date: date, memo: memo)
+                              date: date, memo: memo, cardID: cardID)
         txn.month = month
         context.insert(txn)
         BudgetAlerts.evaluate(month)
@@ -477,10 +488,24 @@ enum LedgerService {
                                       category: BudgetCategory(rawValue: txnDTO.category) ?? .needs,
                                       date: txnDTO.date,
                                       memo: txnDTO.memo,
+                                      cardID: txnDTO.cardID,
                                       recurringRuleID: txnDTO.recurringRuleID)
                 txn.month = record
                 context.insert(txn)
             }
+        }
+
+        // Payment cards (match by id to avoid duplicates). Imported BEFORE
+        // transactions would need them — the link is a loose id, so ordering
+        // doesn't actually matter, but a card that never arrives just leaves
+        // its transactions unlabelled rather than breaking anything.
+        let existingCardIDs = Set(allCards(in: context).map(\.id))
+        for cardDTO in (archive.cards ?? []) where !existingCardIDs.contains(cardDTO.id) {
+            context.insert(PaymentCard(id: cardDTO.id,
+                                       name: cardDTO.name,
+                                       abbrev: cardDTO.abbrev,
+                                       last4: cardDTO.last4,
+                                       isArchived: cardDTO.isArchived))
         }
 
         // Recurring rules (match by id to avoid duplicates).
@@ -554,6 +579,7 @@ enum LedgerService {
         for txn in (try? context.fetch(FetchDescriptor<Transaction>())) ?? [] { context.delete(txn) }
         for month in (try? context.fetch(FetchDescriptor<MonthRecord>())) ?? [] { context.delete(month) }
         for rule in (try? context.fetch(FetchDescriptor<RecurringRule>())) ?? [] { context.delete(rule) }
+        for card in (try? context.fetch(FetchDescriptor<PaymentCard>())) ?? [] { context.delete(card) }
         for settings in (try? context.fetch(FetchDescriptor<AppSettings>())) ?? [] { context.delete(settings) }
         // A reset must not resurrect cached settings or finish stale merges.
         SettingsBackup.clear()

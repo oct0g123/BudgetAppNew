@@ -159,7 +159,8 @@ enum AppModelContainer {
             MonthRecord.self,
             Transaction.self,
             AppSettings.self,
-            RecurringRule.self
+            RecurringRule.self,
+            PaymentCard.self
         ])
         let configuration = ModelConfiguration(
             schema: schema,
@@ -236,7 +237,8 @@ enum LedgerExport {
         let archive = LedgerArchive.makeExport(
             settings: (try? context.fetch(FetchDescriptor<AppSettings>()))?.first,
             months: LedgerService.allMonths(in: context),
-            rules: LedgerService.allRecurringRules(in: context))
+            rules: LedgerService.allRecurringRules(in: context),
+            cards: LedgerService.allCards(in: context))
 
         let data: Data
         switch kind {
