@@ -754,9 +754,14 @@ user chose to combine, so 1.2 now carries three new schema items — `memo`,
 - Picker is hidden entirely until at least one card exists, so the add sheet is
   untouched for anyone not using the feature. Archived cards stay selectable on
   a transaction that already uses one, so editing old rows never drops a label.
-- `CardsView` + `CardEditor` are a new FILE. ⚠️ The project uses synchronized
-  root groups so it should be picked up automatically — if the build says
-  "cannot find CardsView in scope", drag it into the target.
+- ⚠️ **`CardsView` + `CardEditor` live in RecurringView.swift, not their own
+  file.** I first shipped them as `CardsView.swift` on the belief that the
+  project used synchronized root groups — it doesn't. **Only the LedgerWidgets
+  target is synchronized; the main app target uses explicit file references**,
+  so any new .swift file must be added to the target by hand in Xcode or the
+  build fails with "cannot find X in scope". Folding them into RecurringView
+  (their structural twin — same list + editor shape) avoids that entirely.
+  **Remember this before creating any new file in `Ledger/Ledger/`.**
 - Round-trip: `CardDTO` in the archive, `cardID` on `TransactionDTO`, both
   `decodeIfPresent`; CSV gains an export-only `card` column (names, not ids —
   a CSV is for reading in a spreadsheet). `resetAllData` clears cards too.
