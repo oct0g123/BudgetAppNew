@@ -850,6 +850,58 @@ reconciliation, and a real answer for transfers).
   promotion unless it lands before 1.2 ships alongside `memo` and `endKey`.
 - **Effort:** ~1 day.
 
+### 💡 Advanced insights (idea, 2026-08-06) — and a correction on Private Cloud Compute
+User asked about "more advanced insights, maybe powered by Apple Intelligence
+private cloud compute?"
+
+⚠️ **PCC isn't available to us.** The Foundation Models framework hands third-
+party apps the ~3B **on-device** model only (`SystemLanguageModel.default`) —
+there is no developer API for Private Cloud Compute. PCC backs Apple's *own*
+system features (Siri, Writing Tools); apps can't call into it. So the realistic
+options are (a) the on-device model Ledger already uses for the command bar, or
+(b) our own server plus a hosted LLM — which would mean **transmitting the
+user's financial data off-device**, contradicting the "on-device only, nothing
+leaves your phone" line in Settings, the App Store privacy labels, and the
+privacy pitch the featuring nomination leans on. (b) is a positioning decision,
+not a technical one, and the answer is almost certainly no.
+
+**The bigger point: most of the good insights don't need a model at all.**
+`buildInsight` is already templated arithmetic. What's missing is *more
+arithmetic*, not more language — and there's newly available data to compute on:
+
+- **Trends:** category spend vs. a rolling 3-month average ("Wants up 22%").
+- **Fixed vs. discretionary:** `recurringRuleID` already marks rule-driven
+  charges — the split between committed and chosen spending is a genuinely
+  useful number nobody surfaces.
+- **By card:** now that `cardID` exists, "68% of Wants went on the Amex."
+- **Biggest movers** between two months, by category and by merchant name.
+- **Anomalies:** a transaction well outside the usual range for its category.
+- **Streaks:** consecutive months hitting the savings target.
+- **Forecast:** end-of-month projection from the existing pace math.
+- **Year in review** — an annual version of the month recap, which is the kind
+  of thing that gets shared.
+
+**Where the on-device model genuinely helps:** turning those computed facts into
+a paragraph that doesn't read like a template, and synthesising across several
+of them ("your fixed costs rose while discretionary fell — you're spending less
+by choice but committing more"). That's phrasing and connection, not maths.
+
+🔒 **Rule if this gets built: the model NEVER does arithmetic.** Compute every
+figure deterministically, pass the numbers in, let it only phrase them. An LLM
+that quietly rounds or invents a number in a budgeting app is a trust-ending
+bug, and it would be invisible in testing. Same discipline as the command bar,
+which parses intent but doesn't compute balances.
+
+- **Degradation is mandatory:** the on-device model needs Apple Intelligence
+  hardware, so every insight must be fully useful with the model absent —
+  `IntelligenceService.isAvailable` already gates the command bar this way.
+  Model-written prose is a *garnish* on computed insight, never the substance.
+- **Sequencing:** ship the arithmetic first. It works on every device, it's
+  testable, and it's most of the value. Only then decide whether generated
+  narrative earns its place.
+- **Effort:** the computed insights are ~1–2 days spread across several cards;
+  the narrative layer is half a day on top.
+
 ### v1.5 — advanced features
 After the platforms are out, pull a focused few from the sections below
 (reporting, budget rollover, watch complications, adjustable alert threshold,
