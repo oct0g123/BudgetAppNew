@@ -572,6 +572,12 @@ All `#if os(macOS)`; nothing outside a gate. Shipped:
   scroller inward with the content. Budget now uses `contentMargins(.horizontal,
   …, for: .scrollContent)` from a `GeometryReader`, which insets the rows and
   leaves the scroller where macOS expects it. Rows stay in the same 720pt column.
+  - ⚠️ **First attempt came out full-bleed:** `contentMargins` was applied to
+    the ancestor `Group`, where it silently does nothing. It has to sit on the
+    **scroll view itself**, so `monthList` now wraps a `listContent(_:)` helper
+    and applies the modifier to the `List` directly. No error, no warning — it
+    just quietly doesn't apply, which is the worst kind of API to get wrong
+    without a device to check on.
   - Rule for later: **constrain content inside a scroll view, never the scroll
     view itself** — the codebase already did this correctly in two places and I
     picked the wrong one of the two patterns.

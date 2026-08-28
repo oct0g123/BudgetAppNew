@@ -11,7 +11,6 @@ import SwiftUI
 import SwiftData
 import StoreKit
 
-#if os(macOS)
 /// Centres a List's ROWS in a readable column while leaving the scroll view
 /// itself full-width, so the scroller stays at the window edge.
 ///
@@ -20,19 +19,27 @@ import StoreKit
 /// full-width and their scroller lands correctly. A `List` IS the scroll view,
 /// so constraining it drags the scroller inward with the content and parks it in
 /// the middle of the window. `contentMargins(for: .scrollContent)` insets the
-/// content and leaves the scroller where macOS expects it.
+/// content and leaves the scroller where macOS expects it — but ONLY when it's
+/// applied to the scroll view itself; on an ancestor it does nothing at all.
+///
+/// A no-op everywhere but macOS: iPhone, iPad and Vision Pro ship full-bleed
+/// and this is a Mac-only complaint.
 private struct CenteredListContent: ViewModifier {
     var maxWidth: CGFloat = 720
 
+    @ViewBuilder
     func body(content: Content) -> some View {
+        #if os(macOS)
         GeometryReader { geo in
             content.contentMargins(.horizontal,
                                    max(0, (geo.size.width - maxWidth) / 2),
                                    for: .scrollContent)
         }
+        #else
+        content
+        #endif
     }
 }
-#endif
 
 struct BudgetView: View {
     @Environment(\.modelContext) private var context
@@ -99,14 +106,6 @@ struct BudgetView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            // Budget was the ONLY screen that didn't constrain its width —
-            // on a wide Mac window the bars ran ~830pt and the figures sat
-            // against the window edge, while every other tab was a tidy centred
-            // column. (iOS/iPadOS deliberately untouched: they ship full-bleed
-            // today and this is a Mac-only complaint.)
-            #if os(macOS)
-            .modifier(CenteredListContent())
-            #endif
             .screenBackground()
             #if os(iOS)
             .overlay(alignment: .bottomTrailing) { addButton }
@@ -330,6 +329,17 @@ struct BudgetView: View {
     }
 
     private func monthList(_ month: MonthRecord) -> some View {
+        // macOS: rows sit in a readable centred column while the scroll view
+        // stays full-width, so the scroller lands at the window edge.
+        // `contentMargins` has to be applied to the SCROLL VIEW itself — on an
+        // ancestor it silently does nothing, which is how the first attempt
+        // came out full-bleed.
+        listContent(month)
+            .modifier(CenteredListContent())
+    }
+
+    @ViewBuilder
+    private func listContent(_ month: MonthRecord) -> some View {
         List {
             #if !os(visionOS)
             monthSelector
