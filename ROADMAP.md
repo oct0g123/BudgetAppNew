@@ -762,6 +762,24 @@ user chose to combine, so 1.2 now carries three new schema items — `memo`,
   build fails with "cannot find X in scope". Folding them into RecurringView
   (their structural twin — same list + editor shape) avoids that entirely.
   **Remember this before creating any new file in `Ledger/Ledger/`.**
+- 🔴 **Shipped a duplicate bug, fixed same day.** Adding two cards produced
+  four copies of each in the picker. Cause: I added a new user-created record
+  type and **never registered it with the merge system** — `needsMerge` checked
+  settings, months, transactions and rules; `mergeDuplicates` deduped all four;
+  cards were in neither. `dedupeRecurringRules` existing at all is the proof
+  that CloudKit mirroring produces same-id repeats for user-created records in
+  this app, so a new type without dedupe was always going to do this.
+  **Rule for any future model: add it to `needsMerge` AND `mergeDuplicates` in
+  the same commit that adds the model.**
+  - `dedupeCards` handles both shapes: same-id repeats (delete extras; the
+    survivor keeps the id, so `Transaction.cardID` still resolves) and distinct
+    ids describing the same card (two devices adding "Amex Gold" before
+    syncing — **re-point those transactions at the survivor before deleting**,
+    or they'd silently lose their label).
+  - Views call `PaymentCard.uniqued(_:)` so a pending merge can't hand
+    SwiftUI's `ForEach` two rows with the same identity.
+  - Re-adding an existing card by name + last 4 now edits it instead of
+    stacking another.
 - Round-trip: `CardDTO` in the archive, `cardID` on `TransactionDTO`, both
   `decodeIfPresent`; CSV gains an export-only `card` column (names, not ids —
   a CSV is for reading in a spreadsheet). `resetAllData` clears cards too.

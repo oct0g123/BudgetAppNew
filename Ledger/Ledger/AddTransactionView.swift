@@ -31,7 +31,7 @@ struct AddTransactionView: View {
     /// Archived cards stay selectable only if this transaction already uses
     /// one, so editing an old transaction never silently drops its card.
     private var pickableCards: [PaymentCard] {
-        cards.filter { !$0.isArchived || $0.id == cardID }
+        PaymentCard.uniqued(cards).filter { !$0.isArchived || $0.id == cardID }
     }
 
     private var isEditing: Bool { existing != nil }

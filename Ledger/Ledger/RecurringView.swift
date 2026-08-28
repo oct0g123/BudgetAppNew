@@ -309,8 +309,8 @@ struct CardsView: View {
     @State private var editing: PaymentCard?
     @State private var showingNew = false
 
-    private var active: [PaymentCard] { cards.filter { !$0.isArchived } }
-    private var archived: [PaymentCard] { cards.filter(\.isArchived) }
+    private var active: [PaymentCard] { PaymentCard.uniqued(cards).filter { !$0.isArchived } }
+    private var archived: [PaymentCard] { PaymentCard.uniqued(cards).filter(\.isArchived) }
 
     /// How many transactions in the CURRENT month used each card — makes the
     /// screen read as live data rather than a settings dump. One pass over the
@@ -540,12 +540,27 @@ struct CardEditor: View {
             card.abbrev = trimmedAbbrev
             card.last4 = last4
             card.isArchived = isArchived
+        } else if let existing = duplicate(of: trimmedName) {
+            // Re-adding a card you already have edits it instead of stacking a
+            // second one — the merge pass would collapse them anyway.
+            existing.abbrev = trimmedAbbrev
+            existing.last4 = last4
+            existing.isArchived = false
         } else {
             context.insert(PaymentCard(name: trimmedName,
                                        abbrev: trimmedAbbrev,
                                        last4: last4))
         }
         dismiss()
+    }
+
+    /// An existing card with the same name and last 4, if there is one.
+    private func duplicate(of name: String) -> PaymentCard? {
+        let key = name.lowercased()
+        return LedgerService.allCards(in: context).first {
+            $0.name.trimmingCharacters(in: .whitespaces).lowercased() == key
+                && $0.last4 == last4
+        }
     }
 
     /// Transactions keep their now-unresolvable `cardID`, which simply renders

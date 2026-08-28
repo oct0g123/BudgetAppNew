@@ -234,6 +234,14 @@ final class PaymentCard {
     }
 
     static let maxAbbrev = 6
+
+    /// Collapses same-id repeats that iCloud can briefly produce, so a list
+    /// never hands SwiftUI's `ForEach` two rows with the same identity while
+    /// the next merge pass is still pending.
+    static func uniqued(_ cards: [PaymentCard]) -> [PaymentCard] {
+        var seen = Set<UUID>()
+        return cards.filter { seen.insert($0.id).inserted }
+    }
 }
 
 // MARK: - RecurringRule

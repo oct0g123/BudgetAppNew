@@ -212,6 +212,7 @@ enum LedgerService {
             dedupeTransactions(in: month, context: context)
         }
         dedupeRecurringRules(in: context)
+        dedupeCards(in: context)
         try? context.save()
     }
 
@@ -235,6 +236,15 @@ enum LedgerService {
         ruleDesc.propertiesToFetch = [\.id]
         let ruleIDs = ((try? context.fetch(ruleDesc)) ?? []).map(\.id)
         if Set(ruleIDs).count != ruleIDs.count { return true }
+
+        // Cards: few enough to fetch whole. Keyed the same way dedupeCards
+        // keys them, so two cards that merely share a name (different last 4)
+        // don't trip a merge on every pass.
+        let cards = (try? context.fetch(FetchDescriptor<PaymentCard>())) ?? []
+        let cardIDs = cards.map(\.id)
+        if Set(cardIDs).count != cardIDs.count { return true }
+        let cardKeys = cards.compactMap(cardKey)
+        if Set(cardKeys).count != cardKeys.count { return true }
 
         // A month-delete grace period pending? Finish the job.
         return !MonthDeleteGrace.load().isEmpty
@@ -377,6 +387,60 @@ enum LedgerService {
         let stamp = String(format: "%017.3f", t.date.timeIntervalSince1970)
         let amount = String(format: "%015.2f", t.amount)
         return "\(tagged)|\(stamp)|\(amount)|\(t.desc)|\(t.categoryRaw)|\(t.id.uuidString)"
+    }
+
+    /// Content key for a card, or nil when there's nothing to compare on.
+    private static func cardKey(_ card: PaymentCard) -> String? {
+        let name = card.name.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !name.isEmpty else { return nil }
+        return name + "|" + card.last4
+    }
+
+    /// Collapse duplicate cards. Two shapes show up, and they need different
+    /// handling:
+    ///
+    ///  1. SAME id, several rows — what CloudKit mirroring actually produces
+    ///     (exactly why `dedupeRecurringRules` exists). Transactions point at
+    ///     the id, which the survivor still carries, so nothing needs
+    ///     re-pointing.
+    ///  2. DIFFERENT ids describing the same card — two devices each adding
+    ///     "Amex Gold" before they've synced. Here the loser's id is about to
+    ///     stop existing, so its transactions must be re-pointed at the
+    ///     survivor first or they'd silently lose their label.
+    ///
+    /// Every choice is deterministic from synced fields (earliest `createdAt`,
+    /// then id string) so all devices converge on the same survivor instead of
+    /// each deleting the other's copy.
+    private static func dedupeCards(in context: ModelContext) {
+        let cards = allCards(in: context).sorted {
+            $0.createdAt == $1.createdAt
+                ? $0.id.uuidString < $1.id.uuidString
+                : $0.createdAt < $1.createdAt
+        }
+
+        var seenIDs = Set<UUID>()
+        var survivors: [PaymentCard] = []
+        for card in cards {
+            if seenIDs.insert(card.id).inserted { survivors.append(card) }
+            else { context.delete(card) }
+        }
+
+        var keepByKey: [String: PaymentCard] = [:]
+        var remap: [UUID: UUID] = [:]
+        for card in survivors {
+            guard let key = cardKey(card) else { continue }
+            if let keep = keepByKey[key] {
+                remap[card.id] = keep.id
+                context.delete(card)
+            } else {
+                keepByKey[key] = card
+            }
+        }
+
+        guard !remap.isEmpty else { return }
+        for txn in (try? context.fetch(FetchDescriptor<Transaction>())) ?? [] {
+            if let id = txn.cardID, let target = remap[id] { txn.cardID = target }
+        }
     }
 
     private static func dedupeRecurringRules(in context: ModelContext) {
