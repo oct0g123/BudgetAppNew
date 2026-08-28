@@ -617,6 +617,19 @@ All `#if os(macOS)`; nothing outside a gate. Shipped:
   month"). So they show none of Phases 1–2 — no Settings window, no toolbar
   safe-to-spend, no Sync button. Re-shoot after pulling before judging chrome.
 
+#### Phase 1 addendum — ⌘F (built 2026-08-06)
+Listed in the original spec's shortcut list and then never built; user found it
+the same way. **Edit ▸ Find (⌘F)** focuses the Budget search field, published as
+a focused value **from `BudgetView`** rather than RootView because that's where
+the field lives — so it greys out on Insights and History, which is honest:
+Ledger's search only covers transactions. Nothing claims ⌘F automatically the
+way `WindowGroup` claims ⌘N, so there was no collision to design around.
+
+Remaining Mac keyboard gap, not built: **⌘Z for the delete-undo toast.** The app
+runs its own undo (a 4-second toast + `pendingUndo` buffer) rather than the
+system's `UndoManager`, so wiring ⌘Z means bridging the two. Bigger than it
+looks; left alone deliberately.
+
 #### Phase 3 spec (as written before screenshots)
 Typography is sized for touch and reads large on Mac; `.formStyle(.grouped)`
 with custom `DS.rowBackground()` fills looks transplanted; toolbar spacing

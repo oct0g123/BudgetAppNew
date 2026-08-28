@@ -44,6 +44,9 @@ struct BudgetView: View {
     #if os(macOS)
     /// Drives the Mac toolbar's Sync button spinner.
     @State private var syncing = false
+    /// Target for Edit ▸ Find (⌘F). Mac-only: every other platform reaches the
+    /// field by tapping it.
+    @FocusState private var searchFocused: Bool
     #endif
 
     /// Resolved once per render instead of per row — a lookup inside
@@ -174,6 +177,14 @@ struct BudgetView: View {
             }
         }
         .tint(DS.gold)
+        // Published from here rather than RootView because the search field
+        // lives on this screen — the menu item greys out on the other tabs,
+        // which is honest: Ledger's search only covers transactions.
+        #if os(macOS)
+        .focusedSceneValue(\.focusSearch, { () -> Void in
+            searchFocused = true
+        })
+        #endif
         #if os(visionOS)
         .ornament(attachmentAnchor: .scene(.bottom)) { monthNavOrnament }
         .ornament(attachmentAnchor: .scene(.trailing)) { addOrnament }
@@ -367,6 +378,9 @@ struct BudgetView: View {
                     .foregroundStyle(DS.textMuted)
                 TextField("Search transactions", text: $searchText)
                     .foregroundStyle(DS.text)
+                    #if os(macOS)
+                    .focused($searchFocused)
+                    #endif
                     #if os(iOS)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)

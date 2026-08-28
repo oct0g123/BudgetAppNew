@@ -210,6 +210,7 @@ enum AppModelContainer {
 #if os(macOS)
 struct NewTransactionKey: FocusedValueKey { typealias Value = () -> Void }
 struct SelectTabKey: FocusedValueKey { typealias Value = (AppTab) -> Void }
+struct FocusSearchKey: FocusedValueKey { typealias Value = () -> Void }
 
 extension FocusedValues {
     var newTransaction: NewTransactionKey.Value? {
@@ -219,6 +220,10 @@ extension FocusedValues {
     var selectTab: SelectTabKey.Value? {
         get { self[SelectTabKey.self] }
         set { self[SelectTabKey.self] = newValue }
+    }
+    var focusSearch: FocusSearchKey.Value? {
+        get { self[FocusSearchKey.self] }
+        set { self[FocusSearchKey.self] = newValue }
     }
 }
 
@@ -278,6 +283,7 @@ struct LedgerCommands: Commands {
     @AppStorage("viewedMonthKey") private var viewedKey: String = MonthKey.current
     @FocusedValue(\.newTransaction) private var newTransaction
     @FocusedValue(\.selectTab) private var selectTab
+    @FocusedValue(\.focusSearch) private var focusSearch
 
     var body: some Commands {
         // `replacing:` — a WindowGroup automatically binds File ▸ New Window
@@ -295,6 +301,16 @@ struct LedgerCommands: Commands {
                 .keyboardShortcut("e", modifiers: .command)
             Button("Export CSV…") { LedgerExport.save(.csv) }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
+        }
+
+        // Edit ▸ Find, where a Mac user looks for it. Nothing claims ⌘F
+        // automatically the way WindowGroup claims ⌘N, so there's no collision
+        // to work around here.
+        CommandGroup(after: .textEditing) {
+            Divider()
+            Button("Find") { focusSearch?() }
+                .keyboardShortcut("f", modifiers: .command)
+                .disabled(focusSearch == nil)
         }
 
         CommandGroup(after: .sidebar) {

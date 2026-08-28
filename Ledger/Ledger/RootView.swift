@@ -205,8 +205,11 @@ struct SafeToSpendBar: View {
             Text(leading)
                 .font(Typography.mono(.footnote, weight: .medium))
                 .foregroundStyle(DS.textMuted)
-            Text(value >= 0 ? Money.string(value) + positive
-                            : Money.string(-value) + negative)
+            // Whole dollars: this is a derived allowance, the same class of
+            // number as the "$778/wk pace" on the bucket rows. Cents here read
+            // as false precision — and sat inconsistently beside those rows.
+            Text(value >= 0 ? Money.whole(value) + positive
+                            : Money.whole(-value) + negative)
                 .font(Typography.mono(.footnote, weight: .semibold))
                 .foregroundStyle(value >= 0 ? DS.text : DS.needs)
         }
