@@ -71,14 +71,12 @@ pay into Needs, Savings and Wants — privately, on your device.
 
 ## Before submitting
 
-1. **Promote the CloudKit schema — this is the gate.** 1.2 adds THREE things:
-   `Transaction.memo`, `RecurringRule.endKey`, and the whole `PaymentCard` record
-   type plus `Transaction.cardID`. Run a **Debug build from Xcode** (that adds
-   them to the Development schema), then **CloudKit Dashboard → Schema → Deploy
-   Schema Changes → Deploy to Production**, and only then archive. One deploy
-   covers all three. Ship before promoting and **sync stops working entirely**
-   for that build — not just for the new fields, since a rejected record fails
-   the whole export batch.
+1. ✅ **CloudKit schema promoted 2026-08-29.** All three additions
+   (`Transaction.memo`, `RecurringRule.endKey`, `PaymentCard` + `Transaction.cardID`)
+   are live in Production. The deploy was additions only — 3 record-type changes,
+   3 index groups, and permission entries for the new type on the `_world` /
+   `_icloud` / `_creator` roles, which is routine bookkeeping when a record type
+   is added. No further schema work is needed for 1.2.
 2. **`MARKETING_VERSION` is already 1.2** on both targets (bumped 2026-08-29).
    Build number stays 1, which is right for a new train.
 3. **Build all four targets before archiving.** A lot of `#if`-gated Mac code has

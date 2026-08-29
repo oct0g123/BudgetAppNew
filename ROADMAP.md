@@ -721,6 +721,32 @@ cleanup/perf batches. **Sequencing plan (agreed risk tiers):**
   chokepoint** (5 divergent month-targeting shapes) retires findings
   #2/#5/#6/#8's class — best done as its own focused refactor.
 
+### ✅ CloudKit schema promoted to Production (2026-08-29)
+All three of 1.2's schema additions are live: `Transaction.memo`,
+`RecurringRule.endKey`, and the `PaymentCard` record type with
+`Transaction.cardID`. One deploy covered all three — the argument for folding
+cards into 1.2 rather than 1.3.
+
+- **Why the record type was missing at first:** SwiftData doesn't pre-create the
+  CloudKit schema; a record type only appears once a record of that type is
+  actually saved and exported. The Mac Debug builds had been pushing field
+  changes all along (hence "Record Types — Modified"), but no *card* had ever
+  been created in a Debug build. Creating one card, one tagged transaction with
+  a note, and one rule with an end date made all three appear.
+- **Debug = Development, TestFlight/App Store = Production.** The Mac app being
+  run from Xcode all week was already the Debug build needed here.
+- **The deploy diff was additions only:** 3 record-type changes, 3 index groups,
+  and `_world` / `_icloud` / `_creator` role modifications — the last being
+  routine permission bookkeeping for a new record type, not a visibility change.
+  Ledger only uses the private database.
+- ⏳ **Not yet verified:** the iPhone TestFlight build has been unable to export
+  ANYTHING for weeks (a rejected record fails the whole batch, not just the bad
+  field). Its backlog should flush now, on the build already installed — no new
+  build required, and worth confirming BEFORE uploading one so the variable stays
+  isolated. Watch for duplicate months while weeks of independent changes
+  reconcile; the merge pass handles them and manual deletion is the one action
+  that can cascade.
+
 ### 📝 1.2 release notes rewritten (2026-08-29)
 `appstore/whats-new-1.2.md` was drafted before payment cards and finite
 recurring rules existed, and still carried the "the weekly bar doesn't exist on
