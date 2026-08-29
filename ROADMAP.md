@@ -648,6 +648,27 @@ All `#if os(macOS)`; nothing outside a gate. Shipped:
   month"). So they show none of Phases 1–2 — no Settings window, no toolbar
   safe-to-spend, no Sync button. Re-shoot after pulling before judging chrome.
 
+#### 🔴 Settings window missing from the Mac menu bar (2026-08-06)
+User couldn't find Settings anywhere: not in the sidebar (correct — Phase 1
+removed it there) and **not under Ledger ▸ Settings… either**, which a `Settings`
+scene registers automatically. So the scene wasn't registering, even though the
+other half of the same commit (dropping the sidebar tab) clearly took effect.
+- **Suspected cause:** the `Settings` scene was declared inline after two `#if`
+  blocks of *WindowGroup modifiers*, and was most likely parsed as a
+  continuation of that modifier chain rather than as a second scene. It compiled
+  either way, which is why nothing surfaced.
+- **Fix:** each scene is now its own computed property (`mainWindow`,
+  `settingsWindow`), so there's no chain for it to be absorbed into.
+- **Also added a visible way in:** a gear in the Budget toolbar's *leading* slot
+  (away from the crowded action cluster) calling `@Environment(\.openSettings)`.
+  The user failed to find Phase 1 features twice because they live in the menu
+  bar — ⌘, is correct for Mac, but correct and discoverable aren't the same
+  thing, and a real user won't have the spec to consult.
+- ⏭ **If ⌘, and the gear both still do nothing**, the scene genuinely isn't
+  registering and the fallback is to drop the `Settings` scene entirely and put
+  the Settings tab back in the Mac sidebar — less idiomatic, but it demonstrably
+  worked before Phase 1 touched it.
+
 #### Phase 1 addendum — ⌘F (built 2026-08-06)
 Listed in the original spec's shortcut list and then never built; user found it
 the same way. **Edit ▸ Find (⌘F)** focuses the Budget search field, published as

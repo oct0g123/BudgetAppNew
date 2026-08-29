@@ -353,6 +353,18 @@ struct LedgerApp: App {
     }
 
     var body: some Scene {
+        // Each scene is its own computed property. Inline, the `Settings` scene
+        // sat after two `#if` blocks of WindowGroup *modifiers*, and the menu
+        // item never appeared — the likeliest reading is that it was parsed as a
+        // continuation of that modifier chain rather than as a second scene.
+        // Split out, there's nothing to misread.
+        mainWindow
+        #if os(macOS)
+        settingsWindow
+        #endif
+    }
+
+    private var mainWindow: some Scene {
         WindowGroup {
             LockGate {
                 RootView()
@@ -378,13 +390,14 @@ struct LedgerApp: App {
         #if os(visionOS)
         .defaultSize(width: 720, height: 900)
         #endif
+    }
 
-        // Mac keeps preferences where Mac users look for them: ⌘, in its own
-        // window, not a fourth item in the sidebar. This is a SEPARATE scene,
-        // so it needs its own model container and its own environment objects
-        // — SyncStatusSection reads SyncMonitor via @EnvironmentObject and
-        // would trap without it.
-        #if os(macOS)
+    #if os(macOS)
+    /// Mac keeps preferences where Mac users look for them: ⌘, in its own
+    /// window, not a fourth item in the sidebar. A SEPARATE scene, so it needs
+    /// its own model container and environment objects — `SyncStatusSection`
+    /// reads `SyncMonitor` via `@EnvironmentObject` and would trap without it.
+    private var settingsWindow: some Scene {
         Settings {
             SettingsView()
                 .environmentObject(syncMonitor)
@@ -393,8 +406,8 @@ struct LedgerApp: App {
                 .preferredColorScheme(AppColorScheme(rawValue: appColorScheme)?.colorScheme)
         }
         .modelContainer(AppModelContainer.shared)
-        #endif
     }
+    #endif
 }
 
 // MARK: - Biometric app lock

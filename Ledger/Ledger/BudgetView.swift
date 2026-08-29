@@ -79,6 +79,9 @@ struct BudgetView: View {
     /// wrap-up moment). Review prompt fires after this dismisses.
     @State private var recapMonth: MonthRecord?
     #if os(macOS)
+    /// Opens the ⌘, Settings window from the toolbar gear — Settings isn't in
+    /// the Mac sidebar, and the menu bar alone proved hard to find.
+    @Environment(\.openSettings) private var openSettings
     /// Drives the Mac toolbar's Sync button spinner.
     @State private var syncing = false
     /// Target for Edit ▸ Find (⌘F). Mac-only: every other platform reaches the
@@ -174,6 +177,16 @@ struct BudgetView: View {
                         Label("Add transaction", systemImage: "plus")
                     }
                     .disabled(currentMonth == nil || currentMonth?.isClosed == true)
+                }
+                // Leading side, away from the crowded action cluster: a
+                // visible way into Settings, which lives in its own ⌘, window
+                // on Mac rather than the sidebar.
+                ToolbarItem(placement: .navigation) {
+                    Button {
+                        openSettings()
+                    } label: {
+                        Label("Settings", systemImage: "gearshape")
+                    }
                 }
                 // The weekly allowance rides the tab accessory on iOS, which
                 // doesn't exist on Mac — so Mac had no safe-to-spend readout at
