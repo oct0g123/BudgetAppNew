@@ -721,6 +721,14 @@ cleanup/perf batches. **Sequencing plan (agreed risk tiers):**
   chokepoint** (5 divergent month-targeting shapes) retires findings
   #2/#5/#6/#8's class — best done as its own focused refactor.
 
+### 📝 1.2 release notes rewritten (2026-08-29)
+`appstore/whats-new-1.2.md` was drafted before payment cards and finite
+recurring rules existed, and still carried the "the weekly bar doesn't exist on
+Mac" caveat that macOS Phase 2 fixed. Rewritten: cards and ending rules added,
+the Mac work given its own paragraph, and the platform caveat narrowed to
+**visionOS only**. Pre-submission list now names all THREE schema additions
+(`memo`, `endKey`, `PaymentCard` + `cardID`) as one promotion.
+
 ### 🧹 Post-1.2 cleanup — simplify the recurring plumbing (logged 2026-08-29)
 User: *"is any of this worth simplifying? It all seems fairly complex for what
 is happening here."* Measured before answering — `applyRule` 30 lines,
