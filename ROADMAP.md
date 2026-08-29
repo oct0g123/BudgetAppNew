@@ -739,7 +739,16 @@ cards into 1.2 rather than 1.3.
   and `_world` / `_icloud` / `_creator` role modifications — the last being
   routine permission bookkeeping for a new record type, not a visibility change.
   Ledger only uses the private database.
-- ⏳ **Not yet verified:** the iPhone TestFlight build has been unable to export
+- ✅ **VERIFIED 2026-08-29:** after promoting and pushing a new TestFlight
+  build, iPhone → iPad sync works — cards, memos and transactions all cross.
+  The backlog flushed and no duplicate months were reported.
+- ⚠️ **Sync being backend does NOT mean Mac/visionOS are verified.** Neither has
+  been built this cycle. visionOS especially: most `#if`-gated code, least
+  testing, and the platform that has broken archives before
+  (`scrollDismissesKeyboard` unavailable there). 1.2 heavily edited MoneyField,
+  AddTransactionView, BudgetView and RecurringView — it's the likeliest of the
+  four to fail to compile.
+- ~~⏳ Not yet verified:~~ the iPhone TestFlight build had been unable to export
   ANYTHING for weeks (a rejected record fails the whole batch, not just the bad
   field). Its backlog should flush now, on the build already installed — no new
   build required, and worth confirming BEFORE uploading one so the variable stays
