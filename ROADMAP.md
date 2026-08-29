@@ -578,6 +578,18 @@ All `#if os(macOS)`; nothing outside a gate. Shipped:
     and applies the modifier to the `List` directly. No error, no warning — it
     just quietly doesn't apply, which is the worst kind of API to get wrong
     without a device to check on.
+  - ❌ **`contentMargins` doesn't work here at all.** Tried on the ancestor
+    (silently ignored) and directly on the `List` (also ignored) — it does not
+    drive a List's row insets on macOS. **Settled: constrain the width and
+    `.scrollIndicators(.hidden)` on Mac.** macOS auto-hides overlay scrollers by
+    default, so this only differs for people who set "Show scroll bars: Always";
+    trackpad and wheel scrolling are untouched.
+  - 🔁 **If the missing scroller ever matters**, the mechanism that *would* keep
+    it at the window edge is a dynamic `listRowInsets` on every section, fed by
+    a `GeometryReader`. Not done because `listRowInsets` takes full `EdgeInsets`
+    — it would force explicit vertical padding onto rows currently using system
+    defaults, disturbing spacing the user had just approved. Six call sites,
+    and untestable from here.
   - Rule for later: **constrain content inside a scroll view, never the scroll
     view itself** — the codebase already did this correctly in two places and I
     picked the wrong one of the two patterns.

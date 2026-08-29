@@ -11,30 +11,37 @@ import SwiftUI
 import SwiftData
 import StoreKit
 
-/// Centres a List's ROWS in a readable column while leaving the scroll view
-/// itself full-width, so the scroller stays at the window edge.
+/// Centres the Budget list in a readable column on Mac.
 ///
-/// `readableContentWidth()` can't do this here. History and Insights apply it to
-/// the inner VStack *inside* a ScrollView, so their scroll view is still
-/// full-width and their scroller lands correctly. A `List` IS the scroll view,
-/// so constraining it drags the scroller inward with the content and parks it in
-/// the middle of the window. `contentMargins(for: .scrollContent)` insets the
-/// content and leaves the scroller where macOS expects it — but ONLY when it's
-/// applied to the scroll view itself; on an ancestor it does nothing at all.
+/// History and Insights get this for free: they apply `readableContentWidth()`
+/// to the VStack *inside* a ScrollView, so the scroll view stays full-width and
+/// its scroller lands at the window edge. A `List` IS the scroll view, so the
+/// same modifier drags the scroller inward with the content and parks it in the
+/// middle of the window.
 ///
-/// A no-op everywhere but macOS: iPhone, iPad and Vision Pro ship full-bleed
-/// and this is a Mac-only complaint.
+/// `contentMargins(for: .scrollContent)` is the API that ought to separate the
+/// two — it was tried both on an ancestor (silently ignored) and directly on the
+/// List (also ignored), so it doesn't drive a List's row insets on macOS. The
+/// mechanism that WOULD is a dynamic `listRowInsets` on every section, but that
+/// forces explicit vertical padding on rows currently using system defaults,
+/// which would disturb the spacing rhythm that's already right.
+///
+/// So: constrain the width, and hide the scroller rather than leave it floating.
+/// macOS auto-hides overlay scrollers by default anyway, so this only shows up
+/// for people who set "Show scroll bars: Always". Trackpad and wheel scrolling
+/// are unaffected.
+///
+/// A no-op everywhere but macOS: iPhone, iPad and Vision Pro ship full-bleed.
 private struct CenteredListContent: ViewModifier {
     var maxWidth: CGFloat = 720
 
     @ViewBuilder
     func body(content: Content) -> some View {
         #if os(macOS)
-        GeometryReader { geo in
-            content.contentMargins(.horizontal,
-                                   max(0, (geo.size.width - maxWidth) / 2),
-                                   for: .scrollContent)
-        }
+        content
+            .scrollIndicators(.hidden)
+            .frame(maxWidth: maxWidth)
+            .frame(maxWidth: .infinity)
         #else
         content
         #endif
@@ -329,11 +336,6 @@ struct BudgetView: View {
     }
 
     private func monthList(_ month: MonthRecord) -> some View {
-        // macOS: rows sit in a readable centred column while the scroll view
-        // stays full-width, so the scroller lands at the window edge.
-        // `contentMargins` has to be applied to the SCROLL VIEW itself — on an
-        // ancestor it silently does nothing, which is how the first attempt
-        // came out full-bleed.
         listContent(month)
             .modifier(CenteredListContent())
     }
