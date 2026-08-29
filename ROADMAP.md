@@ -721,6 +721,42 @@ cleanup/perf batches. **Sequencing plan (agreed risk tiers):**
   chokepoint** (5 divergent month-targeting shapes) retires findings
   #2/#5/#6/#8's class — best done as its own focused refactor.
 
+### 🧹 Post-1.2 cleanup — simplify the recurring plumbing (logged 2026-08-29)
+User: *"is any of this worth simplifying? It all seems fairly complex for what
+is happening here."* Measured before answering — `applyRule` 30 lines,
+`applyRecurringRules` 21, editor duration 26, add-sheet duration 12. Volume
+isn't the problem; **five `@State` vars tracking one concept** and a duplicated
+UI are. **Do this only after 1.2 ships and the behaviour is confirmed on
+device** — this logic broke twice in two days and is finally correct by
+inspection; tidying it now trades a known-good state for a neater one.
+
+Most of it is ESSENTIAL: a rule is a template that materializes into records, so
+"what happens to records already made when the template changes", "which months
+are frozen", and "two devices materialize the same month before syncing" are
+real questions. `covers()`, the deterministic UUID and the closed/past guards
+each exist because of a specific failure. Two pieces are ACCIDENTAL:
+
+1. **The editor's "was it touched?" tracking is scar tissue.**
+   `loadedIsLimited` / `loadedDisplayCount` / `loadedEndKey` plus the comparison
+   in `computedEndKey` exist only because `save()` recomputes `endKey`
+   unconditionally, so non-edits had to be *detected* to avoid destroying data.
+   **Better shape:** hold `endKey` itself as draft state and write it only from
+   the toggle's and stepper's `onChange`. Then "untouched means unchanged" is
+   structural — nothing fired, so nothing changed — instead of asserted by
+   comparing three saved values. Removes 3 state vars and a branch, and retires
+   a bug class rather than just tidying.
+2. **The duration UI is duplicated** across `RecurringEditor` and
+   `AddTransactionView` — toggle, stepper, footer, twice — with a *deliberately
+   different* anchor (existing rule: `max(startKey, current)`; new rule: its
+   start month). Duplicated code with a subtle intentional difference is exactly
+   where the next bug lives. One `RuleDurationFields` view taking a binding and
+   an anchor puts that rule in one place.
+
+**Deliberately NOT on the list:** splitting `applyRule`'s three branches into
+materialize/propagate/retract, which an earlier review suggested. At 30 lines
+with one clear guard it isn't earning a refactor, and it's the function we've
+been carefully not destabilizing.
+
 ### 🔴 applyRule rewrote PAST months — fixed 2026-08-29
 The pinned round-2 "retroactive rewrite" finding, hit in the wild: *"when I
 change a recurring rule, it does seem to edit transactions in the past."*
