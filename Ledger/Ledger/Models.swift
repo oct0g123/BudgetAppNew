@@ -208,7 +208,10 @@ final class PaymentCard {
          createdAt: Date = Date()) {
         self.id = id
         self.name = name
-        self.abbrev = abbrev
+        // Clamped here, not only in the editor, so an over-long abbreviation
+        // from an imported backup can't push the amount off a transaction row
+        // (the chip is `.fixedSize()`).
+        self.abbrev = String(abbrev.prefix(Self.maxAbbrev))
         self.isArchived = isArchived
         self.createdAt = createdAt
     }

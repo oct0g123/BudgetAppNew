@@ -900,7 +900,16 @@ struct SettingsView: View {
         BudgetSnapshotStore.update(from: [])
         viewedKey = MonthKey.current
         hasOnboarded = false          // re-show onboarding for a clean start
-        loadDrafts()                  // reset the allocation steppers to defaults
+        // The settings row is gone, so `loadDrafts()` early-returns and the
+        // fields would keep showing PRE-RESET values — and "Save Split as
+        // Default" would write that stale split straight back. Clear them here
+        // instead; `onAppear` reloads once onboarding recreates the row.
+        needsPct = 50
+        savingsPct = 20
+        wantsPct = 30
+        incomeDraft = 0
+        incomeCommitted = 0
+        draftsLoaded = false
         flash("All data reset")
     }
 

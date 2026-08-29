@@ -721,6 +721,55 @@ cleanup/perf batches. **Sequencing plan (agreed risk tiers):**
   chokepoint** (5 divergent month-targeting shapes) retires findings
   #2/#5/#6/#8's class — best done as its own focused refactor.
 
+### ✅ Code review (2026-08-29) — findings 2–8 fixed, finding 1 PENDING
+Two review passes over the whole app and over the session's commit range. Fixed:
+- **Reset All Data left stale drafts.** Making `settings` optional (to stop
+  reads spawning duplicate rows) meant `loadDrafts()` early-returns when the row
+  is gone — so `performReset()` left the income and split fields showing
+  pre-reset values, and "Save Split as Default" would write the stale split
+  back. Now cleared explicitly. *Regression I introduced with the duplicate-row
+  fix.*
+- **Deleting a card took one tap**, stripping the label off every transaction
+  that used it. Now behind a `confirmationDialog`, like every other destructive
+  action in the app.
+- **`cardsByID` was rebuilt once per row** — referenced as a computed property
+  inside the `ForEach` body, i.e. exactly the O(rows × cards) its own doc
+  comment claims to avoid. Hoisted to a `let` beside `filteredTransactions`.
+- **Retracted recurring charges skipped `BudgetAlerts.evaluate`** (deleted
+  through the context rather than `LedgerService.delete`), leaving warn/over
+  latches armed after spend dropped.
+- **The by-card sort broke strict-weak ordering**: it tested equality with `!=`
+  but ordered case-insensitively, so names differing only in case were
+  inconsistently comparable — a debug-build trap. One comparison now decides
+  both.
+- **Imported `abbrev` wasn't clamped** to `maxAbbrev`; with a `.fixedSize()`
+  chip a long one from a backup pushes the amount off the row. Clamped in
+  `PaymentCard.init` so every path is covered, not just the editor.
+- **Opening + saving an imported rule longer than 60 months** truncated it to
+  the stepper's range and deleted the charges beyond. The stored duration is
+  now preserved unless the stepper is actually moved.
+
+⏳ **Finding 1 — NOT fixed, needs a decision.** `computedEndKey` counts from the
+rule's *original* `startKey`. Turning on "Ends after N months" for a rule that
+started months ago produces an end month already in the past, and `applyRule`'s
+retraction branch then permanently deletes that rule's charge from every open
+month after it — no confirmation, no undo, and the default stepper value of 3
+makes it the likely outcome. Options: (a) clamp `computedEndKey` so it can never
+land before the current month — minimal, stops the data loss; (b) make the
+stepper mean "N *more* months from now" for an existing rule — arguably the
+right semantics, but changes what the control means and needs the footer to
+match. Either way it touches `applyRule`, still the pinned round-2 finding.
+
+**Not fixed, lower priority / pre-existing:** `fileExporter`'s eager encode
+(already pinned as perf P3), CSV re-import duplicating rows (`decodeCSV` mints a
+fresh UUID per row so id-dedupe can't match), `HistoryView`'s `months` recomputed
+6+ times per render, `flexibleDate` allocating formatters per row, RootView's
+broad `@Query` (same family as pinned perf P1), and the no-op `if` in
+`mergeDuplicateSettings`. **Sleeper:** `MoneyField.reformat` hardcodes `.` as the
+decimal separator while `display` uses `Locale.current` — in a `.`-grouping
+locale 1,000 round-trips to 1.00. Zero impact while US-only; must be fixed
+before any localization.
+
 ### 📋 Performance & battery audit (2026-07-28) — findings pinned, fixes NOT applied
 Triggered by "still getting intermittent lag on the Settings page, at least on
 iOS" — i.e. lag that *survives* the per-keystroke income fix shipped the same

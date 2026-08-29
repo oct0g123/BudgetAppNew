@@ -581,6 +581,10 @@ struct BudgetView: View {
 
         Section {
             let txns = filteredTransactions(month)
+            // Hoisted OUT of the ForEach: referenced as a computed property in
+            // the row builder it was rebuilt once per row — the exact
+            // O(rows × cards) cost its doc comment claims to avoid.
+            let cardMap = cardsByID
             if txns.isEmpty {
                 let query = searchText.trimmingCharacters(in: .whitespaces)
                 Text(!query.isEmpty ? "No transactions match \"\(query)\"."
@@ -594,7 +598,7 @@ struct BudgetView: View {
                         if !month.isClosed { editingTransaction = txn }
                     } label: {
                         TransactionRow(txn: txn,
-                                       cardTag: txn.cardID.flatMap { cardsByID[$0]?.tag })
+                                       cardTag: txn.cardID.flatMap { cardMap[$0]?.tag })
                     }
                     .buttonStyle(.plain)
                     .hoverHighlight()
@@ -647,10 +651,15 @@ struct BudgetView: View {
             let bName = b.cardID.flatMap { map[$0]?.name }
             switch (aName, bName) {
             case let (lhs?, rhs?):
-                if lhs != rhs {
-                    return lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
+                // ONE comparison decides both equality and order. Testing `!=`
+                // and then ordering case-insensitively disagreed for names
+                // differing only in case, which breaks the strict-weak ordering
+                // `sorted(by:)` requires and can trap a debug build.
+                switch lhs.localizedCaseInsensitiveCompare(rhs) {
+                case .orderedAscending:  return true
+                case .orderedDescending: return false
+                case .orderedSame:       return a.date > b.date
                 }
-                return a.date > b.date
             case (_?, nil):  return true
             case (nil, _?):  return false
             case (nil, nil): return a.date > b.date

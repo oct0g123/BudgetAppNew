@@ -132,9 +132,16 @@ enum LedgerService {
                 // end, or they'd linger with no rule behind them. Open months
                 // only, and only rows carrying this rule's id — closed months
                 // stay frozen and hand-entered transactions are never touched.
+                var removedAny = false
                 for txn in month.txns where txn.recurringRuleID == rule.id {
                     context.delete(txn)
+                    removedAny = true
                 }
+                // Deleting straight through the context skips what
+                // `LedgerService.delete` does: spend just dropped, so this
+                // month's warn/over latches have to be re-armed or the next
+                // crossing goes unannounced.
+                if removedAny { BudgetAlerts.evaluate(month) }
             }
         }
     }

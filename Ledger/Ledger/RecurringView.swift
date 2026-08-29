@@ -139,6 +139,10 @@ struct RecurringEditor: View {
     @State private var day = 1
     @State private var isLimited = false
     @State private var monthCount = 3
+    /// What the rule actually stored, before the stepper's 1...60 clamp. A
+    /// longer imported rule would otherwise be silently truncated — and every
+    /// charge beyond the new end deleted — just by opening and saving it.
+    @State private var loadedMonthCount: Int?
 
     private var isValid: Bool { (amount ?? 0) > 0 }
 
@@ -149,7 +153,12 @@ struct RecurringEditor: View {
     /// people think about it ("3 payments"); the model stores the resulting end
     /// month, which can't drift the way a decrementing counter would.
     private var computedEndKey: String? {
-        isLimited ? MonthKey.offset(effectiveStartKey, by: monthCount - 1) : nil
+        guard isLimited else { return nil }
+        // Untouched stepper on an over-range rule: keep the stored end.
+        if let loaded = loadedMonthCount, loaded > 60, monthCount == 60 {
+            return MonthKey.offset(effectiveStartKey, by: loaded - 1)
+        }
+        return MonthKey.offset(effectiveStartKey, by: monthCount - 1)
     }
 
     private var durationFooter: String {
@@ -271,6 +280,7 @@ struct RecurringEditor: View {
         day = rule.dayOfMonth
         if let count = rule.monthCount {
             isLimited = true
+            loadedMonthCount = count
             monthCount = min(max(count, 1), 60)
         }
     }
@@ -420,6 +430,7 @@ struct CardEditor: View {
     @State private var name = ""
     @State private var abbrev = ""
     @State private var isArchived = false
+    @State private var confirmingDelete = false
 
     private var isValid: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty
@@ -469,7 +480,7 @@ struct CardEditor: View {
                     .listRowBackground(DS.rowBackground())
 
                     Section {
-                        Button("Delete Card", role: .destructive) { delete() }
+                        Button("Delete Card", role: .destructive) { confirmingDelete = true }
                             .frame(maxWidth: .infinity)
                     } footer: {
                         Text("Deleting is permanent, and transactions that used this card lose their label. Archive instead if you might want it back.")
@@ -480,6 +491,17 @@ struct CardEditor: View {
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
             .screenBackground()
+            // Every other destructive action in the app confirms first —
+            // closing a month, resetting data. This one strips the label off
+            // every transaction that used the card, so it should too.
+            .confirmationDialog("Delete this card?",
+                                isPresented: $confirmingDelete,
+                                titleVisibility: .visible) {
+                Button("Delete Card", role: .destructive) { delete() }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("Transactions tagged with this card lose their label. Archive it instead if you might want it back.")
+            }
             .navigationTitle(card == nil ? "New Card" : "Edit Card")
             #if !os(macOS)
             .toolbarTitleDisplayMode(.inline)
