@@ -304,11 +304,6 @@ final class RecurringRule {
         return endKey < MonthKey.current
     }
 
-    /// Total number of charges when limited, for the editor's stepper.
-    var monthCount: Int? {
-        guard let endKey else { return nil }
-        return max(MonthKey.monthsBetween(startKey, endKey) + 1, 1)
-    }
 
     var category: BudgetCategory {
         get { BudgetCategory(rawValue: categoryRaw) ?? .needs }

@@ -139,34 +139,57 @@ struct RecurringEditor: View {
     @State private var day = 1
     @State private var isLimited = false
     @State private var monthCount = 3
-    /// What the rule actually stored, before the stepper's 1...60 clamp. A
-    /// longer imported rule would otherwise be silently truncated — and every
-    /// charge beyond the new end deleted — just by opening and saving it.
-    @State private var loadedMonthCount: Int?
+    /// Exactly what the rule had when the sheet opened. An untouched duration is
+    /// written back verbatim, so opening a rule to change its AMOUNT can never
+    /// alter its schedule — that path could otherwise truncate a long rule,
+    /// restart a finished one, or delete charges.
+    @State private var loadedIsLimited = false
+    @State private var loadedDisplayCount = 3
+    @State private var loadedEndKey: String?
 
     private var isValid: Bool { (amount ?? 0) > 0 }
 
     /// An existing rule keeps its own start; a new one begins in the viewed month.
     private var effectiveStartKey: String { rule?.startKey ?? viewedKey }
 
+    /// Where a NEWLY SET duration starts counting.
+    ///
+    /// For a rule already underway that's the CURRENT month, not the rule's
+    /// original start: "3 months" on a rule that began in January has to mean
+    /// "3 more months". Counting from January would put the end in the past, and
+    /// `applyRule`'s retraction branch would then delete that rule's charge from
+    /// every open month in between — silently, and with no undo.
+    /// Keys are "YYYY-MM", so lexical order is chronological order.
+    private var anchorKey: String {
+        guard let rule else { return viewedKey }
+        return max(rule.startKey, MonthKey.current)
+    }
+
     /// nil = runs until switched off. The UI counts months because that's how
     /// people think about it ("3 payments"); the model stores the resulting end
     /// month, which can't drift the way a decrementing counter would.
     private var computedEndKey: String? {
-        guard isLimited else { return nil }
-        // Untouched stepper on an over-range rule: keep the stored end.
-        if let loaded = loadedMonthCount, loaded > 60, monthCount == 60 {
-            return MonthKey.offset(effectiveStartKey, by: loaded - 1)
+        // Duration untouched → hand back precisely what was stored.
+        if isLimited == loadedIsLimited, monthCount == loadedDisplayCount {
+            return loadedEndKey
         }
-        return MonthKey.offset(effectiveStartKey, by: monthCount - 1)
+        guard isLimited else { return nil }
+        return MonthKey.offset(anchorKey, by: monthCount - 1)
     }
 
     private var durationFooter: String {
         guard let end = computedEndKey else {
             return "Repeats every month until you turn it off."
         }
-        let times = monthCount == 1 ? "once" : "\(monthCount) times"
-        return "Charges \(times) — \(MonthKey.displayName(effectiveStartKey)) through \(MonthKey.displayName(end))."
+        if end < MonthKey.current {
+            return "Ended \(MonthKey.displayName(end)). Change the number of months to restart it from \(MonthKey.displayName(anchorKey))."
+        }
+        // Describe the range actually being stored, so the count and the months
+        // can never disagree with each other.
+        let start = end < anchorKey ? effectiveStartKey : anchorKey
+        let count = max(MonthKey.monthsBetween(start, end) + 1, 1)
+        let times = count == 1 ? "once" : "\(count) times"
+        return "Charges \(times) — \(MonthKey.displayName(start)) through \(MonthKey.displayName(end))."
     }
 
     var body: some View {
@@ -278,11 +301,15 @@ struct RecurringEditor: View {
         amount = rule.amount
         category = rule.category
         day = rule.dayOfMonth
-        if let count = rule.monthCount {
+        if let end = rule.endKey {
             isLimited = true
-            loadedMonthCount = count
-            monthCount = min(max(count, 1), 60)
+            loadedIsLimited = true
+            loadedEndKey = end
+            // REMAINING months, not the rule's total span, so the number means
+            // "months from here" both on open and after a change.
+            monthCount = min(max(MonthKey.monthsBetween(anchorKey, end) + 1, 1), 60)
         }
+        loadedDisplayCount = monthCount
     }
 
     private func save() {

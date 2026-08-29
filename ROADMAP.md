@@ -749,7 +749,29 @@ Two review passes over the whole app and over the session's commit range. Fixed:
   the stepper's range and deleted the charges beyond. The stored duration is
   now preserved unless the stepper is actually moved.
 
-⏳ **Finding 1 — NOT fixed, needs a decision.** `computedEndKey` counts from the
+✅ **Finding 1 — FIXED 2026-08-29 (option 1).** Two parts, both inside
+`RecurringEditor`; `applyRule` untouched, so this stays clear of the pinned
+round-2 finding.
+- **Untouched durations are written back verbatim.** The sheet records
+  `loadedIsLimited` / `loadedDisplayCount` / `loadedEndKey` on open; if the
+  toggle and stepper are unchanged, `save()` stores exactly what was there. This
+  alone kills the whole class — opening a rule to edit its *amount* can no
+  longer truncate a long rule, restart a finished one, or delete anything.
+- **A newly set duration counts from `max(startKey, currentMonth)`.** "3 months"
+  on a rule that began in January now means Aug→Oct, not Jan→Mar, so nothing
+  historical is ever inside the retraction branch's range.
+- **The stepper shows REMAINING months** for a rule already underway, so the
+  number means "months from here" both on open and after a change; the footer
+  derives its count from the range actually being stored, so the two can't
+  disagree. A finished rule reads *"Ended March 2026. Change the number of
+  months to restart it from August 2026."*
+- **`RecurringRule.monthCount` removed** — unused after this, and it returned the
+  rule's TOTAL span, which is the value that caused the bug. Left in place it
+  would have been a trap for the next person.
+- Supersedes the narrower >60-month guard added earlier the same day: the
+  untouched-duration rule covers that case and every other one.
+
+~~⏳ Finding 1 — NOT fixed, needs a decision.~~ `computedEndKey` counts from the
 rule's *original* `startKey`. Turning on "Ends after N months" for a rule that
 started months ago produces an end month already in the past, and `applyRule`'s
 retraction branch then permanently deletes that rule's charge from every open
