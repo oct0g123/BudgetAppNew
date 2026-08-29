@@ -26,6 +26,8 @@ struct AddTransactionView: View {
     @State private var memo = ""
     @State private var cardID: UUID?
     @State private var makeRecurring = false
+    @State private var recurringIsLimited = false
+    @State private var recurringMonths = 3
     @State private var saveCount = 0
 
     /// Archived cards stay selectable only if this transaction already uses
@@ -42,6 +44,24 @@ struct AddTransactionView: View {
         #else
         Text("Note (optional)")
         #endif
+    }
+
+    /// The rule's last month, or nil for open-ended. A NEW rule always starts in
+    /// the month the transaction lands in, so counting from there is already
+    /// "from now" — none of the past-anchoring trouble the editor has to guard
+    /// against applies here.
+    private func recurringEndKey(startingAt startKey: String) -> String? {
+        guard makeRecurring, recurringIsLimited else { return nil }
+        return MonthKey.offset(startKey, by: recurringMonths - 1)
+    }
+
+    private var recurringFooter: String {
+        let startKey = MonthKey.key(for: date)
+        guard let end = recurringEndKey(startingAt: startKey) else {
+            return "Repeats every month until you turn it off in Settings → Recurring."
+        }
+        let times = recurringMonths == 1 ? "once" : "\(recurringMonths) times"
+        return "Charges \(times) — \(MonthKey.displayName(startKey)) through \(MonthKey.displayName(end))."
     }
 
     private var isEditing: Bool { existing != nil }
@@ -108,6 +128,29 @@ struct AddTransactionView: View {
                             }
                         }
                         .tint(DS.savings)
+
+                        // Only once "Repeat monthly" is on — an installment plan
+                        // is decided when you log the charge, not on a later trip
+                        // to Settings. Nothing shows until it's relevant.
+                        if makeRecurring {
+                            Toggle("Ends after a set number of months",
+                                   isOn: $recurringIsLimited)
+                                .tint(DS.savings)
+
+                            if recurringIsLimited {
+                                Stepper(value: $recurringMonths, in: 1...60) {
+                                    LabeledContent("Number of months") {
+                                        Text("\(recurringMonths)")
+                                            .font(Typography.mono(.body, weight: .medium))
+                                            .foregroundStyle(DS.text)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } footer: {
+                    if makeRecurring {
+                        Text(recurringFooter)
                     }
                 }
                 .listRowBackground(DS.rowBackground())
@@ -203,7 +246,8 @@ struct AddTransactionView: View {
                                          amount: value,
                                          category: category,
                                          dayOfMonth: dayOfMonth(from: date),
-                                         startKey: target.key)
+                                         startKey: target.key,
+                                         endKey: recurringEndKey(startingAt: target.key))
                 context.insert(rule)
                 let txn = Transaction(desc: trimmed,
                                       amount: value,

@@ -721,6 +721,38 @@ cleanup/perf batches. **Sequencing plan (agreed risk tiers):**
   chokepoint** (5 divergent month-targeting shapes) retires findings
   #2/#5/#6/#8's class — best done as its own focused refactor.
 
+### 🔴 applyRule rewrote PAST months — fixed 2026-08-29
+The pinned round-2 "retroactive rewrite" finding, hit in the wild: *"when I
+change a recurring rule, it does seem to edit transactions in the past."*
+- **Cause:** the loop excluded only **closed** months, not **past** ones. Closing
+  a month is optional, so any past month left open had its rule-generated charge
+  silently rewritten on every rule edit — raise the rent today and last July's
+  total changes with it. The retraction and materialization branches had the
+  same reach.
+- **Fix:** one guard, `month.key >= MonthKey.current`, covering all three
+  branches. History is a record of what happened; the current month and future
+  open months still update, which is what "edits update this month's copy too"
+  was always meant to mean.
+- The Recurring list footer said "closed months are never changed" — accurate
+  about the code, wrong about what users needed to know. Now: *"Editing one
+  updates this month and future months; past months keep what they were
+  charged."*
+- **Note:** this is the mutation-scoping half of the pinned finding. The rest of
+  that entry (materialize/propagate split, `isActive` gate in the mutate branch,
+  changed-fields-only, not clobbering `date`) is still open.
+
+### ✅ Duration in the new-transaction flow (2026-08-29)
+User: *"give the user the option to set the length of recurring transactions
+through the new transaction flow — not just in settings."* Right call: an
+installment plan is known when you log the first charge, not on a later trip to
+Settings. "Repeat monthly" now reveals the same *ends after N months* toggle and
+stepper, with a footer stating the resulting range.
+- Supersedes the earlier "quick-add stays open-ended" decision.
+- **No anchoring problem here:** a new rule's `startKey` is the month the
+  transaction lands in, so counting from it is already counting from now. The
+  editor's `anchorKey` guard exists only because an *existing* rule can have
+  started long ago.
+
 ### ✅ Code review (2026-08-29) — findings 2–8 fixed, finding 1 PENDING
 Two review passes over the whole app and over the session's commit range. Fixed:
 - **Reset All Data left stale drafts.** Making `settings` optional (to stop

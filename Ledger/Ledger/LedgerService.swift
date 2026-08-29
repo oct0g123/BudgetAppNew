@@ -111,13 +111,21 @@ enum LedgerService {
         }
     }
 
-    /// Apply a rule to every existing open month it covers (used right after a
-    /// rule is created or re-activated). Also UPDATES any already-materialized
-    /// transaction to match the rule's current amount/category/day, so editing
-    /// a rule (e.g. rent $1800 → $2000) is reflected in the current open month
-    /// — not just future ones (open months only; closed months stay frozen).
+    /// Apply a rule to the current month and any future open month it covers
+    /// (used right after a rule is created, edited or re-activated). Also
+    /// UPDATES an already-materialized transaction to match the rule's current
+    /// amount/category/day, so editing rent $1800 → $2000 shows up in the month
+    /// you're budgeting rather than only in future ones.
+    ///
+    /// PAST months are never touched — not just closed ones. Excluding only
+    /// closed months meant a past month you simply hadn't closed (closing is
+    /// optional) had its charge silently rewritten when you edited the rule:
+    /// raise the rent today and last July's total changed too. History is a
+    /// record of what happened, so `>= MonthKey.current` guards every branch
+    /// below — the update, the materialization, and the retraction.
     static func applyRule(_ rule: RecurringRule, in context: ModelContext) {
-        for month in allMonths(in: context) where !month.isClosed {
+        for month in allMonths(in: context)
+        where !month.isClosed && month.key >= MonthKey.current {
             if rule.covers(month.key) {
                 if let existing = month.txns.first(where: { $0.recurringRuleID == rule.id }) {
                     existing.desc = rule.desc
