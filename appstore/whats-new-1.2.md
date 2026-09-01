@@ -77,8 +77,12 @@ pay into Needs, Savings and Wants — privately, on your device.
    3 index groups, and permission entries for the new type on the `_world` /
    `_icloud` / `_creator` roles, which is routine bookkeeping when a record type
    is added. No further schema work is needed for 1.2.
-2. **`MARKETING_VERSION` is already 1.2** on both targets (bumped 2026-08-29).
-   Build number stays 1, which is right for a new train.
+2. **`MARKETING_VERSION` is 1.2** on both targets, and **`CURRENT_PROJECT_VERSION`
+   is 3**. The build number is NOT per-train on macOS: it must exceed the highest
+   ever uploaded for that platform, and the Mac icon re-upload back in July used
+   build 2 — so `1.2 (1)` was rejected with error 90061 as a downgrade. iOS was
+   unaffected (separate build list, never past 1). If a platform rejects a build
+   number again, raise this and re-archive; gaps are harmless.
 3. **Build all four targets before archiving.** A lot of `#if`-gated Mac code has
    never been seen by the iOS compiler, and vice versa.
 4. **Keywords are version-locked** — change them before the build goes to review
